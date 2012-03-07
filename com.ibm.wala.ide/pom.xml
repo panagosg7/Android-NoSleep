@@ -1,0 +1,64 @@
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.ibm.wala</groupId>
+    <artifactId>com.ibm.wala.ide</artifactId>
+    <version>1.0-PANOS</version>
+    <packaging>jar</packaging>
+
+    <parent>
+        <groupId>com.ibm.wala</groupId>
+        <artifactId>wala-project</artifactId>
+        <version>1.0-PANOS</version>
+    </parent>
+
+    <name>wala ide</name>
+    <url>http://wala.sourceforge.net</url>
+
+    <properties>
+        <root.basedir>${project.parent.basedir}</root.basedir>
+    </properties>
+
+    <build>
+        <sourceDirectory>src</sourceDirectory>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.eclipse.core</groupId>
+            <artifactId>org.eclipse.core.resources</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.ui</groupId>
+            <artifactId>org.eclipse.ui.ide</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse</groupId>
+            <artifactId>jface</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>swt</groupId>
+            <artifactId>swt-linux-gtk</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.ibm.wala</groupId>
+            <artifactId>com.ibm.wala.util</artifactId>
+            <version>1.0-PANOS</version>
+        </dependency>
+        <dependency>
+            <groupId>com.ibm.wala</groupId>
+            <artifactId>com.ibm.wala.core</artifactId>
+            <version>1.0-PANOS</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.sonatype.tycho</groupId>
+            <artifactId>org.eclipse.jdt.core</artifactId>
+            <version>1.0-PANOS</version>
+        </dependency>
+    </dependencies>
+
+</project>

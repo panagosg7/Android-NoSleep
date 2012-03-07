@@ -1,0 +1,57 @@
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.ibm.wala</groupId>
+    <artifactId>wala-project</artifactId>
+    <version>1.0-PANOS</version>
+    <packaging>pom</packaging>
+
+    <name>wala</name>
+    <url>http://wala.sourceforge.net</url>
+
+    <properties>
+        <aversion>1.0.0</aversion>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <root.basedir>${basedir}</root.basedir>
+    </properties>
+
+    <modules>
+        <module>com.ibm.wala.util</module>
+        <module>com.ibm.wala.core</module>
+        <module>com.ibm.wala.shrike</module>
+        <module>com.ibm.wala.core.tests</module>
+        <module>edu.ucsd.salud.mcmutton</module>
+        <!--<module>com.ibm.wala.ide</module>-->
+        
+        <module>edu.ucsd.godel.pvekris</module>
+    </modules>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <verbose>true</verbose>
+                    <source>1.6</source>
+                    <target>1.6</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

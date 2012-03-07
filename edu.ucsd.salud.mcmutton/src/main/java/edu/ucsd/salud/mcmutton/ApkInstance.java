@@ -1,0 +1,498 @@
+package edu.ucsd.salud.mcmutton;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.logging.Logger;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpression;
+import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
+
+import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
+
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
+
+import brut.androlib.Androlib;
+import brut.androlib.AndrolibException;
+import brut.androlib.res.data.ResTable;
+import brut.androlib.res.util.ExtFile;
+import brut.directory.DirectoryException;
+
+import com.ibm.wala.types.MethodReference;
+import com.ibm.wala.util.CancelException;
+import com.ibm.wala.util.WalaException;
+import com.ibm.wala.util.strings.StringStuff;
+
+import edu.ucsd.salud.mcmutton.apk.ApkPaths;
+import edu.ucsd.salud.mcmutton.apk.ConfigurationException;
+import edu.ucsd.salud.mcmutton.apk.Interesting;
+import edu.ucsd.salud.mcmutton.apk.Util;
+import edu.ucsd.salud.mcmutton.apk.Wala;
+import edu.ucsd.salud.mcmutton.retarget.D2jConverter;
+import edu.ucsd.salud.mcmutton.retarget.DedConverter;
+import edu.ucsd.salud.mcmutton.retarget.SootD2jOptimize;
+import edu.ucsd.salud.mcmutton.retarget.SootOptimize;
+import edu.ucsd.salud.mcmutton.retarget.Translation;
+import edu.ucsd.salud.mcmutton.smali.LameSmali;
+import edu.ucsd.salud.mcmutton.smali.LameWorld;
+
+public class ApkInstance {
+	private ApkPaths mPaths;
+	public static File sScratchPath = null;
+	public static File sDedPath = null;
+	public static File sAndroidSdkPath = null;
+	
+	private Set<String> mPermissions;
+
+	private org.w3c.dom.Document mManifest;
+	private LameSmali mSmali;
+	
+	private Wala mWala = null;
+	private boolean mRunWalaOnOptimized = true;
+	
+	public final static Logger LOGGER = Logger.getLogger(ApkInstance.class.getName());
+	
+	public void setRunWalaOnOptimized(boolean val) { mRunWalaOnOptimized = val; }
+	
+	public ApkInstance(File path) throws IOException {
+		this(path, path);
+	}
+	
+	public ApkInstance(File path, File scratchRelativePath) throws IOException {
+		mPaths = new ApkPaths(path, new File(sScratchPath + File.separator + scratchRelativePath), sDedPath, sAndroidSdkPath);
+		mSmali = null;
+		
+		mDedTranslation = new Translation(new DedConverter(mPaths), new SootOptimize(mPaths, getAndroidVersion()));
+		mDex2JarTranslation = new Translation(new D2jConverter(mPaths), new SootD2jOptimize(mPaths, getAndroidVersion()));
+
+		if (mDedTranslation.mOptimize.attempted() && !mDedTranslation.mOptimize.success()) {
+			mPreferredTranslation = mDex2JarTranslation;
+		} else {
+			mPreferredTranslation = mDedTranslation;
+		}
+	}
+
+	public static void loadPaths() throws ConfigurationException {
+		try {
+			Properties prop = new Properties();
+			prop.load(new FileInputStream("mcmutton.properties"));
+			loadPaths(prop);
+		} catch (IOException e) {
+			throw new ConfigurationException("Error loading configuration file: " + e.toString());
+		}
+	}
+	
+	public static void loadPaths(Properties prop) throws ConfigurationException {
+		sScratchPath = Util.getAndCheckConfigPath(prop, "scratch_path");
+		sDedPath = Util.getAndCheckConfigPath(prop, "ded_path");
+		sAndroidSdkPath = Util.getAndCheckConfigPath(prop, "android_sdk_base");
+	}
+	
+	public final Set<String> getPermissions() throws FailedManifestException {
+		if (mPermissions == null) loadPermissions();
+		return mPermissions;
+	}
+	
+	public final String getName() { return mPaths.basePath.getParentFile().getParentFile().getName();  }
+	public final String getVersion() { return new File(mPaths.basePath.getParent()).getName();  }
+	public final String getPath() { return mPaths.basePath.getPath(); }
+	
+	public File getDedTarget() { return mPaths.ded; }
+	protected File getInfoTarget() { return  mPaths.info; }
+	
+	public File getExtractedPath() { return mPaths.extractedPath; }
+	public File getDexPath() { return mPaths.extractedPath; }
+	public File getManifestPath() { return mPaths.manifestPath; }
+	
+	public File getWorkPath() { return mPaths.workPath; }
+	
+	private Translation mPreferredTranslation;
+	private Translation mDex2JarTranslation;
+	private Translation mDedTranslation;
+	
+	
+	public File getDedLogTarget() {
+		return mPreferredTranslation.mConverter.getLogTarget();
+	}
+	
+	public File getDedErrLogTarget() {
+		return mPreferredTranslation.mConverter.getErrTarget();
+	}
+	
+	public File getDedOptimizedLogTarget() {
+		return mPreferredTranslation.mOptimize.getLogTarget();
+	}
+	
+	public File getDedOptimizedErrLogTarget() {
+		return mPreferredTranslation.mOptimize.getErrTarget();
+	}
+	
+	public static final String canonicalize(String smaliCall) {
+		int parenIndex = smaliCall.indexOf('(');
+		int startIndex = 0;
+		if (smaliCall.charAt(0) == 'L') startIndex = 1;
+		String firstPart = smaliCall.substring(startIndex, parenIndex);
+		String secondPart = smaliCall.substring(parenIndex);
+		
+		return firstPart.replaceAll("(?:[/]|;->|->)", ".") + secondPart;
+	}
+	
+	public Map<MethodReference, Set<MethodReference>> interestingReachability() throws ApkException {
+		try {
+			Map<MethodReference, Set<MethodReference>> results = new HashMap<MethodReference, Set<MethodReference>>();
+			
+			LameWorld lr = this.inspectSmali();
+			List<String> strReverse = lr.getMethodList();
+			List<MethodReference> reverse = new ArrayList<MethodReference>();
+			
+			for (String smr: strReverse) {
+				reverse.add(StringStuff.makeMethodReference(canonicalize(smr)));
+			}
+			
+			List<List<Integer>> reachability = lr.computeReachability();
+
+			for (int i = 0; i < reachability.size(); ++i) {
+				MethodReference srcMr = reverse.get(i);
+				
+				for (Integer dst: reachability.get(i)) {
+					MethodReference dstMr = reverse.get(dst);
+					
+					if (Interesting.sInterestingMethods.contains(dstMr)) {
+						if (!results.containsKey(dstMr)) {
+							results.put(dstMr, new HashSet<MethodReference>());
+						}
+						results.get(dstMr).add(srcMr);
+					}
+				}
+			}
+				
+			return results;
+		} catch (IOException e) {
+			throw new ApkException("IOE: " + e.toString());
+		}
+	}
+	
+	public Map<MethodReference, Set<MethodReference>> interestingCallSites() throws ApkException{
+		try {
+			LameWorld lr = this.inspectSmali();
+			Map<String, Set<String>> callSiteList = lr.invertAdjacency();
+			
+			Map<MethodReference, Set<MethodReference>> results = new HashMap<MethodReference, Set<MethodReference>>();
+			
+			for (String target: callSiteList.keySet()) {
+				MethodReference mr = StringStuff.makeMethodReference(canonicalize(target));
+				if (Interesting.sInterestingMethods.contains(mr)) {
+					Set<MethodReference> sites = new HashSet<MethodReference>();
+					for (String callSite: callSiteList.get(target)) {
+						sites.add(StringStuff.makeMethodReference(canonicalize(callSite)));
+					}
+					results.put(mr, sites); 
+				}
+			}
+			
+			return results;
+		} catch (IOException e) {
+			throw new ApkException(e.toString());
+		}
+	}
+	
+	protected Wala getWala() throws IOException, RetargetException {
+		if (mWala == null) {
+			if (mRunWalaOnOptimized) {
+				requiresOptimizedJar();
+				mWala = new Wala(mPreferredTranslation.mOptimize.getJarTarget(), mPaths.getAndroidJar(getAndroidVersion()), mPaths.walaCache);
+			} else {
+				requiresRetargetedJar();
+				mWala = new Wala(mPreferredTranslation.mConverter.getJarTarget(), mPaths.getAndroidJar(getAndroidVersion()), mPaths.walaCache);
+			}
+		}
+		return mWala;	
+	}
+
+	
+	public Set<MethodReference> interestingFunctionSet() throws ApkException {
+		return interestingCallSites().keySet();
+	}
+	
+	public Wala.UsageType panosAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException {
+		return this.getWala().panosAnalyze();
+	}
+	
+	public Wala.UsageType analyze() throws IOException, RetargetException {
+		return this.getWala().analyze();
+	}
+	
+	public void requiresRetargeted() throws IOException, RetargetException {
+	    mPreferredTranslation.requiresRetargeted();
+	}
+	
+	public void requiresOptimized() throws IOException, RetargetException {
+	    mPreferredTranslation.requiresOptimized();
+	}
+	
+	public void buildOptimizedJava() throws IOException, RetargetException {
+	    mPreferredTranslation.buildOptimizedJava();
+	}
+	
+	public boolean successfullyOptimized() throws IOException, RetargetException {
+	    return mPreferredTranslation.successfullyOptimized();
+	}
+	
+	public void requiresRetargetedJar() throws IOException, RetargetException {
+	    if (!mPreferredTranslation.hasRetargetedJar()) mPreferredTranslation.buildRetargetedJar();
+	}
+	
+	public void requiresOptimizedJar() throws IOException, RetargetException {
+		if (!mPreferredTranslation.hasOptimizedJar()) mPreferredTranslation.buildOptimizedJar();
+	}
+	
+	public Set<String> getOptPhantoms() {
+		Set<String> phantoms = new HashSet<String>();
+		
+		try {
+			FileInputStream is = new FileInputStream(this.getDedOptimizedLogTarget());
+			try {
+				BufferedReader br = new BufferedReader(new InputStreamReader(is));
+				while (true) {
+					String line = br.readLine();
+					if (line == null) break;
+					if (line.contains("is a phantom class")) {
+						phantoms.add(line.split(" ")[1]);
+					}
+				}
+			} finally {
+				is.close();
+			}
+		} catch (IOException e) {
+			// meh
+		}
+		
+		return phantoms;
+	}
+	
+	public void cleanOptimizations() {
+		mDedTranslation.mOptimize.clean();
+		mDex2JarTranslation.mOptimize.clean();
+		
+	}
+	
+	public String getOptException() {
+		String exception = null;
+		
+		try {
+			FileInputStream is = new FileInputStream(this.getDedOptimizedErrLogTarget());
+			try {
+				BufferedReader br = new BufferedReader(new InputStreamReader(is));
+				String line0 = br.readLine();
+				if (line0 == null) return null;
+				if (line0.contains("Exception")) {
+					exception = br.readLine();
+				}
+			} finally {
+				is.close();
+			}
+		} catch (IOException e) {
+			// meh
+		}
+		
+		return exception;
+	}
+
+	public void requiresExtraction() throws IOException { 
+		if (!getExtractedPath().exists() || !getDexPath().exists()) {
+			decodeApk();
+		}
+	}
+	
+	public File getApkFile() throws IOException {
+		return mPaths.apk;
+	}
+	
+	public void decodeApk() throws IOException {
+		LOGGER.info("Decoding APK file");
+		// ApkDecoder decoder = new ApkDecoder(); // Pulled out internal bits
+		File targetDir = getExtractedPath();
+		File sourceApk = getApkFile();
+		
+		try {
+			Androlib androlib = new Androlib();
+			ExtFile apkFile = new ExtFile(sourceApk);
+			boolean debug = false;
+			
+			targetDir.mkdirs();
+			
+			androlib.decodeSourcesRaw(apkFile, targetDir, debug);
+			androlib.decodeSourcesSmali(apkFile, targetDir, debug);
+			
+			boolean resourcesExtracted = new File(targetDir + "/res").exists();
+			// XXX Deal with resources?
+			try {
+				if (!resourcesExtracted && apkFile.getDirectory().containsFile("classes.dex")) {
+					ResTable resTable = androlib.getResTable(apkFile);
+					System.err.println("!!!" + sourceApk + " " + targetDir);
+					androlib.decodeResourcesFull(apkFile, targetDir, resTable);
+				}
+			} catch (DirectoryException e) {
+				throw new AndrolibException("Error looking up classes.dex");
+			}
+		} catch (StringIndexOutOfBoundsException e) {
+			// Manifest parsing error, passing through
+			LOGGER.info("Manifest conversion failed on " + getName());
+		} catch (AndrolibException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	private void loadPermissions() throws FailedManifestException {
+		requiresManifest();
+		
+		mPermissions = new HashSet<String>();
+		
+		XPathFactory factory = XPathFactory.newInstance();
+		XPath xpath = factory.newXPath();
+		
+		try {
+			XPathExpression expr = xpath.compile("//uses-permission");
+			NodeList nodes = (NodeList)expr.evaluate(mManifest, XPathConstants.NODESET);
+			for (int i = 0; i < nodes.getLength(); ++i) {
+				mPermissions.add(nodes.item(i).getAttributes().getNamedItem("android:name").getNodeValue());
+			}
+		} catch (XPathExpressionException e) {
+			throw new FailedManifestException(e.toString());
+		}
+	}
+	
+	private int getAndroidVersion() {
+		final int defaultVersion = 10;
+		int version = -1;
+		
+		try {
+			requiresManifest();
+	
+			XPathFactory factory = XPathFactory.newInstance();
+			XPath xpath = factory.newXPath();
+			
+			try {
+				XPathExpression expr = xpath.compile("//uses-sdk");
+				NodeList nodes = (NodeList)expr.evaluate(mManifest, XPathConstants.NODESET);
+				for (int i = 0; i < nodes.getLength(); ++i) {
+					try {
+						return Integer.parseInt(nodes.item(i).getAttributes().getNamedItem("android:targetSdkVersion").getNodeValue());
+					} catch (NullPointerException e) {
+						version = defaultVersion;
+					}
+				}
+			} catch (XPathExpressionException e) {
+				throw new FailedManifestException(e.toString());
+			}
+		} catch (FailedManifestException e) {
+			return -1;
+		}
+		
+		return version;
+	}
+	
+	private void requiresManifest() throws FailedManifestException {
+		if (mManifest == null) loadManifest();
+	}
+	
+	private void loadManifest() throws FailedManifestException {
+		try {
+			DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
+			domFactory.setNamespaceAware(true);
+			DocumentBuilder builder = domFactory.newDocumentBuilder();
+			mManifest = builder.parse(getManifestPath());
+		} catch (IOException e) {
+			throw new FailedManifestException(e.toString());
+		} catch (ParserConfigurationException e) {
+			throw new FailedManifestException(e.toString());
+		} catch (SAXException e) {
+			throw new FailedManifestException(e.toString());
+		}
+	}
+	
+	public boolean hasWakelockCalls() throws ApkException {
+		Boolean result = SystemUtil.readFileBoolean(mPaths.hasWakelockCallsCache);
+		
+		if (result == null) {
+			result = hasWakelockCallsHelper();
+			SystemUtil.writeFileBoolean(mPaths.hasWakelockCallsCache, result);
+		}
+		
+		return result;
+	}
+	
+	private boolean hasWakelockCallsHelper() throws ApkException {
+		
+		Set<MethodReference> interestingMethods = interestingFunctionSet();
+		
+		for (MethodReference ref: Interesting.sWakelockMethods) {
+			if (interestingMethods.contains(ref)) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	public void writeInfo() throws ApkException, IOException {
+		if (getInfoTarget().exists()) return;
+		
+		this.requiresExtraction();
+		
+		Set<String> permissions = null;
+		Set<MethodReference> interestingMethods = null;
+
+		permissions = this.getPermissions();
+		interestingMethods = this.interestingFunctionSet();
+
+		if (permissions == null || interestingMethods == null) {
+			System.out.println("error reading something in " + getName());
+			return;
+		}
+		
+		JSONObject obj = new JSONObject();
+		
+		JSONArray perm_arr = new JSONArray();
+		if (permissions != null) {
+			for (String perm: permissions) perm_arr.add(perm);
+		}
+		obj.put("permissions", perm_arr);
+		
+		JSONArray meth_arr = new JSONArray();
+		if (interestingMethods != null) {
+			for (MethodReference mr: interestingMethods) meth_arr.add(mr.toString());
+		}
+		obj.put("interestingMethods", meth_arr);
+		obj.put("name", this.getName());
+		obj.put("version", this.getVersion());
+		
+		FileWriter writer = new FileWriter(getInfoTarget());
+		obj.write(writer);
+		writer.close();
+	}
+	
+	public LameWorld inspectSmali() throws IOException {
+		requiresExtraction();
+		if (mSmali == null) mSmali = new LameSmali(mPaths.smali);
+		return mSmali.traverse();
+	}
+}
