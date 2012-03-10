@@ -5,7 +5,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.logging.Logger;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -27,6 +31,7 @@ import javax.xml.xpath.XPathFactory;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
@@ -63,6 +68,7 @@ public class ApkInstance {
 	private Set<String> mPermissions;
 
 	private org.w3c.dom.Document mManifest;
+	private org.w3c.dom.Document mManifestStrings;
 	private LameSmali mSmali;
 	
 	private Wala mWala = null;
@@ -70,25 +76,6 @@ public class ApkInstance {
 	
 	public final static Logger LOGGER = Logger.getLogger(ApkInstance.class.getName());
 	
-	public void setRunWalaOnOptimized(boolean val) { mRunWalaOnOptimized = val; }
-	
-	public ApkInstance(File path) throws IOException {
-		this(path, path);
-	}
-	
-	public ApkInstance(File path, File scratchRelativePath) throws IOException {
-		mPaths = new ApkPaths(path, new File(sScratchPath + File.separator + scratchRelativePath), sDedPath, sAndroidSdkPath);
-		mSmali = null;
-		
-		mDedTranslation = new Translation(new DedConverter(mPaths), new SootOptimize(mPaths, getAndroidVersion()));
-		mDex2JarTranslation = new Translation(new D2jConverter(mPaths), new SootD2jOptimize(mPaths, getAndroidVersion()));
-
-		if (mDedTranslation.mOptimize.attempted() && !mDedTranslation.mOptimize.success()) {
-			mPreferredTranslation = mDex2JarTranslation;
-		} else {
-			mPreferredTranslation = mDedTranslation;
-		}
-	}
 
 	public static void loadPaths() throws ConfigurationException {
 		try {
@@ -106,9 +93,133 @@ public class ApkInstance {
 		sAndroidSdkPath = Util.getAndCheckConfigPath(prop, "android_sdk_base");
 	}
 	
+	
+	public void setRunWalaOnOptimized(boolean val) { mRunWalaOnOptimized = val; }
+
+	public ApkInstance(File path) throws IOException {
+		this(path, path);
+	}
+	
+	public ApkInstance(File path, File scratchRelativePath) throws IOException {
+		mPaths = new ApkPaths(path, new File(sScratchPath + File.separator + scratchRelativePath), sDedPath, sAndroidSdkPath);
+		mSmali = null;
+		
+		Callable<Integer> fetchAndroidVersion = new Callable<Integer>() {
+			public Integer call() {
+				return ApkInstance.this.getAndroidVersion();
+			}
+		};
+		
+		mDedTranslation = new Translation(new DedConverter(mPaths), new SootOptimize(mPaths, fetchAndroidVersion));
+		mDex2JarTranslation = new Translation(new D2jConverter(mPaths), new SootD2jOptimize(mPaths, fetchAndroidVersion));
+
+		if (mDedTranslation.mOptimize.attempted() && !mDedTranslation.mOptimize.success()) {
+			mPreferredTranslation = mDex2JarTranslation;
+		} else {
+			mPreferredTranslation = mDedTranslation;
+		}
+	}
+	
+	public String getApkHash() throws IOException {
+		try {
+			String result = null;
+			MessageDigest digest = MessageDigest.getInstance("SHA-256");
+			
+			digest.reset();
+			
+			InputStream is = new FileInputStream(this.getApkFile());
+			byte buffer[] = new byte[4096];
+			
+			int count = 0;
+			do {
+				count = is.read(buffer);
+				if (count > 0) digest.update(buffer, 0, count);
+			} while (count > 0);
+			is.close();
+			
+			StringBuilder sb = new StringBuilder();
+			for (byte b: digest.digest()) {
+				String hstr = Integer.toHexString(b & 0xFF);
+				if (hstr.length() == 1) {
+					sb.append('0');
+				}
+				sb.append(hstr);
+			}
+			return sb.toString();
+		} catch (NoSuchAlgorithmException e) {
+			throw new Error("Couldn't find SHA-256");
+		}
+	}
+	
 	public final Set<String> getPermissions() throws FailedManifestException {
 		if (mPermissions == null) loadPermissions();
 		return mPermissions;
+	}
+	
+	public final String getNameFromManifest() throws FailedManifestException {
+		this.requiresManifest();
+		
+		XPathFactory factory = XPathFactory.newInstance();
+		XPath xpath = factory.newXPath();
+		
+		try {
+			XPathExpression expr = xpath.compile("//application");
+			NodeList nodes = (NodeList)expr.evaluate(mManifest, XPathConstants.NODESET);
+			if (nodes.getLength() == 0) {
+				throw new FailedManifestException("Unable to find application");
+			}
+			if (nodes.item(0).getAttributes().getNamedItem("android:label") != null) {
+				return lookupStringsValue(nodes.item(0).getAttributes().getNamedItem("android:label").getNodeValue());
+			} else if (nodes.item(0).getAttributes().getNamedItem("android:name") != null) {
+				return lookupStringsValue(nodes.item(0).getAttributes().getNamedItem("android:name").getNodeValue());
+			} else {
+				throw new FailedManifestException("Couldn't determine name");
+			}
+		} catch (XPathExpressionException e) {
+			throw new FailedManifestException(e.toString());
+		}
+	}
+	
+	public final String getVersionFromManifest() throws FailedManifestException {
+		this.requiresManifest();
+		
+		XPathFactory factory = XPathFactory.newInstance();
+		XPath xpath = factory.newXPath();
+		
+		try {
+			XPathExpression expr = xpath.compile("//manifest");
+			NodeList nodes = (NodeList)expr.evaluate(mManifest, XPathConstants.NODESET);
+			if (nodes.getLength() == 0) {
+				throw new FailedManifestException("Unable to find manifest");
+			}
+			return lookupStringsValue(nodes.item(0).getAttributes().getNamedItem("android:versionName").getNodeValue());
+		} catch (XPathExpressionException e) {
+			throw new FailedManifestException(e.toString());
+		}
+	}
+	
+	public final String lookupStringsValue(String val) throws FailedManifestException {
+		this.requiresManifest();
+		
+		final int name_offset = 8;
+		
+		if (!val.startsWith("@string")) {
+			return val;
+		} else {
+			XPathFactory factory = XPathFactory.newInstance();
+			XPath xpath = factory.newXPath();
+			
+			try {
+				XPathExpression expr = xpath.compile("/resources/string[@name=\"" + val.substring(name_offset) + "\"]");
+				Node node = (Node)expr.evaluate(mManifestStrings, XPathConstants.NODE);
+				if (node == null) {
+					throw new FailedManifestException("Unable to find string value " + val.substring(name_offset));
+				}
+				return node.getFirstChild().getNodeValue();
+			} catch (XPathExpressionException e) {
+				throw new FailedManifestException(e.toString());
+			}
+		}
 	}
 	
 	public final String getName() { return mPaths.basePath.getParentFile().getParentFile().getName();  }
@@ -232,7 +343,7 @@ public class ApkInstance {
 		return interestingCallSites().keySet();
 	}
 	
-	public Wala.UsageType panosAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException {
+	public Wala.UsageType /* Set<String> */ panosAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException {
 		return this.getWala().panosAnalyze();
 	}
 	
@@ -327,6 +438,7 @@ public class ApkInstance {
 	}
 	
 	public void decodeApk() throws IOException {
+//		Thread.dumpStack();
 		LOGGER.info("Decoding APK file");
 		// ApkDecoder decoder = new ApkDecoder(); // Pulled out internal bits
 		File targetDir = getExtractedPath();
@@ -359,6 +471,8 @@ public class ApkInstance {
 		} catch (AndrolibException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} catch (ClassCastException e) {
+			LOGGER.info("decode failed, carrying on anyway");
 		}
 	}
 	
@@ -412,6 +526,11 @@ public class ApkInstance {
 	}
 	
 	private void requiresManifest() throws FailedManifestException {
+		try {
+			requiresExtraction();
+		} catch (IOException e) {
+			throw new FailedManifestException("Failed decoding Apk to get Manifest: " + getManifestPath() + " " + e);
+		}
 		if (mManifest == null) loadManifest();
 	}
 	
@@ -421,6 +540,23 @@ public class ApkInstance {
 			domFactory.setNamespaceAware(true);
 			DocumentBuilder builder = domFactory.newDocumentBuilder();
 			mManifest = builder.parse(getManifestPath());
+			
+			if (mPaths.manifestStringsEnPath.exists()) {
+				mManifestStrings = builder.parse(mPaths.manifestStringsEnPath);
+			} else if (mPaths.manifestStringsPath.exists() ) {
+				mManifestStrings = builder.parse(mPaths.manifestStringsPath);
+			} else {
+				/* Let's go hunting */
+				for (File dir: mPaths.manifestStringsPath.getParentFile().getParentFile().listFiles()) {
+					if (dir.getName().startsWith("values-")) {
+						File strPath = new File(dir + "/strings.xml");
+						if (strPath.exists()) {
+							mManifestStrings = builder.parse(new File(dir + "/strings.xml"));
+							break;
+						}
+					}
+				}
+			}
 		} catch (IOException e) {
 			throw new FailedManifestException(e.toString());
 		} catch (ParserConfigurationException e) {

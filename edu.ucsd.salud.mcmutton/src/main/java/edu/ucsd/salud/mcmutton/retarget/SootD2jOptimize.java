@@ -4,13 +4,14 @@
 package edu.ucsd.salud.mcmutton.retarget;
 
 import java.io.File;
+import java.util.concurrent.Callable;
 
 import edu.ucsd.salud.mcmutton.apk.ApkPaths;
 
 public class SootD2jOptimize extends SootOptimize {
 	
-	public SootD2jOptimize(ApkPaths paths, int androidVersion) {
-		super(paths, androidVersion);
+	public SootD2jOptimize(ApkPaths paths, Callable<Integer> fetchAndroidVersion) {
+		super(paths, fetchAndroidVersion);
 	}
 
 	@Override

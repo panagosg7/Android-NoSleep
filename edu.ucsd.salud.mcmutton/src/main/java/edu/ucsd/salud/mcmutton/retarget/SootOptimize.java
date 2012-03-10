@@ -5,6 +5,7 @@ package edu.ucsd.salud.mcmutton.retarget;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.Callable;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
@@ -16,15 +17,22 @@ import edu.ucsd.salud.mcmutton.apk.ApkPaths;
 
 public class SootOptimize implements JavaOptimize {
 	protected ApkPaths mPaths;
-	protected int mAndroidVersion;
+	protected Callable<Integer> mFetchAndroidVersion;
 	
-	public SootOptimize(ApkPaths paths, int androidVersion) {
+	public SootOptimize(ApkPaths paths, Callable<Integer> fetchAndroidVersion) {
 		mPaths = paths;
-		mAndroidVersion = androidVersion;
+		mFetchAndroidVersion = fetchAndroidVersion;
 	}
 	public void optimize(File retargetedTarget) throws IOException, RetargetException {
 			File optimizedTarget = getTarget();
+			int androidVersion = 10;
 			
+			try {
+				androidVersion = mFetchAndroidVersion.call();
+			} catch (Exception e) {
+				throw new RetargetException("Error extracting android version " + e);
+			}
+			 
 			optimizedTarget.mkdirs();
 			
 			ApkInstance.LOGGER.info("Attempting to optimize java file " + retargetedTarget + " -> " + optimizedTarget);
@@ -34,15 +42,15 @@ public class SootOptimize implements JavaOptimize {
 					mPaths.dedPath + "/soot/polyglot-1.3.5/classes",
 					mPaths.dedPath + "/soot/polyglot-1.3.5/cup-classes",
 					mPaths.dedPath + "/soot/jasmin-2.3.0/classes",
-					mPaths.getAndroidJar(mAndroidVersion).getAbsolutePath()
+					mPaths.getAndroidJar(androidVersion).getAbsolutePath()
 			};
 			
 			String classpath[] = {
 				retargetedTarget.getAbsolutePath(),
 				"/usr/lib/jvm/java-6-sun-1.6.0.26/jre/lib/rt.jar",
-				mPaths.getAndroidJar(mAndroidVersion).getAbsolutePath(),
+				mPaths.getAndroidJar(androidVersion).getAbsolutePath(),
 				"/usr/share/java/servlet-api-2.4.jar",
-				mPaths.getGoogleMapsJar(mAndroidVersion).getAbsolutePath(),
+				mPaths.getGoogleMapsJar(androidVersion).getAbsolutePath(),
 				mPaths.dedPath + "/android-libs/jzlib-1.1.1.jar",
 				mPaths.dedPath + "/android-libs/admob-sdk-android.jar"
 			};
