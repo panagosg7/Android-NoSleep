@@ -2,15 +2,21 @@ package edu.ucsd.salud.mcmutton;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+
+import org.apache.commons.io.FileUtils;
 
 import edu.ucsd.salud.mcmutton.apk.ConfigurationException;
 import edu.ucsd.salud.mcmutton.apk.Util;
@@ -45,7 +51,11 @@ public class ApkCollection {
 	
 	public static String cleanApkName(final String name) {
 		/* should match apk-crawl.hg/fix-names.py */
-		return name.replaceAll("[()'~]", "").replaceAll("[ -]", "_");
+		return name.replaceAll("[()'~\"?!|\\xae\u2122]", "").replaceAll("[- /]", "_").replaceAll("[&]", "+");
+	}
+	
+	public static String cleanVersion(final String version) {
+		return version.replaceAll("[()'~]", "").replaceAll("[/ ]", "_");
 	}
 	
 	/* Turning caching on can lead to memory leaks */
@@ -59,11 +69,138 @@ public class ApkCollection {
 		}
 	}
 	
+	private Map<String, List<File>> mContentMap = null;
+	private Set<File> mContentMapFiles = new HashSet<File>();
+	
+	public Map<String, List<File>> buildApkContentMap() {
+		File cacheFile = new File (mCollectionRoot + File.separator + "hash.cache");
+		Map<String, List<File>> result = new HashMap<String, List<File>>();
+		System.out.println("building hash cache " + cacheFile.exists());
+		if (cacheFile.exists()) {
+			try {
+				ObjectInputStream is = new ObjectInputStream(new FileInputStream(cacheFile));
+				result = (Map<String, List<File>>)is.readObject();
+				is.close();
+				
+				for (Map.Entry<String, List<File>> elem: result.entrySet()) {
+					mContentMapFiles.addAll(elem.getValue());
+				}
+			} catch (IOException e) {
+				System.err.println("hache cache read error: " + e);
+			} catch (ClassNotFoundException e) {
+				System.err.println("Class not found decoding hash cache");
+			}
+		} else {
+			// Self loop to test pathway...
+			try {
+				ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(cacheFile));
+				os.writeObject(result);
+				os.close();
+				return buildApkContentMap();
+			} catch (IOException e) {
+				System.err.println("hashe cache write error: " + e);
+			}
+		}
+		
+		for (ApkApplication app: this.listApplications()) {
+			for (ApkVersion ver: app.listVersions()) {
+				for (ApkSource src: ver.listSources()) {
+					try {
+						ApkInstance apk = src.getPreferred();
+
+						if (mContentMapFiles.contains(apk.getApkFile())) {
+//							System.out.println(apk.getName() + " " + apk.getVersion());
+							continue;
+						}
+						
+						String hash = apk.getApkHash();
+						System.out.println(apk.getApkFile() + " " + hash);
+						
+						if (!result.containsKey(hash)) {
+							result.put(hash,  new LinkedList<File>());
+						}
+						result.get(hash).add(apk.getApkFile());
+						mContentMapFiles.add(apk.getApkFile());
+					} catch (IOException e) {
+						System.err.println("Error loading " + e);
+					}
+				}
+			}
+		}
+		try {
+			System.err.println("Writing hash cache");
+			ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(cacheFile));
+			os.writeObject(result);
+		} catch (IOException e) {
+			System.err.println("hashe cache write error: " + e);
+		}
+		return result;
+	}
+	
+	
+	public Map<String, List<File>> getApkContentMap() {
+		if (mContentMap == null) mContentMap = buildApkContentMap();
+		return mContentMap;
+	}
+	
+	public void integrateApks(File basePath, String sourceName) {
+		getApkContentMap();
+		
+		for (File sub: basePath.listFiles()) {
+			if (sub.isDirectory()) {
+				integrateApks(sub, sourceName);
+			} else if (sub.getName().endsWith(".apk")) {
+				integrateApk(sub, sourceName);
+			}
+		}
+	}
+	
+	public void integrateApk(File apkPath, String sourceName) {
+		try {
+			ApkInstance instance = new ApkInstance(apkPath, new File("integrate" + File.separator + apkPath.getPath()));
+			String hash = instance.getApkHash();
+			String status = "New";
+			if (this.getApkContentMap().containsKey(hash)) {
+				status = "Exists";
+			} else {
+				this.getApkContentMap().put(hash, new LinkedList<File>());
+				
+				String name = instance.getNameFromManifest();
+				String version = instance.getVersionFromManifest();
+				
+				if (name == null || version == null) {
+					System.err.println("Failed detecting name/version for " + instance.getApkFile());
+					return;
+				}
+				name = cleanApkName(name);
+				version = cleanVersion(version);
+				
+				if (!name.matches("^[:a-zA-Z0-9.+!_-]+$")) {
+					System.err.println("Bad name: " + name);
+					return;
+				}
+				System.err.println(name + " " + version + " -- " + status);
+				
+				File expectedPath = new File(mCollectionRoot + File.separator + name + File.separator + version + File.separator + sourceName);
+//				System.err.println(expectedPath);
+				
+				expectedPath.mkdirs();
+				FileUtils.copyFileToDirectory(instance.getApkFile(), expectedPath);
+			}
+			this.getApkContentMap().get(hash).add(instance.getApkFile());
+		} catch (IOException e) {
+			System.err.println("Error processing apk: " + e);
+			e.printStackTrace();
+		} catch (FailedManifestException e) {
+			System.err.println("Error processing apk: " + e);
+		}
+	}
+	
 	List<ApkApplication> listApplications() {
 		LinkedList<ApkApplication> list = new LinkedList<ApkApplication>();
 		
 		for (File sub: mCollectionRoot.listFiles()) {
-			list.add(new ApkApplication(sub));
+			if (sub.isDirectory()) list.add(new ApkApplication(sub));
 		}
 		
 		return list;
@@ -163,7 +300,7 @@ public class ApkCollection {
 			ArrayList<ApkSource> list = new ArrayList<ApkSource>();
 			
 			for (File sub: mPath.listFiles()) {
-				list.add(new ApkSource(sub));
+				if (sub.isDirectory()) list.add(new ApkSource(sub));
 			}
 			
 			return list;

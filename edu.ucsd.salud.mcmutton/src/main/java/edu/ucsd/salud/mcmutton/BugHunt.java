@@ -449,20 +449,20 @@ public class BugHunt {
 	    			runPatternAnalysis(collection);
 	    		} else if (line.hasOption("test-patterns")) {
 	    			runTestPatternAnalysis(collection);
-//	    		} else if (line.hasOption("add-to-collection")) {
-//	    			String values[] = line.getOptionValues("add-to-collection");
-//	    			File basePath = new File(values[0]);
-//	    			if (!basePath.exists()) {
-//	    				System.err.println("base apk path does not exist: " + basePath);
-//	    				return;
-//	    			}
-//	    			
-//	    			String collectionName = values[1];
-//	    			if (collectionName.length() == 0) {
-//	    				System.err.println("must specify collection name");
-//	    				return;
-//	    			}
-//	    			collection.integrateApks(basePath, collectionName);
+	    		} else if (line.hasOption("add-to-collection")) {
+	    			String values[] = line.getOptionValues("add-to-collection");
+	    			File basePath = new File(values[0]);
+	    			if (!basePath.exists()) {
+	    				System.err.println("base apk path does not exist: " + basePath);
+	    				return;
+	    			}
+	    			
+	    			String collectionName = values[1];
+	    			if (collectionName.length() == 0) {
+	    				System.err.println("must specify collection name");
+	    				return;
+	    			}
+	    			collection.integrateApks(basePath, collectionName);
 //	    		} else if (line.hasOption("panos")) {
 //	    			runPanos(collection);
 	    		} else {
