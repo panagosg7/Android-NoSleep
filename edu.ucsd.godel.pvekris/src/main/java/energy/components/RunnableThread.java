@@ -14,11 +14,11 @@ import com.ibm.wala.util.collections.Pair;
  * @author progsys
  *
  */
-public class Thread extends Component{
+public class RunnableThread extends Component{
 
   static String elements[] = { "run" };
   
-  public Thread(IClass declaringClass, CGNode root) {
+  public RunnableThread(IClass declaringClass, CGNode root) {
     super(declaringClass, root);
     
     callbackNames.addAll(Arrays.asList(elements));          

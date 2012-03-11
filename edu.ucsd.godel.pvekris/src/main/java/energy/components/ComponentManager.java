@@ -17,6 +17,7 @@ import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
+import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.collections.CollectionFilter;
 import com.ibm.wala.util.collections.Filter;
@@ -37,30 +38,36 @@ public class ComponentManager {
 
   private static int DEBUG_LEVEL = 2;
 
-  private static HashMap<String, Component> components;
+  private static HashMap<TypeReference, Component> components;
 
   private static ApplicationCallGraph originalCG;
 
   private GraphReachability<CGNode> graphReachability;
 
-  public HashMap<String, Component> getComponents() {
+  public HashMap<TypeReference, Component> getComponents() {
     return components;
   }
 
   public ComponentManager(ApplicationCallGraph cg) {
     originalCG = cg;
-    components = new HashMap<String, Component>();
+    components = new HashMap<TypeReference, Component>();
   }
-
-  private static void registerComponent(String name, Component comp) {
-    components.put(name, comp);
+  private static void registerComponent(TypeReference declaringClass, Component comp) {
+    components.put(declaringClass, comp);
   }
-
+  
+  public Component getComponent(TypeReference c) {
+	  return components.get(c);
+  }
+  
+  public Component getComponent(CGNode n) {
+	  return components.get(n.getMethod().getDeclaringClass().getReference());
+  }
   
   
 
   /**
-   * 1. Reachability results are goint to be useful later
+   * 1. Reachability results are going to be useful later
    */
   public void prepareReachability() {    
     Filter<CGNode> filter = new CollectionFilter<CGNode>(
@@ -93,15 +100,13 @@ public class ComponentManager {
       /* Ignore the stand-alone target method nodes */
       if (!originalCG.isTargetMethod(root)) {
                
-        /*
-         * Get known components, e.g. Activity
-         */
-        Component component = resolveApplicationComponent(root);
-        String className = root.getMethod().getDeclaringClass().getName().toString();
-
+        /* Get known components, e.g. Activity */
+        Component component = resolveApplicationComponent(root);        
+        IClass declaringClass = root.getMethod().getDeclaringClass();        
+        
         if (component != null) {
           E.log(DEBUG_LEVEL, component.toString());
-          registerComponent(className, component);
+          registerComponent(declaringClass.getReference(), component);
 
           if (component instanceof Initializer) {
             resolvedConstructors++;
@@ -113,16 +118,14 @@ public class ComponentManager {
           Component knownImpl = resolveKnownImplementors(root);
 
           if (knownImpl != null) {
-            registerComponent(className, knownImpl);
+            registerComponent(declaringClass.getReference(), knownImpl);
             E.log(DEBUG_LEVEL, knownImpl.toString());
             resolvedImplementorCount++;
           } else {
             /* Unresolved */
             unresolvedCallBacks++;
             unresolvedSB.add(root.getMethod().getSignature().toString());
-            /*
-             * We can check now if we should actually care about this callback.
-             */
+            /* We can check now if we should actually care about this callback. */
             if (graphReachability.getReachableSet(root).size() > 0) {
               
               /* Get a path from the node to the target function */
@@ -201,11 +204,11 @@ public class ComponentManager {
   private static Component resolveApplicationComponent(CGNode root) {
 
     IClass klass = root.getMethod().getDeclaringClass();
-    String className = klass.getName().toString();
+    TypeReference reference = klass.getReference();
     String methName = root.getMethod().getName().toString();
-    E.log(2, "Declaring class: " + className);
+    E.log(2, "Declaring class: " + klass.getName().toString());
 
-    Component comp = components.get(className);
+    Component comp = components.get(reference);
     if (comp == null) {
       /* We haven't met this component so far */
       // find the super-classes until object
@@ -232,6 +235,12 @@ public class ComponentManager {
         }
         if (ancName.equals("Landroid/view/View")) {
           comp = new View(klass, root);
+        }
+        if (ancName.equals("Landroid/app/Application")) {
+            comp = new Application(klass, root);
+        }
+        if (ancName.equals("Landroid/os/Handler")) {
+            comp = new Handler(klass, root);
         }
       }
 
@@ -288,16 +297,16 @@ public class ComponentManager {
   private static Component resolveKnownImplementors(CGNode root) {
 
     IClass klass = root.getMethod().getDeclaringClass();
-    String className = klass.getName().toString();
+    TypeReference reference = klass.getReference();
     String methName = root.getMethod().getName().toString();
 
-    Component comp = components.get(className);
+    Component comp = components.get(reference);
     if (comp == null) {
       Collection<IClass> allImplementedInterfaces = klass.getAllImplementedInterfaces();
       for (IClass iI : allImplementedInterfaces) {
         String implName = iI.getName().toString();
         if (implName.equals("Ljava/lang/Runnable")) {
-          return new Thread(klass, root);
+          return new RunnableThread(klass, root);
         }
         if (implName.equals("Landroid/widget/AdapterView$OnItemClickListener")) {
           return new AdapterViewOnItemClickListener(klass, root);
@@ -365,7 +374,7 @@ public class ComponentManager {
     /* Gather locking statistics */
     LockingStats ls = new LockingStats();
     
-    for (Entry<String, Component> entry : components.entrySet()) {
+    for (Entry<TypeReference, Component> entry : components.entrySet()) {
       Component component = entry.getValue();
       /*
        * Use reachability results to see if we can actually get to a 
@@ -389,19 +398,18 @@ public class ComponentManager {
 
       if (Opts.ONLY_ANALYSE_LOCK_REACHING_CALLBACKS && !isInteresting) {
         continue;
-      }
-      E.log(1, "");
-      E.log(1, "Interesting component: " + component.toString());
-     
+      }      
       
-
-      
-      /* Create a sensible exploded interprocedural CFG 
+      /* Create a sensible exploded inter - procedural CFG 
        * (TODO: Wrap it up?) */
       component.createSensibleCG();
       
-      if (Opts.DO_CS_ANALYSIS)  component.solveCSCFG();
-      else                      component.solveCICFG();     
+      if (Opts.DO_CS_ANALYSIS) {
+    	  component.solveCSCFG();
+      }
+      else {
+    	  component.solveCICFG();     
+      }
       
       component.cacheColors();
       
@@ -454,7 +462,6 @@ public class ComponentManager {
       e.printStackTrace();
     }
     OrdinalSet<CGNode> reachableSet = graphReachability.getReachableSet(node);
-
     return Util.iteratorToSet(reachableSet.iterator());
   }
   
@@ -472,6 +479,10 @@ public class ComponentManager {
       }
     }
     return list;
+  }
+  
+  public ApplicationCallGraph getCG() {
+	  return originalCG;
   }
   
 }

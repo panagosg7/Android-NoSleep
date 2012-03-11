@@ -28,8 +28,9 @@ import com.ibm.wala.util.WalaException;
 import edu.ucsd.salud.mcmutton.apk.Wala;
 
 public class BugHunt {
-	static File acqrelDatabaseFile = new File("/home/jcm/working/WALA/acqrel_status.json");
 	
+	private static File acqrelDatabaseFile;
+
 	public static void dumpReachability(Map<MethodReference, Set<MethodReference>> reach, String dst) throws IOException {
 		JSONObject obj = new JSONObject();
 
@@ -140,13 +141,20 @@ public class BugHunt {
 	public static void runTestPatternAnalysis(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		Set<String> theSet = new HashSet<String>();
 		
-		theSet.add("ICQ");
-		theSet.add("3D Level");
+		//theSet.add("ICQ");
+		//theSet.add("DISH");
+		theSet.add("JuiceDefender");
+		//theSet.add("Twidroyd");
+		//theSet.add("WebSMS");		
+		//theSet.add("3D_Level");
 		
 		runPatternAnalysis(collection, theSet);
 	}
 	
-	public static void runPatternAnalysis(ApkCollection collection, Set<String> theSet) throws ApkException, IOException, RetargetException, WalaException, CancelException {
+	public static void runPatternAnalysis(ApkCollection collection, Set<String> theSet) 
+			throws ApkException, IOException, RetargetException, WalaException, CancelException {
+		acqrelDatabaseFile = new File("/home/pvekris/dev/WALA/acqrel_status.json");
+
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 		
@@ -154,11 +162,15 @@ public class BugHunt {
 		
 		for (Object key: theSet) {
 			String app_name = collection.cleanApkName((String)key);
+			
+			
+			//Need to figure this out
+			/*
 			String[] catsArray = acqrel_status.getString((String)key).split("[,]");
 			ArrayList<String> cats = new ArrayList<String>(catsArray.length);
 			
 			for (String cat: catsArray) cats.add(cat);
-			
+			*/
 			ApkInstance apk = collection.getApplication(app_name).getPreferred();
 			
 			Wala.UsageType usageType = Wala.UsageType.UNKNOWN;
@@ -173,7 +185,8 @@ public class BugHunt {
 			
 			if (apk.successfullyOptimized()) {
 				try {
-					usageType = apk.analyze();
+					//usageType = apk.analyze();
+					usageType = apk.panosAnalyze();
 				} catch(Exception e) {
 					System.err.println(e.toString());
 					usageType = Wala.UsageType.FAILURE;
@@ -194,10 +207,12 @@ public class BugHunt {
 				panosUsageType = usageType;
 			}
 			
-
-			System.out.println(key + ":" + StringUtils.join(cats, ", ") + " -- " + apk.successfullyOptimized() + " -- " + usageType + "==" + panosUsageType);
+			//TODO
+			/*
+			System.out.println(key + ":" + StringUtils.join(cats, ", ") + " -- " + 
+					apk.successfullyOptimized() + " -- " + usageType + "==" + panosUsageType);
 			System.out.println();
-			
+			*/
 			assert usageType == panosUsageType;
 
 			if (histogram.containsKey(usageType)) {

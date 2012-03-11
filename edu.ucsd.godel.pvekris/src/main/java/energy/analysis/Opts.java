@@ -85,7 +85,7 @@ public class Opts {
   /**
    * This will help reduce the number of analyzed components
    */
-  public static final boolean   ONLY_ANALYSE_LOCK_REACHING_CALLBACKS  = true;
+  public static final boolean   ONLY_ANALYSE_LOCK_REACHING_CALLBACKS  = false;
   
   /*
    * The following are invalid if this one is false.  
@@ -169,7 +169,8 @@ public class Opts {
   /**
    * Define the leaves of the call graph (e.g. WakeLock.acquire)
    */
-  public static String TARGET_FUNCTIONS = "AndroidAnalysisTargetFunctions.txt";
+  public static String TARGET_FUNCTIONS = "/home/pvekris/dev/workspace/WALA_shared/" +
+  		"com.ibm.wala.core.tests/bin/AndroidAnalysisTargetFunctions.txt";
   
 
   /**

@@ -37,4 +37,7 @@
       		<version>1.0-PANOS</version>
       	</dependency>
       </dependencies>
+      <version>1.0-PANOS</version>
+      <name>pvekris</name>
+      <url>godel.ucsd.edu</url>
 </project>

@@ -21,7 +21,7 @@ public class E {
           File file = new File(Util.getResultDirectory() + 
               File.separatorChar + f);
           if(!file.exists()){            
-            file.createNewFile();            
+            file.createNewFile();
           }          
           FileWriter fstream = new FileWriter(file.getAbsoluteFile(),true);
           BufferedWriter logFile = new BufferedWriter(fstream);
@@ -29,7 +29,7 @@ public class E {
           logFile.close();
           
         } catch (Exception e) {
-          System.err.println("Error writing to file " + LOG_FILE);
+          System.err.println("Error writing to file " + f);
           e.printStackTrace();
         }
       }      
@@ -50,7 +50,7 @@ public class E {
   
   private static String getLastRealMethod(StackTraceElement[] clone) {
     int i;    
-    for(i = 1; clone[i].getClassName() == "com.energy.util.E"; i++);
+    for(i = 1; clone[i].getClassName () == E.class.getName(); i++);
     return clone[i].getMethodName().toString();
   }
 

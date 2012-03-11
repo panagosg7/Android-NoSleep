@@ -16,7 +16,7 @@ import edu.ucsd.salud.mcmutton.apk.ConfigurationException;
 import edu.ucsd.salud.mcmutton.apk.Util;
 
 public class ApkCollection {
-	private File mCollectionRoot = new File("/home/jcm/working/apk-crawl.hg/collection");
+	private File mCollectionRoot = null;
 	
 	/* No caching by default */
 	Map<File, ApkInstance> mCacheInstances = null;

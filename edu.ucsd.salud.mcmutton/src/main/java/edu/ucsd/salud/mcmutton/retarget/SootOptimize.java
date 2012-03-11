@@ -39,7 +39,7 @@ public class SootOptimize implements JavaOptimize {
 			
 			String classpath[] = {
 				retargetedTarget.getAbsolutePath(),
-				"/usr/lib/jvm/java-6-sun-1.6.0.26/jre/lib/rt.jar",
+				"/usr/lib/jvm/java-6-openjdk/jre/lib/rt.jar",
 				mPaths.getAndroidJar(mAndroidVersion).getAbsolutePath(),
 				"/usr/share/java/servlet-api-2.4.jar",
 				mPaths.getGoogleMapsJar(mAndroidVersion).getAbsolutePath(),
@@ -69,7 +69,7 @@ public class SootOptimize implements JavaOptimize {
 			ApkInstance.LOGGER.info("optimize cmd: " + StringUtils.join(cmd, " "));
 			
 			getTarget().mkdirs();
-			SystemUtil.runCommand(cmd, this.getLogTarget(), this.getErrTarget(), this.getSuccessTarget(), new File("/home/jcm/working/ded"));
+			SystemUtil.runCommand(cmd, this.getLogTarget(), this.getErrTarget(), this.getSuccessTarget(), new File("/home/pvekris/dev/ded"));
 	}
 	
 	public void clean() {

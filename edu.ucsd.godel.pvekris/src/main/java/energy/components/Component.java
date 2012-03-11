@@ -28,6 +28,7 @@ import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.collections.Quartet;
 import com.ibm.wala.util.debug.Assertions;
+import com.ibm.wala.util.graph.impl.NodeWithNumber;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 
@@ -41,7 +42,7 @@ import energy.util.E;
 import energy.viz.ColorNodeDecorator;
 import energy.viz.GraphDotUtil;
 
-public abstract class Component {
+public abstract class Component extends NodeWithNumber {
   protected IClass klass;
   /**
    * Gather all possible callbacks
@@ -67,6 +68,7 @@ public abstract class Component {
     callbacks.put(name, node);
   }
 
+  
   Component(IClass declaringClass, CGNode root) {
     setKlass(declaringClass);
     callbacks = new HashMap<String, CGNode>();
@@ -278,6 +280,7 @@ public abstract class Component {
     sensibleCG.outputToDot();
     /* Pack edges */
     HashSet<Pair<CGNode, CGNode>> packedEdges = sensibleCG.packEdges();
+    /* Thread constraints */
 
     icfg = new SensibleExplodedInterproceduralCFG(getCallgraph(), packedEdges);
 
@@ -300,8 +303,7 @@ public abstract class Component {
    */
   protected void solveCSCFG() {
     ContextSensitiveLocking lockingProblem = new ContextSensitiveLocking(icfg);
-    csSolver = lockingProblem.analyze();
-    
+    csSolver = lockingProblem.analyze();    
     csDomain = lockingProblem.getDomain();
   }
 
