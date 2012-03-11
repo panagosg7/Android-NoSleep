@@ -65,8 +65,7 @@ public class Util {
     if (!removeDirectory(newDir)) {
       System.err.println("Wrong result directory.");
     };
-    newDir.mkdir();
-    printLabel(appJar);
+    newDir.mkdir();    
     System.out.println("Result directory: " + newDir.toString());
   }
   
@@ -99,12 +98,14 @@ public class Util {
 
     E.plog(1, "#####################################" +
     		"########################################################\n");       
-    int lastIndexOf = arg.lastIndexOf("/");
+    /*int lastIndexOf = arg.lastIndexOf("/");
     if (lastIndexOf < 0)
       System.out.println(arg);
     else {
       System.out.println("\t" + arg.subSequence(lastIndexOf + 1, arg.length()));
-    }    
+    } 
+    */   
+    System.out.println("\t" + arg);
     System.out.println("\n#########################################" +
     		"####################################################");
     

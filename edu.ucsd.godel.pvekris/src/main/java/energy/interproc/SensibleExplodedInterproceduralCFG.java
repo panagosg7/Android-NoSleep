@@ -16,6 +16,7 @@ import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.util.collections.Pair;
 
 import energy.util.E;
+import energy.util.SSAProgramPoint;
 import energy.util.Util;
 
 public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralCFG {
@@ -30,8 +31,9 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
   public SensibleExplodedInterproceduralCFG(CallGraph cg, HashSet<Pair<CGNode, CGNode>> packedEdges) {
     super(cg);
     /* Will only work like this - loses laziness. */
-    constructFullGraph();    
-    addInterCallbackEdges(cg,packedEdges);
+    constructFullGraph();
+    
+    addReturnEntryEdge(cg,packedEdges);
     cacheCallbacks(cg,packedEdges);
   } 
   
@@ -52,7 +54,7 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
    }
  }
   
- private void addInterCallbackEdges(CallGraph cg, HashSet<Pair<CGNode, CGNode>> packedEdges) {
+ private void addReturnEntryEdge(CallGraph cg, HashSet<Pair<CGNode, CGNode>> packedEdges) {
    Set<CGNode> nodeset = Util.iteratorToSet(cg.iterator());
    HashMap<String, CGNode> cgNodeSet = new HashMap<String, CGNode>();
    
@@ -99,9 +101,18 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
     }
   }
 
-public HashMap<String,CGNode> getCallbacks() {
-  return callbacks;
-}
+ 	public HashMap<String,CGNode> getCallbacks() {
+ 		return callbacks;
+ 	}
+
+ 	/*
+ 	private BasicBlockInContext<IExplodedBasicBlock> ppToBB(SSAProgramPoint pp) {
+ 		pp.
+ 		BasicBlockInContext<IExplodedBasicBlock> bb = new BasicBlockInContext<IExplodedBasicBlock>(node, bb);
+		return ;
+ 	}
+	*/
+
 
 }
 

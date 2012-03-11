@@ -40,7 +40,6 @@ public class ClassHierarchyAnalysis {
     Properties p              = CommandLine.parse(args);    
     validateCommandLine(p);
     String appJar             = p.getProperty("appJar");
-    Util.setResultDirectory(appJar);    
     String exclusionFileName  = p.getProperty("exclusionFile", CallGraphTestUtil.REGRESSION_EXCLUSIONS);
     File exclusionFile        = FileProvider.getFile(exclusionFileName);
     AnalysisScope scope       = AnalysisScopeReader.makeJavaBinaryAnalysisScope(appJar, exclusionFile);    
@@ -50,11 +49,9 @@ public class ClassHierarchyAnalysis {
     /*
      * Need to have this or the graph will be enormous
      */
-    g = pruneForAppLoader(g);    
+    g = pruneForAppLoader(g);
     
-    String dotFile = /*AndroidAnalysisOptions.OUTPUT_FOLDER + File.separatorChar*/ 
-        Util.getResultDirectory() + File.separatorChar + "ch.dot";
-    
+    String dotFile = Util.getResultDirectory() + File.separatorChar + "ch.dot";    
     DotUtil.writeDotFile(g, null, "Class Hierarchy", dotFile);    
           
   }

@@ -61,6 +61,7 @@ import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
+import com.ibm.wala.util.collections.CollectionFilter;
 import com.ibm.wala.util.collections.Filter;
 import com.ibm.wala.util.collections.HashSetFactory;
 import com.ibm.wala.util.config.AnalysisScopeReader;
@@ -80,6 +81,7 @@ import com.ibm.wala.viz.PDFViewUtil;
 
 import energy.intraproc.IntraProcAnalysis;
 import energy.util.E;
+import energy.util.GraphBottomUp;
 import energy.viz.GraphDotUtil;
 
 @SuppressWarnings("deprecation")
@@ -159,7 +161,7 @@ public class ApplicationCallGraph implements CallGraph {
    * @throws IOException
    * @throws WalaException
    */
-  public ApplicationCallGraph(String[] args, ClassHierarchy classHierarchy) 
+  public ApplicationCallGraph(String[] args, ClassHierarchy classHierarchy)
       throws IllegalArgumentException, CancelException,
       WalaException, IOException {
     Properties p = CommandLine.parse(args);
@@ -265,7 +267,12 @@ public class ApplicationCallGraph implements CallGraph {
     
     while (iterator.hasNext()){
       CGNode node = iterator.next();
-      if (isAppNode(node) || isTargetMethod(node) /*|| isThreadStart(node)*/) {
+      if (isAppNode(node) 
+    		  || isTargetMethod(node)
+    		  //Toggling this will make it difficult to 
+    		  //resolve most thread classes
+    		  //|| isThreadStart(node)
+    	) {
         keepers.add(node);
         E.log(2, "Keep: " + node.getMethod().toString());
       }
@@ -277,8 +284,19 @@ public class ApplicationCallGraph implements CallGraph {
   }
   
   
-
   /**
+   * We may wanto to keep the thread start method in the call graph
+   * WARNING: this will make it hard to resolve threads ...
+   * @param node
+   * @return
+   */
+  private boolean isThreadStart(CGNode node) {
+	 boolean found = node.getMethod().getSignature().toString().
+			 equals("java.lang.Thread.start()V");	 
+	 return found;
+  }
+
+/**
    * Returns a partial graph that contains only those nodes that descend to a
    * WakeLock acquire/release method node.
    * 
@@ -655,23 +673,13 @@ public class ApplicationCallGraph implements CallGraph {
    */
   public void doBottomUpAnalysis(IntraProcAnalysis ipa) throws WalaException {    
     int methodCount = Opts.LIMIT_ANALYSIS;
-    
-    InvertedGraph<CGNode> invertedGraph = new InvertedGraph<CGNode>(this);
-    Hashtable<String, IMethod> targetMethodHash = this.getTargetMethodHash();
-    
-    ArrayList<CGNode> q = new ArrayList<CGNode>();
-    for (Entry<String, IMethod> entry : targetMethodHash.entrySet()) {
-      q.add(this.getNode(entry.getValue(), Everywhere.EVERYWHERE));
-    }
-    Iterator<CGNode> rootIter = q.iterator();
-    
-    BFSIterator<CGNode> bfsIter = new BFSIterator<CGNode>(invertedGraph, rootIter);
-    
-    while (bfsIter.hasNext() && (methodCount < 0 || methodCount-- > 0)) {      
-      /**
-       * Run the intra-procedural analysis
-       */
-      CGNode n = bfsIter.next();      
+    /* Filter that filters non-target methods */
+    CollectionFilter<CGNode> targetFilter = 
+    		new CollectionFilter<CGNode>(targetCGNodeHash.values());
+    BFSIterator<CGNode> bottomUpIterator = GraphBottomUp.bottomUpIterator(this, targetFilter);
+    while (bottomUpIterator.hasNext() && (methodCount < 0 || methodCount-- > 0)) {
+      /* Run the intra-procedural analysis */
+      CGNode n = bottomUpIterator.next();
       ipa.run(this, n);
     }
   }
@@ -722,7 +730,7 @@ public class ApplicationCallGraph implements CallGraph {
             cfgFileName);
         }
         else {
-          System.out.println("Exception prunned graph is null.");
+          System.out.println("Exception pruned graph is null.");
         }
       }
   

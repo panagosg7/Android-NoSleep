@@ -72,15 +72,18 @@ import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.config.AnalysisScopeReader;
+import com.ibm.wala.util.graph.Graph;
 
 import edu.ucsd.salud.mcmutton.ApkException;
 import edu.ucsd.salud.mcmutton.ApkInstance;
 import edu.ucsd.salud.mcmutton.RetargetException;
 import energy.analysis.ApplicationCallGraph;
+import energy.analysis.ClassHierarchyAnalysis;
 import energy.analysis.Opts;
-import energy.analysis.SCCManager;
+import energy.analysis.ThreadCreation;
+import energy.components.Component;
 import energy.components.ComponentManager;
-import energy.intraproc.IntraProcAnalysis;
+import energy.util.E;
 
 public class Wala {
 	private File mPath;
@@ -600,17 +603,26 @@ public class Wala {
 	}
 
 	public UsageType panosAnalyze() throws IOException, WalaException, CancelException, ApkException {
+		
 		String args[] = {"-appJar", mPath.getAbsolutePath(),
-						 "-exclusionFile", "/home/jcm/working/AndroidEnergy/com.ibm.wala.core.tests/dat/Java60RegressionExclusions.txt"};
+						 "-exclusionFile", "/home/pvekris/dev/workspace/WALA_shared/" +
+						 		"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt"
+						 };
+		energy.util.Util.setResultDirectory(mPath.getAbsolutePath());
+		energy.util.Util.printLabel(mPath.toString());
+		
 		File panosOutput = new File(mCachePath + "/panos");
 		panosOutput.mkdirs();
 		Opts.OUTPUT_FOLDER = panosOutput.getAbsolutePath();
-		ClassHierarchy ch = new energy.analysis.ClassHierarchyAnalysis(args).getClassHierarchy();
+		
+		ClassHierarchy ch = new ClassHierarchyAnalysis(args).getClassHierarchy();
 		ApplicationCallGraph cg = new ApplicationCallGraph(args, ch);
 		
+		/*	
 		for (String arg: args) {
 			System.out.println(arg);
 		}
+		
 		System.out.println(CallGraphStats.getCGStats(cg).toString());
 		
 		Map<MethodReference, Set<MethodReference>> interestingSites = this.interestingCallSites(Interesting.sInterestingMethods, ch);
@@ -620,28 +632,42 @@ public class Wala {
 		InterestingReachabilityResult res = new InterestingReachabilityResult(interestingSites, entryReachability);
 
 		UsageType result = analyzeReachability(new InterestingReachabilityStringResult(res));
+		*/
 		
-//		if (Opts.DO_SYSCALLS_ANALYSIS){
-//			System.out.println(CallGraphStats.getCGStats(cg).toString());
-//			DataflowTest.testMyContextSensitive(cg);
-//		}
+		
+			
 		
 		if (Opts.RESOLVE_ANDROID_COMPONENTS) {
-			ComponentManager componentManager = new ComponentManager(cg);
-		}
-		
-		if (Opts.RESOLVE_SCC) {
-			SCCManager sccManager = new SCCManager(cg);
-			if (Opts.DO_SCC_ANALYSIS) {
-				sccManager.analyze();
+			
+			try {
+				//Resolve the components
+				ComponentManager componentManager = new ComponentManager(cg);
+				componentManager.prepareReachability();
+		        componentManager.resolveComponents();
+		        
+				//Gather thread info
+				ThreadCreation threadInfo = new ThreadCreation(componentManager);
+				
+				//Component constraints (which component to analyze first)
+				Graph<Component> componentConstraints = threadInfo.generateComponentConstraints();
+				//E.log(1, componentConstraints.toString());
+				
+				//The processing of the components should be done bottom up
+				componentManager.processComponents();
+			
 			}
+			catch (Exception e) {
+				e.printStackTrace();	
+			}
+			
+			
+	        
 		}
 		
-		if (Opts.DO_INTRA_PROC_ANALYSIS) {
-			IntraProcAnalysis ipa = new IntraProcAnalysis();
-			cg.doBottomUpAnalysis(ipa);
-		}
+		//return result;
+		return UsageType.UNKNOWN;
 		
-		return result;
+		
+		
 	}
 }
