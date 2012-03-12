@@ -38,8 +38,10 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
     super(cg);
     /* Will only work like this - loses laziness. */
     constructFullGraph();
-        
-    addThreadEdges(threadInvocations);
+      
+    /* Do not add these edges at the moment - just use the information taken
+     * from the analysis of the component (w\o context sensitivity). */
+    //addThreadEdges(threadInvocations);
     
     addReturnToEntryEdge(cg,packedEdges);  
     
@@ -57,7 +59,6 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
    */
  private void cacheCallbacks(CallGraph cg, HashSet<Pair<CGNode, CGNode>> packedEdges) {
    callbacks = new HashMap<String, CGNode>();
-
    for (Pair<CGNode, CGNode> e : packedEdges) {
      getCallbacks().put(e.fst.getMethod().getName().toString(), e.fst);
      getCallbacks().put(e.snd.getMethod().getName().toString(), e.snd);
@@ -113,9 +114,10 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
 			 ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> cfg = getCFG(target);
 			 for (Iterator<IExplodedBasicBlock> returnBlocks = cfg.getSuccNodes(callBlock); returnBlocks.hasNext();) {
 				 IExplodedBasicBlock retBlock = returnBlocks.next();
-		         addEdgesFromExitToReturn(caller, retBlock, target, tcfg);
-		         E.log(1, "Adding exit to return edge: " + target.getMethod().getName().toString() +
+				 E.log(1, "Adding exit to return edge: " + target.getMethod().getName().toString() +
 		        		 " -> " + caller + retBlock.toString() );
+				 addEdgesFromExitToReturn(caller, retBlock, target, tcfg);
+		         
 			 }
 		 }
 	 }

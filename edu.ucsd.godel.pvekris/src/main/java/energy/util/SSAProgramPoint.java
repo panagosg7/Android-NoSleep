@@ -8,8 +8,6 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.util.intset.IntSet;
 
-import energy.components.Component;
-
 public class SSAProgramPoint {
 
 	private CGNode node;
@@ -18,19 +16,15 @@ public class SSAProgramPoint {
 	private IntSet indices;	//index within the basic block - at the moment only for "new" and "invoke" instructions
 	private SSAInstruction instruction;
 	
-	public SSAProgramPoint(IMethod m, ISSABasicBlock bb, IntSet ii) {
-		this.method = m;
-		this.bb = bb;
-		this.indices = ii;
-	}
+	
 	
 	public SSAProgramPoint(CGNode n, SSAInvokeInstruction inv) {
+		this.node = n;
 		CallSiteReference site = inv.getCallSite();		
 		this.method = n.getMethod();
 		this.bb = n.getIR().getBasicBlockForInstruction(inv);		
 		this.indices = n.getIR().getCallInstructionIndices(site);
-		this.instruction = inv;		
-		
+		this.instruction = inv;				
 	}
 
 	public boolean equals(Object o) {
@@ -47,10 +41,10 @@ public class SSAProgramPoint {
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
 		sb.append(method.getDeclaringClass().getName().toString());
-		sb.append(" || ");
+		sb.append(".");
 		sb.append(method.getName().toString());
 		sb.append(" || ");
-		sb.append(instruction.toString());
+		sb.append("(BB:" + bb.getNumber()+")");
 		return sb.toString();
 	}
 	

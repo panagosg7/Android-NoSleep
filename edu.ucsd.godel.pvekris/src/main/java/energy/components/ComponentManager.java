@@ -22,8 +22,12 @@ import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.collections.CollectionFilter;
 import com.ibm.wala.util.collections.Filter;
 import com.ibm.wala.util.collections.IndiscriminateFilter;
+import com.ibm.wala.util.graph.Acyclic;
+import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphReachability;
 import com.ibm.wala.util.graph.GraphUtil;
+import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
+import com.ibm.wala.util.graph.traverse.BFSIterator;
 import com.ibm.wala.util.graph.traverse.DFSPathFinder;
 import com.ibm.wala.util.intset.OrdinalSet;
 
@@ -31,6 +35,7 @@ import energy.analysis.ApplicationCallGraph;
 import energy.analysis.Opts;
 import energy.analysis.ThreadCreation;
 import energy.util.E;
+import energy.util.GraphBottomUp;
 import energy.util.LockingStats;
 import energy.util.SSAProgramPoint;
 import energy.util.Util;
@@ -38,34 +43,33 @@ import energy.util.Util;
 @SuppressWarnings("deprecation")
 public class ComponentManager {
 
-  private static int DEBUG_LEVEL = 1;
+  private static int DEBUG_LEVEL = 2;
 
-  private static HashMap<TypeReference, Component> components;
+  private static HashMap<TypeReference, Component> componentMap;
 
   private static ApplicationCallGraph originalCG;
 
   private GraphReachability<CGNode> graphReachability;
 
   public HashMap<TypeReference, Component> getComponents() {
-    return components;
+    return componentMap;
   }
 
   public ComponentManager(ApplicationCallGraph cg) {
     originalCG = cg;
-    components = new HashMap<TypeReference, Component>();
+    componentMap = new HashMap<TypeReference, Component>();
   }
   private static void registerComponent(TypeReference declaringClass, Component comp) {
-    components.put(declaringClass, comp);
+    componentMap.put(declaringClass, comp);
   }
   
   public Component getComponent(TypeReference c) {
-	  return components.get(c);
+	  return componentMap.get(c);
   }
   
   public Component getComponent(CGNode n) {
-	  return components.get(n.getMethod().getDeclaringClass().getReference());
+	  return componentMap.get(n.getMethod().getDeclaringClass().getReference());
   }
-  
   
 
   /**
@@ -172,7 +176,7 @@ public class ComponentManager {
     E.log(2, "------------------------------------------------------------");
     fst = String.format("%-30s: %d", "Total callbacks", totalCallBacks);
     E.log(0, fst);
-    fst = String.format("%-30s: %d", "Resolved components", components.size());
+    fst = String.format("%-30s: %d", "Resolved components", componentMap.size());
     E.log(0, fst);
     E.log(0, "############################################################");
 
@@ -210,7 +214,7 @@ public class ComponentManager {
     String methName = root.getMethod().getName().toString();
     E.log(2, "Declaring class: " + klass.getName().toString());
 
-    Component comp = components.get(reference);
+    Component comp = componentMap.get(reference);
     if (comp == null) {
       /* We haven't met this component so far */
       // find the super-classes until object
@@ -302,7 +306,7 @@ public class ComponentManager {
     TypeReference reference = klass.getReference();
     String methName = root.getMethod().getName().toString();
 
-    Component comp = components.get(reference);
+    Component comp = componentMap.get(reference);
     if (comp == null) {
       Collection<IClass> allImplementedInterfaces = klass.getAllImplementedInterfaces();
       for (IClass iI : allImplementedInterfaces) {
@@ -364,8 +368,8 @@ public class ComponentManager {
     return null;
   }
 
-  
-  
+
+
   /****************************************************************************/
   
   /**
@@ -376,57 +380,71 @@ public class ComponentManager {
     /* Gather locking statistics */
     LockingStats ls = new LockingStats();
     
-    for (Entry<TypeReference, Component> entry : components.entrySet()) {
-      Component component = entry.getValue();
-      /*
-       * Use reachability results to see if we can actually get to a 
-       * wifi/wake lock call from here 
-       */            
-      Predicate predicate = new Predicate() {      
-        @Override
-        public boolean evaluate(Object c) {
-          CGNode n = (CGNode) c;          
-          return (graphReachability.getReachableSet(n).size() > 0);    
-        }
-      };
-      boolean isInteresting =
-          CollectionUtils.exists(component.getCallbacks(), predicate);
-      component.setInteresting(isInteresting);
+    /* Build the constraints graph */
+    Collection<Component> components = componentMap.values();    
+    Graph<Component> constraintGraph = constraintGraph(components);
+    BFSIterator<Component> bottomUpIterator = GraphBottomUp.bottomUpIterator(constraintGraph);
+    
+    /* And analyze the components based on this graph in bottom up order */
+    while (bottomUpIterator.hasNext()) {
+    	Component component = bottomUpIterator.next();      
+    	
+        /* assert that dependencies are met */
+    	Collection<Component> compDep = 
+      		  component.getThreadDependencies();
+    	com.ibm.wala.util.Predicate<Component> p =
+    	  new com.ibm.wala.util.Predicate<Component>() {    		
+			@Override
+			public boolean test(Component c) {
+				return c.isSolved;
+			}
+		  };
+		assert com.ibm.wala.util.collections.Util.forAll(compDep, p);
+    	
       
-      CallGraph componentCG = createComponentCG(component);
-      component.setCallgraph(componentCG);
+      
       if (Opts.OUTPUT_COMPONENT_CALLGRAPH) {
         component.outputNormalCallGraph();
       }      
 
-      if ((Opts.ONLY_ANALYSE_LOCK_REACHING_CALLBACKS && !isInteresting)) { 
-    		  // || (!component.isAnalyzed)) {
-        continue;
-      }      
+      if (Opts.ONLY_ANALYSE_LOCK_REACHING_CALLBACKS) { 
+          /* Use reachability results to see if we can actually get to a 
+           * wifi/wake lock call from here */
+          Predicate predicate = new Predicate() {      
+            @Override
+            public boolean evaluate(Object c) {
+              CGNode n = (CGNode) c;          
+              return (graphReachability.getReachableSet(n).size() > 0);    
+            }
+          };
+          boolean isInteresting =
+              CollectionUtils.exists(component.getCallbacks(), predicate);
+          component.setInteresting(isInteresting);   	  
+    	  if (!isInteresting) {
+    		  continue;
+    	  }
+    	  E.log(1, "Interesting component: " + component.toString());
+      }       
       
-      /* Get locking info for this component */
-      HashMap<SSAProgramPoint, Component> threadInvocations =
-    		  getThreadInvocations(component);      
-      component.setThreadInvocations(threadInvocations);
-      
-      /* Create a sensible exploded inter-procedural CFG 
-       * (TODO: Wrap it up?) */
-      component.createSensibleCG();
-      
+      if(Opts.OUTPUT_CFG_DOT) {
+    	  component.outputCFGs();
+      }
+            
       if (Opts.DO_CS_ANALYSIS) {
     	  component.solveCSCFG();
       }
       else {
-    	  component.solveCICFG();     
+    	  component.solveCICFG();      
       }
       
       component.cacheColors();
       
       if(Opts.OUTPUT_COLOR_CFG_DOT) {
         component.outputColoredCFGs();
+        //component.outputSolvedICFG();
       }
       
-      component.outputSolvedICFG();
+      
       
       /* Check the policy - defined for each type of component separately */
       if (Opts.CHECK_LOCKING_POLICY) {        
@@ -441,7 +459,7 @@ public class ComponentManager {
     
   }
   
-
+  
   private static CallGraph createComponentCG(Component component) {
     HashSet<CGNode> rootSet = new HashSet<CGNode>();
     E.log(DEBUG_LEVEL, "Creating callgraph: " + component.getKlass().getName().toString());
@@ -451,7 +469,6 @@ public class ComponentManager {
       rootSet.add(node);
     }
     PartialCallGraph pcg = PartialCallGraph.make(originalCG, rootSet, set);
-
     E.log(2, "Partial CG #nodes: " + pcg.getNumberOfNodes());
     return pcg;
   }
@@ -494,37 +511,90 @@ public class ComponentManager {
 	  return originalCG;
   }
   
-  
-  /******************************************************************************
+  /****************************************************************************/
+
+  /****************************************************************************
    * Gather thread invocation info
    */
   private ThreadCreation threadCreation = null;
   
-  private HashMap<SSAProgramPoint,Component> getThreadInvocations() {
+  private HashMap<SSAProgramPoint,Component> getGlobalThreadInvocations() {
 	if (threadCreation == null) {
 		threadCreation = new ThreadCreation(this);
 	}
 	return threadCreation.getThreadInvocations();
   }
   
-  private HashMap<Component,HashMap<SSAProgramPoint,Component>> component2ThreadInvocations = 
+  private static HashMap<Component,HashMap<SSAProgramPoint,Component>> component2ThreadInvocations = 
 		  new HashMap<Component, HashMap<SSAProgramPoint,Component>>();
   
   public HashMap<SSAProgramPoint,Component> getThreadInvocations(Component c) {
 	  HashMap<SSAProgramPoint, Component> compInv = component2ThreadInvocations.get(c);
 	  if (compInv == null) {
-		compInv = new HashMap<SSAProgramPoint, Component>(); 
-		HashMap<SSAProgramPoint, Component> threadInvocations = getThreadInvocations();
+		compInv = new HashMap<SSAProgramPoint, Component>();
+		HashMap<SSAProgramPoint, Component> threadInvocations = getGlobalThreadInvocations();
 		for(Entry<SSAProgramPoint, Component> ti : threadInvocations.entrySet()) {
-			if (c.getCallgraph().containsNode(ti.getKey().getCGNode())) {
-				compInv.put(ti.getKey(), ti.getValue());
+			CallGraph cg = c.getCallgraph();
+			if (cg == null) {
+			/* Create and dump the component's callgraph */
+			  cg = createComponentCG(c);
+			  c.setCallgraph(cg);
+			}			
+			if (cg.containsNode(ti.getKey().getCGNode())) {
+			  compInv.put(ti.getKey(), ti.getValue());
 			}
 		}
 		component2ThreadInvocations.put(c, compInv);
+		c.setThreadInvocations(threadInvocations);
 	  }
 	  return compInv;
-		
   }
   
+  public Collection<Component> getThreadConstraints(Component c) {
+	  return getThreadInvocations(c).values();	  
+  }
+
+  /**
+   * The graph of constraints based on thread creation
+   * @param cc
+   * @return
+   */
+  public Graph<Component> constraintGraph(Collection<Component> cc) {
+	  final SparseNumberedGraph<Component> g = new SparseNumberedGraph<Component>(1);			
+	  for(Component c : cc) {
+			g.addNode(c);
+			E.log(2, "Adding: " + g.getNumber(c) + " : " + c ); 
+	  }
+	  for (Component src : cc) {
+		  Collection<Component> threadDependencies = getThreadConstraints(src);
+		  for (Component dst : threadDependencies) {
+			  if ((src != null) && (dst != null)) {
+				E.log(2, "adding: " + src + " --> " + dst);
+				g.addEdge(src,dst);
+			}
+		  }
+	  }
+	
+	/* For now assert that there are no cycles in the component 
+	 * constraint graph. */
+	com.ibm.wala.util.Predicate<Component> p = 
+			new com.ibm.wala.util.Predicate<Component>() {		
+		@Override
+		public boolean test(Component c) {
+			return Acyclic.isAcyclic(g, c);				
+		}
+	};
+	assert com.ibm.wala.util.collections.Util.forAll(cc, p);
+	/* TODO: not sure how to deal with circular dependencies */ 
+	//System.out.println("\n\nComponent dependence graph\n");
+	//System.out.println(g.toString());
+	return g;
+  }
+	  
+	  
+  
+  /****************************************************************************
+   * TODO: Maybe at some point create a merge function for components
+   */
   
 }

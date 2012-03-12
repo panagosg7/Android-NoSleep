@@ -102,17 +102,21 @@ public class Opts {
   
   public static final boolean DO_CS_ANALYSIS      = true;
 
+  /**
+   * Output CFGs for each component method 
+   */
+  public static final boolean OUTPUT_CFG_DOT = true;
   
   /**
-   * Output colorized CFGs for each function of the interesting components
-   */
-  public static final boolean OUTPUT_COLOR_CFG_DOT        = false;
+   * Output colored CFGs for each function of the interesting components
+   */  
+  public static final boolean OUTPUT_COLOR_CFG_DOT        = true;
   
   /*
    * This will generally be too big to display 
    */
   public static final boolean OUTPUT_SOLVED_EICFG         = false;
-  public static final boolean CHECK_LOCKING_POLICY        = true;
+  public static final boolean CHECK_LOCKING_POLICY        = false;
   
   
   /*******************************************
@@ -156,6 +160,10 @@ public class Opts {
 
 
   public static final boolean OUTPUT_PLAIN_CFGS = false;
+
+
+
+  
 
 
 
