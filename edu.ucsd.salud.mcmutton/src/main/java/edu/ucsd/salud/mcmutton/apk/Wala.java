@@ -646,13 +646,13 @@ public class Wala {
 		        componentManager.resolveComponents();
 		        
 				//Gather thread info
-				ThreadCreation threadInfo = new ThreadCreation(componentManager);
+				//ThreadCreation threadInfo = new ThreadCreation(componentManager);
 				
 				//Component constraints (which component to analyze first)
-				Graph<Component> componentConstraints = threadInfo.generateComponentConstraints();
+				//Graph<Component> componentConstraints = threadInfo.generateComponentConstraints();
 				//E.log(1, componentConstraints.toString());
 				
-				//The processing of the components should be done bottom up
+				
 				componentManager.processComponents();
 			
 			}

@@ -2,7 +2,7 @@ package energy.util;
 
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IMethod;
-import com.ibm.wala.ssa.IR;
+import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
@@ -12,12 +12,11 @@ import energy.components.Component;
 
 public class SSAProgramPoint {
 
-	
+	private CGNode node;
 	private IMethod method;
 	private ISSABasicBlock bb;
 	private IntSet indices;	//index within the basic block - at the moment only for "new" and "invoke" instructions
 	private SSAInstruction instruction;
-	private Component component;
 	
 	public SSAProgramPoint(IMethod m, ISSABasicBlock bb, IntSet ii) {
 		this.method = m;
@@ -25,12 +24,11 @@ public class SSAProgramPoint {
 		this.indices = ii;
 	}
 	
-	public SSAProgramPoint(Component c, IR ir, SSAInvokeInstruction inv) {
-		this.component = c;
+	public SSAProgramPoint(CGNode n, SSAInvokeInstruction inv) {
 		CallSiteReference site = inv.getCallSite();		
-		this.method = ir.getMethod();
-		this.bb = ir.getBasicBlockForInstruction(inv);		
-		this.indices = ir.getCallInstructionIndices(site);
+		this.method = n.getMethod();
+		this.bb = n.getIR().getBasicBlockForInstruction(inv);		
+		this.indices = n.getIR().getCallInstructionIndices(site);
 		this.instruction = inv;		
 		
 	}
@@ -73,8 +71,9 @@ public class SSAProgramPoint {
 		return instruction;
 	}
 
-	public Component getComponent() {
-		return component;
+
+	public CGNode getCGNode() {
+		return node;
 	}
-	
+
 }
