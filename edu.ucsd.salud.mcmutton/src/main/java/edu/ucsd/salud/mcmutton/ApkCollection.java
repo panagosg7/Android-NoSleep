@@ -274,6 +274,7 @@ public class ApkCollection {
 		
 		public ApkInstance getPreferred() throws IOException {
 			List<ApkVersion> vers = listVersions();
+			if (vers.size() == 0) return null;
 			return vers.get(vers.size()-1).getPreferred();
 		}
 		

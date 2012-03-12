@@ -46,6 +46,7 @@ public class WorkConsumer implements Watcher {
 			while (true) {
 				try {
 					String work = (String)mWorkSet.getWork();
+					System.err.println("pre-" + work);
 					ApkInstance apk = collection.getPreferred(work);
 					System.out.println(apk.getPath());
 					apk.writeInfo();
