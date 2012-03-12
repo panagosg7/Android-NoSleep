@@ -1,6 +1,6 @@
-bin_base=$(realpath $(dirname $0))
-mcmutton_base=$(realpath "$bin_base/..")
-wala_base=$(realpath "$mcmutton_base/..")
+bin_base=$(readlink -f $(dirname $0))
+mcmutton_base=$(readlink -f "$bin_base/..")
+wala_base=$(readlink -f "$mcmutton_base/..")
 mcmutton_classpath="$mcmutton_base/target/classes:$(cat $mcmutton_base/.classpath-run)"
 
 pushd ${MCMUTTON_PATH:="$wala_base"} > /dev/null
