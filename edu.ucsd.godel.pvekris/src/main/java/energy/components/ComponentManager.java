@@ -29,14 +29,16 @@ import com.ibm.wala.util.intset.OrdinalSet;
 
 import energy.analysis.ApplicationCallGraph;
 import energy.analysis.Opts;
+import energy.analysis.ThreadCreation;
 import energy.util.E;
 import energy.util.LockingStats;
+import energy.util.SSAProgramPoint;
 import energy.util.Util;
 
 @SuppressWarnings("deprecation")
 public class ComponentManager {
 
-  private static int DEBUG_LEVEL = 2;
+  private static int DEBUG_LEVEL = 1;
 
   private static HashMap<TypeReference, Component> components;
 
@@ -388,7 +390,8 @@ public class ComponentManager {
         }
       };
       boolean isInteresting =
-          CollectionUtils.exists(component.getCallbacks(), predicate);      
+          CollectionUtils.exists(component.getCallbacks(), predicate);
+      component.setInteresting(isInteresting);
       
       CallGraph componentCG = createComponentCG(component);
       component.setCallgraph(componentCG);
@@ -396,11 +399,17 @@ public class ComponentManager {
         component.outputNormalCallGraph();
       }      
 
-      if (Opts.ONLY_ANALYSE_LOCK_REACHING_CALLBACKS && !isInteresting) {
+      if ((Opts.ONLY_ANALYSE_LOCK_REACHING_CALLBACKS && !isInteresting)) { 
+    		  // || (!component.isAnalyzed)) {
         continue;
       }      
       
-      /* Create a sensible exploded inter - procedural CFG 
+      /* Get locking info for this component */
+      HashMap<SSAProgramPoint, Component> threadInvocations =
+    		  getThreadInvocations(component);      
+      component.setThreadInvocations(threadInvocations);
+      
+      /* Create a sensible exploded inter-procedural CFG 
        * (TODO: Wrap it up?) */
       component.createSensibleCG();
       
@@ -484,5 +493,38 @@ public class ComponentManager {
   public ApplicationCallGraph getCG() {
 	  return originalCG;
   }
+  
+  
+  /******************************************************************************
+   * Gather thread invocation info
+   */
+  private ThreadCreation threadCreation = null;
+  
+  private HashMap<SSAProgramPoint,Component> getThreadInvocations() {
+	if (threadCreation == null) {
+		threadCreation = new ThreadCreation(this);
+	}
+	return threadCreation.getThreadInvocations();
+  }
+  
+  private HashMap<Component,HashMap<SSAProgramPoint,Component>> component2ThreadInvocations = 
+		  new HashMap<Component, HashMap<SSAProgramPoint,Component>>();
+  
+  public HashMap<SSAProgramPoint,Component> getThreadInvocations(Component c) {
+	  HashMap<SSAProgramPoint, Component> compInv = component2ThreadInvocations.get(c);
+	  if (compInv == null) {
+		compInv = new HashMap<SSAProgramPoint, Component>(); 
+		HashMap<SSAProgramPoint, Component> threadInvocations = getThreadInvocations();
+		for(Entry<SSAProgramPoint, Component> ti : threadInvocations.entrySet()) {
+			if (c.getCallgraph().containsNode(ti.getKey().getCGNode())) {
+				compInv.put(ti.getKey(), ti.getValue());
+			}
+		}
+		component2ThreadInvocations.put(c, compInv);
+	  }
+	  return compInv;
+		
+  }
+  
   
 }

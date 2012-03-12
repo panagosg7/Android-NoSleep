@@ -39,6 +39,7 @@ import energy.interproc.ContextSensitiveLocking;
 import energy.interproc.SensibleCallGraph;
 import energy.interproc.SensibleExplodedInterproceduralCFG;
 import energy.util.E;
+import energy.util.SSAProgramPoint;
 import energy.viz.ColorNodeDecorator;
 import energy.viz.GraphDotUtil;
 
@@ -264,25 +265,26 @@ public abstract class Component extends NodeWithNumber {
   }
 
   /**
-   * Create a sensible exploded interprocedural CFG analysis on it.
+   * Create a sensible exploded inter-procedural CFG analysis on it.
    * 
    * @param component
    * @return
    */
   public void createSensibleCG() {
-    E.log(2, "Creating sensible callgraph for " + this.toString() );
-    /*
-     * First create the auxiliary call graph (SensibleAuxCallGraph) This is just
-     * the graph that represents the logical relation of callbacks.
-     */
+    E.log(2, "Creating sensible callgraph for " + this.toString());
+    
+    /* First create the auxiliary call graph (SensibleAuxCallGraph) This is just
+     * the graph that represents the logical relation of callbacks. */
     SensibleCallGraph sensibleCG = new SensibleCallGraph(this);
     /* Test it */
     sensibleCG.outputToDot();
-    /* Pack edges */
+    /* Pack inter-procedural sensible edges */
     HashSet<Pair<CGNode, CGNode>> packedEdges = sensibleCG.packEdges();
-    /* Thread constraints */
-
-    icfg = new SensibleExplodedInterproceduralCFG(getCallgraph(), packedEdges);
+    
+    /* Pack thread start() -> run() edges */
+    
+    
+    icfg = new SensibleExplodedInterproceduralCFG(getCallgraph(), packedEdges, threadInvocations);
 
   }
 
@@ -505,8 +507,14 @@ public abstract class Component extends NodeWithNumber {
 
   
   
-  public boolean  checkedPolicy  = false;
-  public String   policyResult    = null;
+  public boolean  	checkedPolicy 	= false;
+  public String  	policyResult	= null;
+  
+  /** Set this true if we analyze it as part of a larger graph */
+  public boolean	isAnalyzed		= false;
+  
+  /** Thread invocation info */
+  private HashMap<SSAProgramPoint, Component> threadInvocations = null;	
   
   /**
    * Apply the policies to the corresponding callbacks. This one checks that at
@@ -577,6 +585,17 @@ public abstract class Component extends NodeWithNumber {
         }
       }
     }
+  }
+
+
+
+  public HashMap<SSAProgramPoint, Component> getThreadInvocations() {
+	return threadInvocations;
+  }
+
+
+  public void setThreadInvocations(HashMap<SSAProgramPoint, Component> threadInvocations) {
+	this.threadInvocations = threadInvocations;
   }
 
 }

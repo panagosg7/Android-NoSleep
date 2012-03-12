@@ -11,8 +11,6 @@ import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSANewInstruction;
-import com.ibm.wala.util.graph.Graph;
-import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 
 import energy.components.Component;
 import energy.components.ComponentManager;
@@ -38,7 +36,7 @@ public class ThreadCreation {
 	/**
 	 * This will map the point where a thread is spawned to the threads class reference 
 	 */
-	HashMap<SSAProgramPoint,Component> siteToClass = new HashMap<SSAProgramPoint, Component>();
+	private HashMap<SSAProgramPoint,Component> siteToClass = new HashMap<SSAProgramPoint, Component>();
 	
 	/**
 	 * Invoke this to fill up the ProgPoint to thread mapping
@@ -46,8 +44,7 @@ public class ThreadCreation {
 	private void gatherThreadInvocations() {
 		computedThreadInvocations = true;		
 		
-		for (CGNode n : cg) {
-			Component currentComponent = cm.getComponent(n);
+		for (CGNode n : cg) {			
 			iSet.clear();
 			for (Iterator<SSAInstruction> it = n.getIR().iterateAllInstructions(); it.hasNext();) {
 				SSAInstruction instr = it.next();
@@ -72,7 +69,7 @@ public class ThreadCreation {
 					for(Iterator<SSAInstruction> uses = du.getUses(i.getDef()); uses.hasNext(); ) {
 						SSAInstruction user = uses.next();
 						if (user instanceof SSAInvokeInstruction) {
-							SSAInvokeInstruction inv = (SSAInvokeInstruction) user;
+							SSAInvokeInstruction inv = (SSAInvokeInstruction) user;							
 							//Get the thread <init>
 							if (inv.getDeclaredTarget().getName().toString().equals("<init>")) {
 								assert inv.getNumberOfParameters() == 1;
@@ -91,7 +88,7 @@ public class ThreadCreation {
 							if (inv.getDeclaredTarget().getName().toString().equals("start")) {
 								assert inv.getNumberOfParameters() == 0;
 								assert pp == null;	//this should be done only once
-								pp = new SSAProgramPoint(currentComponent,ir,inv);
+								pp = new SSAProgramPoint(n,inv);
 							}
 						}
 					} //for uses
@@ -111,6 +108,14 @@ public class ThreadCreation {
 	}	
 	
 
+	public HashMap<SSAProgramPoint,Component> getThreadInvocations() {
+		if (!computedThreadInvocations) {
+			gatherThreadInvocations();
+		}
+		
+		return siteToClass;
+	}
+	
 		
 	/**
 	 * Generate constraints based on whether 
@@ -118,6 +123,7 @@ public class ThreadCreation {
 	 * priorities as to what has to be analyzed first. 
 	 * @return 
 	 */
+	/*
 	public Graph<Component> generateComponentConstraints() {		
 		if (!computedThreadInvocations) {
 			gatherThreadInvocations();
@@ -139,6 +145,6 @@ public class ThreadCreation {
 		}
 		return g;
 	}
-	
+	*/
 	
 }

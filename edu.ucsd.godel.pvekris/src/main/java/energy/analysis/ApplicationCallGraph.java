@@ -16,6 +16,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
@@ -79,9 +80,11 @@ import com.ibm.wala.util.io.FileUtil;
 import com.ibm.wala.viz.DotUtil;
 import com.ibm.wala.viz.PDFViewUtil;
 
+import energy.components.Component;
 import energy.intraproc.IntraProcAnalysis;
 import energy.util.E;
 import energy.util.GraphBottomUp;
+import energy.util.SSAProgramPoint;
 import energy.viz.GraphDotUtil;
 
 @SuppressWarnings("deprecation")

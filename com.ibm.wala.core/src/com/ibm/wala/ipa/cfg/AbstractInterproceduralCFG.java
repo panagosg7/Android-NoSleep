@@ -226,14 +226,14 @@ public abstract class AbstractInterproceduralCFG<T extends ISSABasicBlock> imple
     return inst;
   }
 
-
+  //Panagiotis Vekris changed visibility from private to protected
   /**
    * Add an edge from the exit() block of a callee to a return site in the caller
    * 
    * @param returnBlock the return site for a call
    * @param targetCFG the called method
    */
-  private void addEdgesFromExitToReturn(CGNode caller, T returnBlock, CGNode target,
+  protected void addEdgesFromExitToReturn(CGNode caller, T returnBlock, CGNode target,
       ControlFlowGraph<SSAInstruction, ? extends T> targetCFG) {
     T texit = targetCFG.exit();
     BasicBlockInContext<T> exit = new BasicBlockInContext<T>(target, texit);
@@ -249,13 +249,14 @@ public abstract class AbstractInterproceduralCFG<T extends ISSABasicBlock> imple
     g.addEdge(exit, ret);
   }
 
+  //Panagiotis Vekris changed visibility from private to protected
   /**
    * Add an edge from the exit() block of a callee to a return site in the caller
    * 
    * @param callBlock the return site for a call
    * @param targetCFG the called method
    */
-  private void addEdgesFromCallToEntry(CGNode caller, T callBlock, CGNode target,
+  protected void addEdgesFromCallToEntry(CGNode caller, T callBlock, CGNode target,
       ControlFlowGraph<SSAInstruction, ? extends T> targetCFG) {
     T tentry = targetCFG.entry();
     BasicBlockInContext<T> entry = new BasicBlockInContext<T>(target, tentry);
