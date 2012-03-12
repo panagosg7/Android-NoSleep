@@ -72,7 +72,6 @@ import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.config.AnalysisScopeReader;
-import com.ibm.wala.util.graph.Graph;
 
 import edu.ucsd.salud.mcmutton.ApkException;
 import edu.ucsd.salud.mcmutton.ApkInstance;
@@ -80,10 +79,7 @@ import edu.ucsd.salud.mcmutton.RetargetException;
 import energy.analysis.ApplicationCallGraph;
 import energy.analysis.ClassHierarchyAnalysis;
 import energy.analysis.Opts;
-import energy.analysis.ThreadCreation;
-import energy.components.Component;
 import energy.components.ComponentManager;
-import energy.util.E;
 
 public class Wala {
 	private File mPath;
@@ -635,35 +631,19 @@ public class Wala {
 		*/
 		
 		
-			
-		
 		if (Opts.RESOLVE_ANDROID_COMPONENTS) {
 			
 			try {
 				//Resolve the components
 				ComponentManager componentManager = new ComponentManager(cg);
 				componentManager.prepareReachability();
-		        componentManager.resolveComponents();
-		        
-				//Gather thread info
-				//ThreadCreation threadInfo = new ThreadCreation(componentManager);
-				
-				//Component constraints (which component to analyze first)
-				//Graph<Component> componentConstraints = threadInfo.generateComponentConstraints();
-				//E.log(1, componentConstraints.toString());
-				
-				
-				componentManager.processComponents();
-			
+		        componentManager.resolveComponents();		        
+				componentManager.processComponents();			
 			}
 			catch (Exception e) {
 				e.printStackTrace();	
 			}
-			
-			
-	        
 		}
-		
 		//return result;
 		return UsageType.UNKNOWN;
 		

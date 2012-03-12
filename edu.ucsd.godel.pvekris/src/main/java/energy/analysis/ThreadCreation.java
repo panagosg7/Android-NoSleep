@@ -116,35 +116,6 @@ public class ThreadCreation {
 		return siteToClass;
 	}
 	
-		
-	/**
-	 * Generate constraints based on whether 
-	 * This is a very sparse graph with only the edges that denote thread 
-	 * priorities as to what has to be analyzed first. 
-	 * @return 
-	 */
-	/*
-	public Graph<Component> generateComponentConstraints() {		
-		if (!computedThreadInvocations) {
-			gatherThreadInvocations();
-		}
-		//Add all components as nodes
-		SparseNumberedGraph<Component> g = new SparseNumberedGraph<Component>(1);			
-		for(Component c : cm.getComponents().values()) {
-			g.addNode(c);
-			E.log(2, "Adding: " + g.getNumber(c) + " : " + c ); 
-		}		
-		//Add constraint edges
-		for (Entry<SSAProgramPoint, Component> e : siteToClass.entrySet()) {
-			Component src = e.getKey().getComponent();
-			Component dst = e.getValue();
-			if ((src != null) && (dst != null)) {
-				E.log(1, "adding: " + src + " --> " + dst);
-				g.addEdge(src,dst);
-			}
-		}
-		return g;
-	}
-	*/
+	
 	
 }

@@ -24,6 +24,14 @@ public class GraphBottomUp {
 	    BFSIterator<T> bfsIter = new BFSIterator<T>(invertedGraph, fit);
 	    return bfsIter;
 	}
-	
+
+	public static <T> BFSIterator<T> bottomUpIterator(Graph<T> g) {
+		
+	    InvertedGraph<T> invertedGraph = new InvertedGraph<T>(g);
+	    //Roots of the inverted are leaves in the initial graph 
+	    Collection<T> leaves = InferGraphRoots.inferRoots(invertedGraph);
+	    BFSIterator<T> bfsIter = new BFSIterator<T>(invertedGraph, leaves.iterator());
+	    return bfsIter;
+	}
 	
 }

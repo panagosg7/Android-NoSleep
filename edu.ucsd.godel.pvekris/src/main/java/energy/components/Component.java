@@ -21,6 +21,7 @@ import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.properties.WalaProperties;
 import com.ibm.wala.ssa.ISSABasicBlock;
+import com.ibm.wala.ssa.SSACFG;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
@@ -31,6 +32,7 @@ import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.graph.impl.NodeWithNumber;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
+import com.ibm.wala.viz.NodeDecorator;
 
 import energy.analysis.AnalysisDriver;
 import energy.analysis.Opts;
@@ -162,18 +164,17 @@ public abstract class Component extends NodeWithNumber {
       }
       /* This is the case of the CFG for a single method. */
       if (o instanceof IExplodedBasicBlock) {
-        IExplodedBasicBlock ebb = (IExplodedBasicBlock) o;
-
-        String name = "";
-        Iterator<SSAInstruction> iterator = ebb.iterator();
-        while (iterator.hasNext()) {
-          SSAInstruction instr = iterator.next();
-          name += instr.toString();
-        }
-
+        ISSABasicBlock ebb = (ISSABasicBlock) o;
+    	StringBuffer sb = new  StringBuffer();
+    	for (Iterator<SSAInstruction> it = ebb.iterator(); it.hasNext(); ) {
+			if (!sb.toString().equals("")) {
+				sb.append("\\n");
+			}
+			sb.append(it.next().toString());
+		}
         String prefix = "(" + Integer.toString(ebb.getNumber()) + ")";
 
-        return (prefix + "[" + name + "]");
+        return (prefix + "[" + sb.toString() + "]");
       }
       return "[error]";
     }
@@ -201,13 +202,13 @@ public abstract class Component extends NodeWithNumber {
     @Override
     public String getFontColor(Object o) {
       /*
-       * if (o instanceof BasicBlockInContext) {
-       * BasicBlockInContext<IExplodedBasicBlock> ebb =
-       * (BasicBlockInContext<IExplodedBasicBlock>) o; String c =
-       * getTargetColor(ebb); if (c == null) return "black"; else return c; } if
-       * (o instanceof IExplodedBasicBlock) { IExplodedBasicBlock ebb =
-       * (IExplodedBasicBlock) o; String c = getTargetColor(ebb); if (c == null)
-       * return "black"; else return c; }
+       if (o instanceof BasicBlockInContext) {
+       BasicBlockInContext<IExplodedBasicBlock> ebb =
+       (BasicBlockInContext<IExplodedBasicBlock>) o; String c =
+       getTargetColor(ebb); if (c == null) return "black"; else return c; } if
+       (o instanceof IExplodedBasicBlock) { IExplodedBasicBlock ebb =
+       (IExplodedBasicBlock) o; String c = getTargetColor(ebb); if (c == null)
+       return "black"; else return c; }
        */
       return "black";
     }
@@ -268,24 +269,20 @@ public abstract class Component extends NodeWithNumber {
    * Create a sensible exploded inter-procedural CFG analysis on it.
    * 
    * @param component
+ * @return 
    * @return
    */
-  public void createSensibleCG() {
+  public SensibleExplodedInterproceduralCFG createSensibleCG() {
     E.log(2, "Creating sensible callgraph for " + this.toString());
     
     /* First create the auxiliary call graph (SensibleAuxCallGraph) This is just
      * the graph that represents the logical relation of callbacks. */
     SensibleCallGraph sensibleCG = new SensibleCallGraph(this);
     /* Test it */
-    sensibleCG.outputToDot();
+    //sensibleCG.outputToDot();
     /* Pack inter-procedural sensible edges */
     HashSet<Pair<CGNode, CGNode>> packedEdges = sensibleCG.packEdges();
-    
-    /* Pack thread start() -> run() edges */
-    
-    
-    icfg = new SensibleExplodedInterproceduralCFG(getCallgraph(), packedEdges, threadInvocations);
-
+    return new SensibleExplodedInterproceduralCFG(getCallgraph(), packedEdges, threadInvocations);
   }
 
   /**
@@ -293,7 +290,10 @@ public abstract class Component extends NodeWithNumber {
    * CFG based on the component's sensible callgraph
    */
   protected void solveCICFG() {
-    ContextInsensitiveLocking lockingProblem = new ContextInsensitiveLocking(icfg);
+	if (icfg == null) {
+		icfg = createSensibleCG();
+	}
+	ContextInsensitiveLocking lockingProblem = new ContextInsensitiveLocking(icfg);
     acquireMaySolver = lockingProblem.analyze(true, true);
     releaseMaySolver = lockingProblem.analyze(true, false);
     releaseMustSolver = lockingProblem.analyze(false, false);
@@ -304,18 +304,29 @@ public abstract class Component extends NodeWithNumber {
    * based on the component's sensible callgraph
    */
   protected void solveCSCFG() {
+	if (icfg == null) {
+	  icfg = createSensibleCG();
+	}
     ContextSensitiveLocking lockingProblem = new ContextSensitiveLocking(icfg);
+    E.log(1, "Analyzing: " + this.toString() + " ...");
     csSolver = lockingProblem.analyze();    
     csDomain = lockingProblem.getDomain();
+    isSolved = true;
   }
 
+  
+  /** Set this true if we analyze it as part of a larger graph */
+  public boolean	isSolved		= false;
+  
+  
+  
   /**
    * Output the colored CFG for each node in the callgraph (Basically done
    * because dot can't render the complete interproc CFG.)
    */
   public void outputColoredCFGs() {
     /*
-     * Need to do this here - WALA was giving me a hard time to crop a smart
+     * Need to do this here - WALA was giving me a hard time to crop a small
      * part of the graph
      */
     Properties p = WalaExamplesProperties.loadProperties();
@@ -328,18 +339,12 @@ public abstract class Component extends NodeWithNumber {
     new File(cfgs).mkdirs();
     Iterator<CGNode> it = callgraph.iterator();
     while (it.hasNext()) {
-      CGNode n = it.next();
-      /* only color the callbacks */
-      // if (callbacks.containsKey(n.getMethod().getName().toString())) {
-      ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> cfg =
+      CGNode n = it.next();      
+      ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> cfg = icfg.getCFG(n);
       // ExceptionPrunedCFG.make(icfg.getCFG(n));
-      icfg.getCFG(n);
-
       String bareFileName = n.getMethod().getDeclaringClass().getName().toString().replace('/', '.') + "_"
           + n.getMethod().getName().toString();
-
       String cfgFileName = cfgs + File.separatorChar + bareFileName + ".dot";
-
       String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
       String pdfFile = null;
       try {
@@ -347,11 +352,58 @@ public abstract class Component extends NodeWithNumber {
         GraphDotUtil.dotify(cfg, colorNodeDecorator, cfgFileName, pdfFile, dotExe);
       } catch (WalaException e) {
         e.printStackTrace();
-      }
-      // }
+      }      
     }
   }
 
+  
+  /**
+   * Output the CFG for each node in the callgraph 
+   */
+  public void outputCFGs() {
+    Properties p = WalaExamplesProperties.loadProperties();
+    try {
+      p.putAll(WalaProperties.loadProperties());
+    } catch (WalaException e) {
+      e.printStackTrace();
+    }
+    String cfgs = energy.util.Util.getResultDirectory() + File.separatorChar + "cfg";
+    new File(cfgs).mkdirs();
+    Iterator<CGNode> it = callgraph.iterator();
+    while (it.hasNext()) {
+      CGNode n = it.next();      
+      SSACFG cfg = n.getIR().getControlFlowGraph();      
+      String bareFileName = n.getMethod().getDeclaringClass().getName().toString().replace('/', '.') + "_"
+          + n.getMethod().getName().toString();
+      String cfgFileName = cfgs + File.separatorChar + bareFileName + ".dot";
+      String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
+      String pdfFile = null;
+      try {      
+    	NodeDecorator nd = new NodeDecorator() {			
+			@Override
+			public String getLabel(Object o) throws WalaException {
+				StringBuffer sb = new  StringBuffer();
+				if (o instanceof ISSABasicBlock) {
+					ISSABasicBlock bb = (ISSABasicBlock) o;					
+					for (Iterator<SSAInstruction> it = bb.iterator(); it.hasNext(); ) {
+						if (!sb.toString().equals("")) {
+							sb.append("\\n");
+						}
+						sb.append(it.next().toString());
+					}
+				}					
+				return sb.toString();
+			}
+		};
+        GraphDotUtil.dotify(cfg, nd, cfgFileName, pdfFile, dotExe);
+      } catch (WalaException e) {
+        e.printStackTrace();
+      }
+      
+    }
+  }
+  
+  
   /* Super-ugly way to keep the colors for every method in the graph */
   private HashMap<Pair<IMethod, Integer>, String> colorHash;
 
@@ -510,8 +562,6 @@ public abstract class Component extends NodeWithNumber {
   public boolean  	checkedPolicy 	= false;
   public String  	policyResult	= null;
   
-  /** Set this true if we analyze it as part of a larger graph */
-  public boolean	isAnalyzed		= false;
   
   /** Thread invocation info */
   private HashMap<SSAProgramPoint, Component> threadInvocations = null;	
@@ -593,6 +643,12 @@ public abstract class Component extends NodeWithNumber {
 	return threadInvocations;
   }
 
+  public Collection<Component> getThreadDependencies() {
+	return threadInvocations.values();
+  }
+
+    
+  
 
   public void setThreadInvocations(HashMap<SSAProgramPoint, Component> threadInvocations) {
 	this.threadInvocations = threadInvocations;
