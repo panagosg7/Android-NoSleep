@@ -363,43 +363,43 @@ public class BugHunt {
 		}
 	}
 	
-//	public static void runPanos(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
-////		ApkInstance apk = collection.getApplication("DISH").getPreferred();
-////		ApkInstance apk = collection.getApplication(ApkCollection.cleanApkName("Robo Defense FREE")).getPreferred();
-////		System.out.println(apk.panosAnalyze());
-//		
-//		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
-//		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
-//	
-//		Map<String, Integer> colorCount = new HashMap<String, Integer>();
-//		
-//		for (Object key: acqrel_status.keySet()) {
-//			try {
-//				String app_name = ApkCollection.cleanApkName((String)key);
-//				ApkInstance apk = collection.getApplication(app_name).getPreferred();
-//				Set<String> colors = apk.panosAnalyze();
-//				
-//				for (String color: colors) {
-//					if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
-//					else colorCount.put(color, colorCount.get(color) + 1);
-//				}
-//				System.out.println(app_name + ": " + colors);
-//			} catch (Exception e) {
-//				System.out.println("explode!");
-//				String color = "failed";
-//				if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
-//				else colorCount.put(color, colorCount.get(color) + 1);
-//			} catch (Error e) {
-//				System.out.println("more explode!");
-//				String color = "failed";
-//				if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
-//				else colorCount.put(color, colorCount.get(color) + 1);
-//			}
-//		}
-//		
-//		System.out.println(colorCount);
-//			
-//	}
+	public static void runPanos(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
+//		ApkInstance apk = collection.getApplication("DISH").getPreferred();
+//		ApkInstance apk = collection.getApplication(ApkCollection.cleanApkName("Robo Defense FREE")).getPreferred();
+//		System.out.println(apk.panosAnalyze());
+		
+		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
+		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
+	
+		Map<String, Integer> colorCount = new HashMap<String, Integer>();
+		
+		for (Object key: acqrel_status.keySet()) {
+			try {
+				String app_name = ApkCollection.cleanApkName((String)key);
+				ApkInstance apk = collection.getApplication(app_name).getPreferred();
+				Set<String> colors = apk.panosAnalyze();
+				
+				for (String color: colors) {
+					if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
+					else colorCount.put(color, colorCount.get(color) + 1);
+				}
+				System.out.println(app_name + ": " + colors);
+			} catch (Exception e) {
+				System.out.println("explode!");
+				String color = "failed";
+				if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
+				else colorCount.put(color, colorCount.get(color) + 1);
+			} catch (Error e) {
+				System.out.println("more explode!");
+				String color = "failed";
+				if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
+				else colorCount.put(color, colorCount.get(color) + 1);
+			}
+		}
+		
+		System.out.println(colorCount);
+			
+	}
 		
 	/**
 	 * @param args
@@ -463,8 +463,8 @@ public class BugHunt {
 	    				return;
 	    			}
 	    			collection.integrateApks(basePath, collectionName);
-//	    		} else if (line.hasOption("panos")) {
-//	    			runPanos(collection);
+	    		} else if (line.hasOption("panos")) {
+	    			runPanos(collection);
 	    		} else {
 	    			for (Object opt: options.getOptions()) {
 	    				System.err.println(opt);

@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 
@@ -510,7 +511,9 @@ public abstract class Component {
    * Apply the policies to the corresponding callbacks. This one checks that at
    * the end of the method, we have an expected state.
    */
-  protected void checkLockingPolicy() {
+  protected Map<String, String> checkLockingPolicy() {
+	Map<String, String> result = new HashMap<String, String>();
+	
     for (Pair<String, List<String>> elem : callbackExpectedState) {
       String methName = elem.fst;      
       CGNode cgNode = callbacks.get(methName);
@@ -520,6 +523,8 @@ public abstract class Component {
         Pair<IMethod, Integer> p = Pair.make(
             cgNode.getMethod(), exit.getNumber());
         String color = colorHash.get(p);
+        
+        result.put(methName, color);
         
         List<String> expStatus = elem.snd;
         String status = "BAD";
@@ -542,8 +547,8 @@ public abstract class Component {
           E.log(2, " - " + e.getValue().getMethod().getSignature().toString());
         }
       }
-      
     }
+    return result;
   }
 
   public void lookForExceptionalEdges() {

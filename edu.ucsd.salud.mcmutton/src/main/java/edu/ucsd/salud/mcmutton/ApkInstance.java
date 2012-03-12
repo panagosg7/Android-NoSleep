@@ -343,7 +343,7 @@ public class ApkInstance {
 		return interestingCallSites().keySet();
 	}
 	
-	public Wala.UsageType /* Set<String> */ panosAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException {
+	public Set<String> panosAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException {
 		return this.getWala().panosAnalyze();
 	}
 	

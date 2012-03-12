@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -360,10 +361,12 @@ public class ComponentManager {
   /**
    * 2. Process the components that have been resolved
    */
-  public void processComponents() {
+  public Map<String, String> processComponents() {
      
     /* Gather locking statistics */
     LockingStats ls = new LockingStats();
+    
+    Map<String, String> result = new HashMap<String, String>();
     
     for (Entry<String, Component> entry : components.entrySet()) {
       Component component = entry.getValue();
@@ -413,7 +416,8 @@ public class ComponentManager {
       
       /* Check the policy - defined for each type of component separately */
       if (Opts.CHECK_LOCKING_POLICY) {        
-        component.checkLockingPolicy();
+        Map<String, String> componentResult = component.checkLockingPolicy();
+        result.putAll(componentResult);
       }
       /* Register the result - needs to be done after checking the policy */
       ls.registerComponent(component);      
@@ -421,6 +425,8 @@ public class ComponentManager {
     
     /* Post-process */
     ls.dumpStats();
+    
+    return result;
     
   }
   

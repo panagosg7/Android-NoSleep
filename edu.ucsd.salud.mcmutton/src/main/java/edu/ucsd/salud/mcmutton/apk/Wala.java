@@ -599,7 +599,7 @@ public class Wala {
 		}
 	}
 
-	public UsageType panosAnalyze() throws IOException, WalaException, CancelException, ApkException {
+	public Set<String> panosAnalyze() throws IOException, WalaException, CancelException, ApkException {
 		String args[] = {"-appJar", mPath.getAbsolutePath(),
 						 "-exclusionFile", "/home/jcm/working/AndroidEnergy/com.ibm.wala.core.tests/dat/Java60RegressionExclusions.txt"};
 		File panosOutput = new File(mCachePath + "/panos");
@@ -619,7 +619,8 @@ public class Wala {
 		
 		InterestingReachabilityResult res = new InterestingReachabilityResult(interestingSites, entryReachability);
 
-		UsageType result = analyzeReachability(new InterestingReachabilityStringResult(res));
+//		UsageType result = analyzeReachability(new InterestingReachabilityStringResult(res));
+		Set<String> result = new HashSet<String>();
 		
 //		if (Opts.DO_SYSCALLS_ANALYSIS){
 //			System.out.println(CallGraphStats.getCGStats(cg).toString());
@@ -628,6 +629,8 @@ public class Wala {
 		
 		if (Opts.RESOLVE_ANDROID_COMPONENTS) {
 			ComponentManager componentManager = new ComponentManager(cg);
+			componentManager.prepareReachability();
+			componentManager.processComponents();
 		}
 		
 		if (Opts.RESOLVE_SCC) {
