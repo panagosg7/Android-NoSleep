@@ -76,8 +76,17 @@ public final class WalaProperties {
     String property = WalaProperties.J2SE_DIR + separator + hostname;
     
     String dir = p.getProperty(property);
+    if (dir == null) {
+      dir = p.getProperty(WalaProperties.J2SE_DIR);
+    }
     Assertions.productionAssertion(dir != null);
-    return getJarsInDirectory(dir);
+    
+    String j2sejars[] = getJarsInDirectory(dir);
+    
+    if (j2sejars.length == 0) {
+      throw new IllegalStateException("No J2SE jars found in " + dir);
+    }
+    return j2sejars;
   }
 
   /**

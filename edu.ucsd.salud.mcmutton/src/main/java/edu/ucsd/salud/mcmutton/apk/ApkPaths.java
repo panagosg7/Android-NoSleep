@@ -15,6 +15,9 @@ public class ApkPaths {
 	public final File extractedPath;
 	public final File dexPath;
 	public final File manifestPath;
+	/** See if values-en exists in case the default isn't english */
+	public final File manifestStringsEnPath;
+	public final File manifestStringsPath;
 	public final File info;
 	public final File smali;
 	
@@ -58,23 +61,31 @@ public class ApkPaths {
 		dedPath = dedPathBase;
 		androidPath = androidSdkBase;
 		
-		File[] apks = basePath.listFiles(new FilenameFilter() {
-			public boolean accept(File arg0, String arg1) {
-				if (arg1.endsWith(".apk")) return true;
-				else return false;
+		
+		/* See if it is an actual apk, else grab the first thing that looks like an apk */
+		if (baseApkPath.getName().endsWith("apk")) {
+			apk = baseApkPath;
+		} else {
+			File[] apks = basePath.listFiles(new FilenameFilter() {
+				public boolean accept(File arg0, String arg1) {
+					if (arg1.endsWith(".apk")) return true;
+					else return false;
+				}
+			});
+			
+			if (apks == null || apks.length == 0) {
+				throw new IOException("apk not found in " + basePath);
 			}
-		});
-		
-		if (apks == null || apks.length == 0) {
-			throw new IOException("apk not found in " + basePath);
+			
+			apk = apks[0];
 		}
-		
-		apk = apks[0];
 		
 		
 		extractedPath = new File(workPath + File.separator + "extracted");
 		dexPath = new File(extractedPath + File.separator + "classes.dex");
 		manifestPath = new File(extractedPath + File.separator + "AndroidManifest.xml");
+		manifestStringsEnPath = new File(extractedPath + File.separator + "res" + File.separator + "values-en" + File.separator + "strings.xml");
+		manifestStringsPath = new File(extractedPath + File.separator + "res" + File.separator + "values" + File.separator + "strings.xml");
 		
 		info = new File(basePath + File.separator + "info.json");
 		smali = new File(extractedPath + File.separator + "smali");

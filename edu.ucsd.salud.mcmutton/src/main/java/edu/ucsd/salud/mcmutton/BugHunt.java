@@ -18,6 +18,12 @@ import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import net.sf.json.JSONSerializer;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.PosixParser;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 
@@ -371,43 +377,115 @@ public class BugHunt {
 			apk.buildOptimizedJava();
 		}
 	}
+	
+//	public static void runPanos(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
+////		ApkInstance apk = collection.getApplication("DISH").getPreferred();
+////		ApkInstance apk = collection.getApplication(ApkCollection.cleanApkName("Robo Defense FREE")).getPreferred();
+////		System.out.println(apk.panosAnalyze());
+//		
+//		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
+//		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
+//	
+//		Map<String, Integer> colorCount = new HashMap<String, Integer>();
+//		
+//		for (Object key: acqrel_status.keySet()) {
+//			try {
+//				String app_name = ApkCollection.cleanApkName((String)key);
+//				ApkInstance apk = collection.getApplication(app_name).getPreferred();
+//				Set<String> colors = apk.panosAnalyze();
+//				
+//				for (String color: colors) {
+//					if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
+//					else colorCount.put(color, colorCount.get(color) + 1);
+//				}
+//				System.out.println(app_name + ": " + colors);
+//			} catch (Exception e) {
+//				System.out.println("explode!");
+//				String color = "failed";
+//				if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
+//				else colorCount.put(color, colorCount.get(color) + 1);
+//			} catch (Error e) {
+//				System.out.println("more explode!");
+//				String color = "failed";
+//				if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
+//				else colorCount.put(color, colorCount.get(color) + 1);
+//			}
+//		}
+//		
+//		System.out.println(colorCount);
+//			
+//	}
 		
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
+		Options options = new Options();
+		CommandLineParser parser = new PosixParser();
+		
+		options.addOption(new Option("p", "phantoms", false, "list phantom refs histogram"));
+		options.addOption(new Option("P", "phantom-counts", false, "list phantom counts per app"));
+		options.addOption(new Option("e", "opt-exceptions", false, "list histogram of optimization exception types"));
+		options.addOption(new Option("f", "failed", false, "list failed conversions"));
+		options.addOption(new Option("r", "reoptimize", false, "re-optimize failed conversions"));
+		options.addOption(new Option("s", "patterns", false, "perform patterns analysis and print results"));
+		options.addOption(new Option("S", "test-patterns", false, "perform pattern analysis on a small subset of apks"));
+		options.addOption(OptionBuilder.withLongOpt("panos")
+				   .withDescription("run john's interpretation of panos' code")
+				   .create());
+		options.addOption(OptionBuilder.withLongOpt("flush-phantom")
+									   .hasArg()
+									   .withDescription("flush optimization files for aps with phantom named param")
+									   .create());
+		options.addOption(OptionBuilder.withLongOpt("add-to-collection")
+									   .hasArgs(2)
+									   .withDescription("integrate into collection w/args path, collectionname")
+									   .create());
+		
 		try {
 	    	ApkCollection collection = new ApkCollection();
 	    	
-	    	/* I'm being lazy about actually using a command  line parsing framework */
-	    	boolean flushPhantomNext = false;
-	    	
-	    	/* meh */
-	    	for (String flag: args) {
-	    		if (flushPhantomNext) {
-	    			flushPhantom(collection, flag);
-	    			flushPhantomNext = false;
-	    		} else if (flag.equals("--flush-phantom")) {
-	    			flushPhantomNext = true;
-	    		} else if (flag.equals("--phantoms")) {
+	    	CommandLine line = parser.parse(options,  args);
+
+	    	if (line.hasOption("flush-phantoms")) {
+	    			flushPhantom(collection, line.getOptionValue("flush-phantoms"));
+	    		} else if (line.hasOption("phantoms")) {
 	    			dumpPhantoms(collection);
-	    		} else if (flag.equals("--phantom-counts")) {
+	    		} else if (line.hasOption("phantom-counts")) {
 	    			dumpPhantomCounts(collection);
-	    		} else if (flag.equals("--opt-exceptions")) {
+	    		} else if (line.hasOption("opt-exceptions")) {
 	    			dumpExceptions(collection);
-	    		} else if (flag.equals("--failed")) {
+	    		} else if (line.hasOption("failed")) {
 	    			dumpFailedConversions(collection);
-	    		} else if (flag.equals("--reoptimize")) {
+	    		} else if (line.hasOption("reoptimize")) {
 	    			reoptimize(collection);
-	    		} else if (flag.equals("--patterns")) {
+	    		} else if (line.hasOption("patterns")) {
 	    			runPatternAnalysis(collection);
-	    		} else if (flag.equals("--test-patterns")) {
+	    		} else if (line.hasOption("test-patterns")) {
 	    			runTestPatternAnalysis(collection);
+	    		} else if (line.hasOption("add-to-collection")) {
+	    			String values[] = line.getOptionValues("add-to-collection");
+	    			File basePath = new File(values[0]);
+	    			if (!basePath.exists()) {
+	    				System.err.println("base apk path does not exist: " + basePath);
+	    				return;
+	    			}
+	    			
+	    			String collectionName = values[1];
+	    			if (collectionName.length() == 0) {
+	    				System.err.println("must specify collection name");
+	    				return;
+	    			}
+	    			collection.integrateApks(basePath, collectionName);
+//	    		} else if (line.hasOption("panos")) {
+//	    			runPanos(collection);
 	    		} else {
-	    			System.err.println("unrecognized flag: " + flag);
+	    			for (Object opt: options.getOptions()) {
+	    				System.err.println(opt);
+	    			}
 	    		}
-	    	}
+
 	    	//runFacebookDiff(collection);
 //	    	runPatternAnalysis(collection);
 //	    	dumpFailedConversions(collection);
