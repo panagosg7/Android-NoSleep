@@ -147,10 +147,10 @@ public class BugHunt {
 	public static void runTestPatternAnalysis(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		Set<String> theSet = new HashSet<String>();
 		
-		theSet.add("AndTweet");
+		//theSet.add("AndTweet");
 		//theSet.add("aFlashlight");	//conversion error
-		theSet.add("FartDroid");
-		theSet.add("AndroBOINC");
+		//theSet.add("FartDroid");
+		//theSet.add("AndroBOINC");
 		//theSet.add("");
 		//theSet.add("");
 		//theSet.add("");
@@ -158,7 +158,7 @@ public class BugHunt {
 		//theSet.add("Phonebook_2.0");
 		//theSet.add("ICQ");
 		//theSet.add("DISH");
-		//theSet.add("JuiceDefender");
+		theSet.add("JuiceDefender");
 		//theSet.add("Twidroyd");
 		//theSet.add("WebSMS");		
 		//theSet.add("3D_Level");
