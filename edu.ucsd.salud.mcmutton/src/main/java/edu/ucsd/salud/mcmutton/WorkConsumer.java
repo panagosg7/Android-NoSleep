@@ -48,6 +48,10 @@ public class WorkConsumer implements Watcher {
 					String work = (String)mWorkSet.getWork();
 					System.err.println("pre-" + work);
 					ApkInstance apk = collection.getPreferred(work);
+					if (apk == null) {
+						throw new ApkException("Apk missing for " + work);
+					}
+					
 					System.out.println(apk.getPath());
 					apk.writeInfo();
 					if (apk.hasWakelockCalls()) {

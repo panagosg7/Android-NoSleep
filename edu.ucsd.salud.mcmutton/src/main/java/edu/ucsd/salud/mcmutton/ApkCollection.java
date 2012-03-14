@@ -2,6 +2,7 @@ package edu.ucsd.salud.mcmutton;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -274,7 +275,7 @@ public class ApkCollection {
 		
 		public ApkInstance getPreferred() throws IOException {
 			List<ApkVersion> vers = listVersions();
-			if (vers.size() == 0) return null;
+			if (vers.size() == 0) throw new FileNotFoundException("No versions for " + mPath);
 			return vers.get(vers.size()-1).getPreferred();
 		}
 		
