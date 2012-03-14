@@ -23,9 +23,9 @@ import com.ibm.wala.ipa.cfg.ExplodedInterproceduralCFG;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
+import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.collections.HashSetFactory;
-import com.ibm.wala.util.collections.Quartet;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.MutableMapping;
@@ -105,6 +105,21 @@ public class ContextSensitiveLocking {
     }
     return false;
   }
+  
+  /**
+   * Get the method reference called by a bb (null if not a call site) 
+   * @param bb
+   * @return
+   */
+  private MethodReference getCalledMethodReference(BasicBlockInContext<IExplodedBasicBlock> bb) {
+	    final IExplodedBasicBlock ebb = bb.getDelegate();
+	    SSAInstruction instruction = ebb.getInstruction();
+	    if (instruction instanceof SSAInvokeInstruction) {
+	      final SSAInvokeInstruction invInstr = (SSAInvokeInstruction) instruction;
+	      return invInstr.getDeclaredTarget();
+	    }
+	    return null;
+	  }
 
   /**
    * Domain is the answer to the questions: (maybe acquired, must be
@@ -112,8 +127,8 @@ public class ContextSensitiveLocking {
    * 
    * @author pvekris
    */
-  private class TabDomain extends MutableMapping<Quartet<Boolean, Boolean, Boolean, Boolean>> implements
-      TabulationDomain<Quartet<Boolean, Boolean, Boolean, Boolean>, BasicBlockInContext<IExplodedBasicBlock>> {
+  private class TabDomain extends MutableMapping<LockState> implements
+      TabulationDomain<LockState, BasicBlockInContext<IExplodedBasicBlock>> {
 
     public boolean hasPriorityOver(PathEdge<BasicBlockInContext<IExplodedBasicBlock>> p1,
         PathEdge<BasicBlockInContext<IExplodedBasicBlock>> p2) {
@@ -204,8 +219,7 @@ public class ContextSensitiveLocking {
         return new IUnaryFlowFunction() {
           @Override
           public IntSet getTargets(int d1) {
-            Quartet<Boolean, Boolean, Boolean, Boolean> fact = Quartet.make(
-                Boolean.TRUE,Boolean.TRUE,Boolean.FALSE, Boolean.FALSE);
+            LockState fact = new LockState(true, true, false, false);
             int factNum = domain.getMappedIndex(fact);
             MutableSparseIntSet result = MutableSparseIntSet.makeEmpty();
             result.add(factNum);
@@ -219,9 +233,7 @@ public class ContextSensitiveLocking {
         return new IUnaryFlowFunction() {
           @Override
           public IntSet getTargets(int d1) {
-            
-            Quartet<Boolean, Boolean, Boolean, Boolean> fact = Quartet.make(
-                Boolean.FALSE,Boolean.FALSE,Boolean.TRUE, Boolean.TRUE);
+        	LockState fact = new LockState(false, false, true, true);            
             int factNum = domain.getMappedIndex(fact);
             MutableSparseIntSet result = MutableSparseIntSet.makeEmpty();
             result.add(factNum);
@@ -241,7 +253,13 @@ public class ContextSensitiveLocking {
        * cases where we don't have the code for the callee, e.g. android, java,
        * library code. Acquires and releases are not handled here
        */
-      return IdentityFlowFunction.identity();
+    	MethodReference callee = getCalledMethodReference(src);
+    	if (callee != null) {
+    		if(callee.getName().equals("start")) {
+    			E.log(1, callee.getSignature().toString());
+    		}
+    	}
+    	return IdentityFlowFunction.identity();
     }
 
     private boolean isExceptionalEdge(
@@ -275,7 +293,7 @@ public class ContextSensitiveLocking {
   private class LockingProblem
       implements
       PartiallyBalancedTabulationProblem<BasicBlockInContext<IExplodedBasicBlock>,
-      CGNode, Quartet<Boolean, Boolean, Boolean, Boolean>> {
+      CGNode, LockState> {
     private Collection<PathEdge<BasicBlockInContext<IExplodedBasicBlock>>> initialSeeds = collectInitialSeeds();
     private IPartiallyBalancedFlowFunctions<BasicBlockInContext<IExplodedBasicBlock>> flowFunctions = 
         new LockingFunctions(domain);
@@ -295,8 +313,7 @@ public class ContextSensitiveLocking {
           HashSetFactory.make();
       for (BasicBlockInContext<IExplodedBasicBlock> bb : supergraph) {
         if (isWLAcquireCall(bb)) {
-          Quartet<Boolean, Boolean, Boolean, Boolean> fact = Quartet.make(
-              Boolean.TRUE, Boolean.TRUE, Boolean.FALSE, Boolean.FALSE);
+          LockState fact = new LockState(true, true, false, false);
           int factNum = domain.add(fact);
           final CGNode cgNode = bb.getNode();
           BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(cgNode);
@@ -306,8 +323,7 @@ public class ContextSensitiveLocking {
         }
         if (isWLReleaseCall(bb)) {
           E.log(2, bb.toString() + " Adding release fact");
-          Quartet<Boolean, Boolean, Boolean, Boolean> fact = Quartet.make(
-              Boolean.FALSE,Boolean.FALSE,Boolean.TRUE, Boolean.TRUE);
+          LockState fact = new LockState(false, false, true, true);            
           int factNum = domain.add(fact);
           final CGNode cgNode = bb.getNode();
           BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(cgNode);
@@ -317,8 +333,7 @@ public class ContextSensitiveLocking {
         }
         if ((supergraph.getPredNodeCount(bb) == 0)) {
           E.log(2, bb.toString() + " Adding release fact");
-          Quartet<Boolean, Boolean, Boolean, Boolean> fact = Quartet.make(
-              Boolean.FALSE,Boolean.FALSE,Boolean.FALSE, Boolean.FALSE);
+          LockState fact = new LockState(false, false, false, false);
           int factNum = domain.add(fact);
           final CGNode cgNode = bb.getNode();
           BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(cgNode);
@@ -332,8 +347,7 @@ public class ContextSensitiveLocking {
     }
 
     @Override
-    public TabulationDomain<Quartet<Boolean, Boolean, Boolean, Boolean>,
-      BasicBlockInContext<IExplodedBasicBlock>> getDomain() {
+    public TabulationDomain<LockState, BasicBlockInContext<IExplodedBasicBlock>> getDomain() {
       return domain;
     }
 
@@ -349,19 +363,14 @@ public class ContextSensitiveLocking {
         @Override
         public int merge(IntSet x, int j) {
           IntIterator it = x.intIterator();
-          Quartet<Boolean, Boolean, Boolean, Boolean> n = domain.getMappedObject(j);
+          LockState n = domain.getMappedObject(j);
           StringBuffer sb = new StringBuffer();
           sb.append("Merging: " + n.toString());
           while (it.hasNext()) {
             int i = it.next();            
                         
-            Quartet<Boolean, Boolean, Boolean, Boolean> q = domain.getMappedObject(i);
-            n = Quartet.make(
-                new Boolean(n.fst.booleanValue() || q.fst.booleanValue()), // may
-                new Boolean(n.snd.booleanValue() && q.snd.booleanValue()), // must
-                new Boolean(n.thr.booleanValue() || q.thr.booleanValue()), // may
-                new Boolean(n.frt.booleanValue() && q.frt.booleanValue()) // must
-            );
+            LockState q = domain.getMappedObject(i);
+            n = n.merge(q);
             sb.append( " + " + q.toString());                
           }
           sb.append( " -> " + n.toString());
@@ -394,12 +403,12 @@ public class ContextSensitiveLocking {
   /**
    * perform the tabulation analysis and return the {@link TabulationResult}
    */
-  public TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Quartet<Boolean, Boolean, Boolean, Boolean>> analyze() {
+  public TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, LockState> analyze() {
 
-    PartiallyBalancedTabulationSolver<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Quartet<Boolean, Boolean, Boolean, Boolean>> solver = PartiallyBalancedTabulationSolver
+    PartiallyBalancedTabulationSolver<BasicBlockInContext<IExplodedBasicBlock>, CGNode, LockState> solver = PartiallyBalancedTabulationSolver
         .createPartiallyBalancedTabulationSolver(new LockingProblem(), null);
 
-    TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Quartet<Boolean, Boolean, Boolean, Boolean>> result = null;
+    TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, LockState> result = null;
 
     try {
       result = solver.solve();
@@ -415,7 +424,7 @@ public class ContextSensitiveLocking {
     return supergraph;
   }
 
-  public TabulationDomain<Quartet<Boolean, Boolean, Boolean, Boolean>, BasicBlockInContext<IExplodedBasicBlock>> getDomain() {
+  public TabulationDomain<LockState, BasicBlockInContext<IExplodedBasicBlock>> getDomain() {
     return domain;
   }
 

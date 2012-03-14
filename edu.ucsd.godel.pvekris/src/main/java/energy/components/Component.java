@@ -46,7 +46,7 @@ import energy.analysis.ApplicationCallGraph;
 import energy.analysis.Opts;
 import energy.interproc.ContextInsensitiveLocking;
 import energy.interproc.ContextSensitiveLocking;
-import energy.interproc.EnergyState;
+import energy.interproc.LockState;
 import energy.interproc.SensibleCallGraph;
 import energy.interproc.SensibleExplodedInterproceduralCFG;
 import energy.util.E;
@@ -233,7 +233,7 @@ public abstract class Component extends NodeWithNumber {
         BasicBlockInContext<IExplodedBasicBlock> bb = (BasicBlockInContext<IExplodedBasicBlock>) o;
         Pair<IMethod, Integer> pair = Pair.make(bb.getMethod(), bb.getNumber());
         E.log(2, "LOOKING FOR: " + pair.toString());
-        EnergyState st = stateHash.get(Pair.make(bb.getMethod(), bb.getNumber()));
+        LockState st = stateHash.get(Pair.make(bb.getMethod(), bb.getNumber()));
         if (st == null)
           Assertions.UNREACHABLE();
         else
@@ -241,7 +241,7 @@ public abstract class Component extends NodeWithNumber {
       }
       if (o instanceof IExplodedBasicBlock) {
         IExplodedBasicBlock bb = (IExplodedBasicBlock) o;
-        EnergyState st = stateHash.get(Pair.make(bb.getMethod(), bb.getNumber()));
+        LockState st = stateHash.get(Pair.make(bb.getMethod(), bb.getNumber()));
         return st.getColor();
         		
       }
@@ -306,8 +306,8 @@ public abstract class Component extends NodeWithNumber {
   protected BooleanSolver<BasicBlockInContext<IExplodedBasicBlock>> releaseMustSolver = null;
 
   protected TabulationResult<BasicBlockInContext<IExplodedBasicBlock>,
-    CGNode, Quartet<Boolean, Boolean, Boolean, Boolean>> csSolver;
-  private TabulationDomain<Quartet<Boolean, Boolean, Boolean, Boolean>, 
+    CGNode, LockState> csSolver;
+  private TabulationDomain<LockState, 
     BasicBlockInContext<IExplodedBasicBlock>> csDomain;
 
   public boolean isInteresting() {
@@ -457,7 +457,7 @@ public abstract class Component extends NodeWithNumber {
   
   
   /* Super-ugly way to keep the colors for every method in the graph */
-  private HashMap<Pair<IMethod, Integer>, EnergyState> stateHash;
+  private HashMap<Pair<IMethod, Integer>, LockState> stateHash;
 
   public void cacheStates() {
 	
@@ -470,15 +470,14 @@ public abstract class Component extends NodeWithNumber {
     }
     */
 	  
-    stateHash = new HashMap<Pair<IMethod, Integer>, EnergyState>();
+    stateHash = new HashMap<Pair<IMethod, Integer>, LockState>();
     Iterator<BasicBlockInContext<IExplodedBasicBlock>> iterator = icfg.iterator();
     while (iterator.hasNext()) {
       BasicBlockInContext<IExplodedBasicBlock> bb = iterator.next();
       
       //col = getTargetColor(bb);
       
-      Quartet<Boolean, Boolean, Boolean, Boolean> q;
-      EnergyState st;
+      LockState q;
       
       if (Opts.DO_CS_ANALYSIS) {
       /* Context sensitive analysis */
@@ -489,16 +488,15 @@ public abstract class Component extends NodeWithNumber {
       }
       else {
         /* Context insensitive analysis */        
-        q = Quartet.make(
+        q = new LockState(Quartet.make(
         		acquireMaySolver.getOut(bb).getValue(),
         		releaseMaySolver.getOut(bb).getValue(),
         		releaseMustSolver.getOut(bb).getValue(),
-        		false /* no info */);        
+        		false /* no info */));        
       }
       
-      Pair<IMethod, Integer> pair = Pair.make(bb.getMethod(), bb.getNumber());
-      st = new EnergyState(q);
-      stateHash.put(pair, st);
+      Pair<IMethod, Integer> pair = Pair.make(bb.getMethod(), bb.getNumber());      
+      stateHash.put(pair, q);
     }
   }
 
@@ -506,35 +504,19 @@ public abstract class Component extends NodeWithNumber {
   
   
   
-  private Quartet<Boolean, Boolean, Boolean, Boolean> mergeResult(IntSet x) {
+  private LockState mergeResult(IntSet x) {
     IntIterator it = x.intIterator();
-    Quartet<Boolean, Boolean, Boolean, Boolean> n = 
-        Quartet.make(Boolean.FALSE, Boolean.TRUE, Boolean.FALSE, Boolean.TRUE); 
+    LockState n = new LockState(
+        Quartet.make(Boolean.FALSE, Boolean.TRUE, Boolean.FALSE, Boolean.TRUE)); 
     while (it.hasNext()) {
       int i = it.next();
-      Quartet<Boolean, Boolean, Boolean, Boolean> q = csDomain.getMappedObject(i);
-      n = Quartet.make(
-          new Boolean(n.fst.booleanValue() || q.fst.booleanValue()), // may
-          new Boolean(n.snd.booleanValue() && q.snd.booleanValue()), // must
-          new Boolean(n.thr.booleanValue() || q.thr.booleanValue()), // may
-          new Boolean(n.frt.booleanValue() && q.frt.booleanValue()) // must
-      );
+      LockState q = csDomain.getMappedObject(i);
+      n = n.merge(q);
     }
     return n;
   }
 
 
-  @SuppressWarnings("unused")
-  private boolean mayContainAcquired(Collection<Integer> set) {
-    for (Integer i: set) {
-      Quartet<Boolean, Boolean, Boolean, Boolean> mappedObject = 
-          csDomain.getMappedObject(i.intValue());
-      if (mappedObject.fst.booleanValue()) {
-        return true;
-      }
-    }
-    return false;
-  }
 
   protected void outputSolvedICFG() {
     E.log(2, "#nodes: " + callgraph.getNumberOfNodes());
@@ -568,7 +550,7 @@ public abstract class Component extends NodeWithNumber {
   /** Thread invocation info */
   private HashMap<SSAProgramPoint, Component> threadInvocations = null;	
   
-  private EnergyState getExitState(CGNode cgNode) {
+  private LockState getExitState(CGNode cgNode) {
 	  BasicBlockInContext<IExplodedBasicBlock> exit = icfg.getExit(cgNode);
       Pair<IMethod, Integer> p = Pair.make(
           cgNode.getMethod(), exit.getNumber());
@@ -586,7 +568,7 @@ public abstract class Component extends NodeWithNumber {
       CGNode cgNode = callbacks.get(methName);
       
       if (cgNode != null) {
-    	EnergyState st = getExitState(cgNode);
+    	LockState st = getExitState(cgNode);
         
         List<String> expStatus = elem.snd;
         String status = "BAD";
