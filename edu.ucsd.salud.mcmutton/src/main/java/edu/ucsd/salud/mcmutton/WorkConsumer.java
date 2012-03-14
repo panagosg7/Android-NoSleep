@@ -1,7 +1,7 @@
 package edu.ucsd.salud.mcmutton;
 
-import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.Properties;
@@ -64,6 +64,8 @@ public class WorkConsumer implements Watcher {
                 	System.err.println("retarget err: " + e.toString());
                 } catch (OutOfMemoryError e) {
                 	System.err.println("ran out of memory: " + e.toString());
+                } catch (FileNotFoundException e) {
+                	System.err.println("apk not " + e.toString());
 				} catch (NoSuchElementException e) {
 					break;
 				}
