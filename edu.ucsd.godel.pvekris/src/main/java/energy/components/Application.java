@@ -3,6 +3,8 @@ package energy.components;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 
+import energy.analysis.ApplicationCallGraph;
+
 
 /**
  * From android developers:
@@ -17,8 +19,8 @@ import com.ibm.wala.ipa.callgraph.CGNode;
  */
 public class Application extends Component {
 
-	Application(IClass declaringClass, CGNode root) {
-		super(declaringClass, root);
+	Application(ApplicationCallGraph originalCG, IClass declaringClass, CGNode root) {
+		super(originalCG, declaringClass, root);
 
 	}
 	

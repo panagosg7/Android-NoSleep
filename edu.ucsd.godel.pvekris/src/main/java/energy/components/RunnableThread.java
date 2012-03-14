@@ -8,6 +8,8 @@ import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.util.collections.Pair;
 
+import energy.analysis.ApplicationCallGraph;
+
 /**
  * TODO: This is not really a component
  * Using it just for now  
@@ -18,8 +20,8 @@ public class RunnableThread extends Component{
 
   static String elements[] = { "run" };
   
-  public RunnableThread(IClass declaringClass, CGNode root) {
-    super(declaringClass, root);
+  public RunnableThread(ApplicationCallGraph originalCG, IClass declaringClass, CGNode root) {
+    super(originalCG, declaringClass, root);
     
     callbackNames.addAll(Arrays.asList(elements));          
     callbackExpectedState = new HashSet<Pair<String,List<String>>>();

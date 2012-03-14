@@ -16,7 +16,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
@@ -74,17 +73,14 @@ import com.ibm.wala.util.graph.impl.InvertedGraph;
 import com.ibm.wala.util.graph.traverse.BFSIterator;
 import com.ibm.wala.util.graph.traverse.BoundedBFSIterator;
 import com.ibm.wala.util.intset.IntSet;
-import com.ibm.wala.util.io.CommandLine;
 import com.ibm.wala.util.io.FileProvider;
 import com.ibm.wala.util.io.FileUtil;
 import com.ibm.wala.viz.DotUtil;
 import com.ibm.wala.viz.PDFViewUtil;
 
-import energy.components.Component;
 import energy.intraproc.IntraProcAnalysis;
 import energy.util.E;
 import energy.util.GraphBottomUp;
-import energy.util.SSAProgramPoint;
 import energy.viz.GraphDotUtil;
 
 @SuppressWarnings("deprecation")
@@ -151,29 +147,12 @@ public class ApplicationCallGraph implements CallGraph {
     return result.toString();
   }
 
-  /**
-   * Usage: args =
-   * "-appJar [jar file name] {-exclusionFile [exclusionFileName]}" The
-   * "jar file name" should be something like "c:/temp/testdata/java_cup.jar"
-   * 
-   * @param classHierarchy
-   * @return
-   * 
-   * @throws CancelException
-   * @throws IllegalArgumentException
-   * @throws IOException
-   * @throws WalaException
-   */
-  public ApplicationCallGraph(String[] args, ClassHierarchy classHierarchy)
-      throws IllegalArgumentException, CancelException,
-      WalaException, IOException {
-    Properties p = CommandLine.parse(args);
-    validateCommandLine(p);
-    String appJar = p.getProperty("appJar");
-    String exclusionFile = p.getProperty("exclusionFile", 
-        CallGraphTestUtil.REGRESSION_EXCLUSIONS);
 
-    cha = classHierarchy;
+  public ApplicationCallGraph(ApplicationClassHierarchy ch) 
+		  throws IllegalArgumentException, WalaException, CancelException, IOException {    
+    String appJar = ch.getAppJar();
+    String exclusionFile = ch.getExclusionFileName();
+    cha = ch.getClassHierarchy();
 
     // Get the graph on which we will work
     g = buildPrunedCallGraph(appJar, FileProvider.getFile(exclusionFile));
@@ -181,9 +160,11 @@ public class ApplicationCallGraph implements CallGraph {
     if (Opts.OUTPUT_CG_DOT_FILE) {
       outputCallGraphToDot(g);
     }
+	  
+	  
   }
 
-  public void outputCallGraphToDot(CallGraph g) {
+public void outputCallGraphToDot(CallGraph g) {
     try {
       Properties p = null;
       try {

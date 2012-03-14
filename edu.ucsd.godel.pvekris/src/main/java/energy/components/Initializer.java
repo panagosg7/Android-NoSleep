@@ -3,6 +3,8 @@ package energy.components;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 
+import energy.analysis.ApplicationCallGraph;
+
 /**
  * TODO: This is definitely not a component
  * Using it just for now  
@@ -15,8 +17,8 @@ public class Initializer extends Component{
   
 //  static String elements[] = { "<init>", "<clinit>"};
   
-  public Initializer(IClass declaringClass, CGNode root) {
-    super(declaringClass, root);
+  public Initializer(ApplicationCallGraph originalCG, IClass declaringClass, CGNode root) {
+    super(originalCG, declaringClass, root);
 //    callbackNames.addAll(Arrays.asList(elements));          
 //    callbackExpectedState = new HashSet<Pair<String,List<String>>>();
 //    callbackExpectedState.add(Pair.make(

@@ -17,22 +17,22 @@ public class E {
     if (i<=DEBUG_LEVEL) {
       System.out.println(out);
       if (Opts.LOG_RESULTS) {
-        try {
-          File file = new File(Util.getResultDirectory() + 
-              File.separatorChar + f);
-          if(!file.exists()){            
-            file.createNewFile();
-          }          
-          FileWriter fstream = new FileWriter(file.getAbsoluteFile(),true);
-          BufferedWriter logFile = new BufferedWriter(fstream);
-          logFile.write(out + "\n");
-          logFile.close();
-          
+        try {        	        
+	        File file = new File(Util.getResultDirectory() + 
+	            File.separatorChar + f);
+	        if(!file.exists()){	          
+	          file.createNewFile();
+	        }          
+	        FileWriter fstream = new FileWriter(file.getAbsoluteFile(),true);
+	        BufferedWriter logFile = new BufferedWriter(fstream);
+	        logFile.write(out + "\n");
+	        logFile.close();
+	          
         } catch (Exception e) {
           System.err.println("Error writing to file " + f);
           e.printStackTrace();
         }
-      }      
+      }
     }
   }
   

@@ -3,6 +3,8 @@ package energy.components;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 
+import energy.analysis.ApplicationCallGraph;
+
 
 /**
  * TODO: This is not really a component
@@ -13,8 +15,8 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 
 public class LocationListener extends Component{
 
-  public LocationListener(IClass declaringClass, CGNode root) {
-    super(declaringClass, root);
+  public LocationListener(ApplicationCallGraph originalCG, IClass declaringClass, CGNode root) {
+    super(originalCG, declaringClass, root);
 
   }
 

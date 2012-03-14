@@ -41,7 +41,8 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
       
     /* Do not add these edges at the moment - just use the information taken
      * from the analysis of the component (w\o context sensitivity). */
-    //addThreadEdges(threadInvocations);
+    
+    this.threadInvocations = threadInvocations; 
     
     addReturnToEntryEdge(cg,packedEdges);  
     
@@ -49,7 +50,7 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
   } 
   
   private Map<String,CGNode> callbacks;  
-  
+  private HashMap<SSAProgramPoint, Component> threadInvocations;  
   
   /**
    * The adjacent nodes to the packed edges are the interesting callbacks.
