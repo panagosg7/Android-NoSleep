@@ -51,6 +51,7 @@ import edu.ucsd.salud.mcmutton.apk.ConfigurationException;
 import edu.ucsd.salud.mcmutton.apk.Interesting;
 import edu.ucsd.salud.mcmutton.apk.Util;
 import edu.ucsd.salud.mcmutton.apk.Wala;
+import edu.ucsd.salud.mcmutton.apk.Wala.UsageType;
 import edu.ucsd.salud.mcmutton.retarget.D2jConverter;
 import edu.ucsd.salud.mcmutton.retarget.DedConverter;
 import edu.ucsd.salud.mcmutton.retarget.SootD2jOptimize;
@@ -343,8 +344,10 @@ public class ApkInstance {
 		return interestingCallSites().keySet();
 	}
 	
-	public Wala.UsageType /* Set<String> */ panosAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException {
-		return this.getWala().panosAnalyze();
+	public UsageType panosAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException {		
+		this.getWala().panosAnalyze();			//run my stuff
+		//return this.getWala().analyze();		//and John's ???
+		return UsageType.UNKNOWN;
 	}
 	
 	public Wala.UsageType analyze() throws IOException, RetargetException {

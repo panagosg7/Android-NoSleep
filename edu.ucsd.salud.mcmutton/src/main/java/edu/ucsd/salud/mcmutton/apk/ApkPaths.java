@@ -141,8 +141,8 @@ public class ApkPaths {
 	public File getGoogleMapsJar(int androidVersion) {
 		int useVersion = androidVersion;
 		if (androidVersion < 0) {
-			useVersion = 10;
+			useVersion = 11;
 		}
-		return new File(androidPath + "/add-ons/addon_google_apis_google_inc_" + useVersion + "/libs/maps.jar");		
+		return new File(androidPath + "/add-ons/addon-google_apis_google_inc_" + useVersion + "/libs/maps.jar");		
 	}
 }

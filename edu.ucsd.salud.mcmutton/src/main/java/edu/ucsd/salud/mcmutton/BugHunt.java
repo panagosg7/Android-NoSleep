@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
@@ -25,7 +26,6 @@ import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.PosixParser;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
 
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.CancelException;
@@ -147,36 +147,48 @@ public class BugHunt {
 	public static void runTestPatternAnalysis(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		Set<String> theSet = new HashSet<String>();
 		
+		theSet.add("AndTweet");
+		//theSet.add("aFlashlight");	//conversion error
+		theSet.add("FartDroid");
+		theSet.add("AndroBOINC");
+		//theSet.add("");
+		//theSet.add("");
+		//theSet.add("");
+		//theSet.add("FBReader");		//conversion error
+		//theSet.add("Phonebook_2.0");
 		//theSet.add("ICQ");
 		//theSet.add("DISH");
-		theSet.add("JuiceDefender");
+		//theSet.add("JuiceDefender");
 		//theSet.add("Twidroyd");
 		//theSet.add("WebSMS");		
 		//theSet.add("3D_Level");
 		
 		runPatternAnalysis(collection, theSet);
 	}
+
+	
+	private final static Logger LOGGER = Logger.getLogger(ApkInstance.class.getName());
 	
 	public static void runPatternAnalysis(ApkCollection collection, Set<String> theSet) 
 			throws ApkException, IOException, RetargetException, WalaException, CancelException {
-		acqrelDatabaseFile = new File("/home/pvekris/dev/WALA/acqrel_status.json");
-
+		acqrelDatabaseFile = new File("/home/pvekris/dev/apk_scratch/acqrel_status.json");
+		
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
-		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
+		
+		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));		
 		
 		Map<Wala.UsageType, Integer> histogram = new HashMap<Wala.UsageType, Integer>();
 		
 		for (Object key: theSet) {
+						
 			String app_name = collection.cleanApkName((String)key);
 			
+			String[] catsArray = acqrel_status.getString((String)key).split("[,]");			
 			
-			//Need to figure this out
-			/*
-			String[] catsArray = acqrel_status.getString((String)key).split("[,]");
 			ArrayList<String> cats = new ArrayList<String>(catsArray.length);
 			
-			for (String cat: catsArray) cats.add(cat);
-			*/
+			for (String cat: catsArray) cats.add(cat);			
+			
 			ApkInstance apk = collection.getApplication(app_name).getPreferred();
 			
 			Wala.UsageType usageType = Wala.UsageType.UNKNOWN;
@@ -190,25 +202,14 @@ public class BugHunt {
 			}
 			
 			if (apk.successfullyOptimized()) {
-				try {
-					//usageType = apk.analyze();
+				try {				
 					usageType = apk.panosAnalyze();
 				} catch(Exception e) {
 					System.err.println(e.toString());
 					usageType = Wala.UsageType.FAILURE;
-				}
-				
-				if (apk.successfullyOptimized())
-				{
-					try {
-						panosUsageType = usageType; // apk.panosAnalyze();
-					} catch (Error e) {
-						System.err.println("exploded: " + e.toString());
-					} catch (Exception e) {
-						System.err.println("exploded: " + e.toString());
-					}
-				}
+				}							
 			} else {
+				LOGGER.warning("Failed to optimize: " + key.toString());
 				usageType = Wala.UsageType.CONVERSION_FAILURE;
 				panosUsageType = usageType;
 			}
@@ -245,7 +246,7 @@ public class BugHunt {
 			}
 		}
 		
-		System.out.println();
+		
 		
 		for (Map.Entry<Wala.BugLikely, Integer> e: likelihood.entrySet()) {
 			System.out.println(e.getKey() + " -- " + e.getValue() + " (" + e.getValue()/(float)total + ")");

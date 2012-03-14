@@ -8,7 +8,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Predicate;
@@ -16,12 +15,10 @@ import org.apache.commons.collections.Predicate;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
-import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.collections.CollectionFilter;
 import com.ibm.wala.util.collections.Filter;
-import com.ibm.wala.util.collections.IndiscriminateFilter;
 import com.ibm.wala.util.graph.Acyclic;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphReachability;
@@ -29,7 +26,6 @@ import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.graph.traverse.BFSIterator;
 import com.ibm.wala.util.graph.traverse.DFSPathFinder;
-import com.ibm.wala.util.intset.OrdinalSet;
 
 import energy.analysis.ApplicationCallGraph;
 import energy.analysis.Opts;
@@ -38,7 +34,6 @@ import energy.util.E;
 import energy.util.GraphBottomUp;
 import energy.util.LockingStats;
 import energy.util.SSAProgramPoint;
-import energy.util.Util;
 
 @SuppressWarnings("deprecation")
 public class ComponentManager {
@@ -107,7 +102,7 @@ public class ComponentManager {
       if (!originalCG.isTargetMethod(root)) {
                
         /* Get known components, e.g. Activity */
-        Component component = resolveApplicationComponent(root);        
+        Component component = resolveComponent(root);        
         IClass declaringClass = root.getMethod().getDeclaringClass();        
         
         if (component != null) {
@@ -207,7 +202,7 @@ public class ComponentManager {
    * @return
    * @throws IOException
    */
-  private static Component resolveApplicationComponent(CGNode root) {
+  private static Component resolveComponent(CGNode root) {
 
     IClass klass = root.getMethod().getDeclaringClass();
     TypeReference reference = klass.getReference();
@@ -222,40 +217,39 @@ public class ComponentManager {
       for (IClass anc : classAncestors) {
         String ancName = anc.getName().toString();
         if (ancName.equals("Landroid/app/Activity")) {
-          comp = new Activity(klass, root);
+          comp = new Activity(originalCG, klass, root);
         }
         if (ancName.equals("Landroid/app/Service")) {
-          comp = new Service(klass, root);
+          comp = new Service(originalCG, klass, root);
         }
         if (ancName.equals("Landroid/content/ContentProvider")) {
-          comp = new ContentProvider(klass, root);
+          comp = new ContentProvider(originalCG, klass, root);
         }
         if (ancName.equals("Landroid/content/BroadcastReceiver")) {
-          comp = new BroadcastReceiver(klass, root);
+          comp = new BroadcastReceiver(originalCG, klass, root);
         }
         if (ancName.equals("Landroid/os/AsyncTask")) {
-          comp = new AsyncTask(klass, root);
+          comp = new AsyncTask(originalCG, klass, root);
         }
         if (ancName.equals("Landroid/widget/BaseAdapter")) {
-          comp = new BaseAdapter(klass, root);
+          comp = new BaseAdapter(originalCG, klass, root);
         }
         if (ancName.equals("Landroid/view/View")) {
-          comp = new View(klass, root);
+          comp = new View(originalCG, klass, root);
         }
         if (ancName.equals("Landroid/app/Application")) {
-            comp = new Application(klass, root);
+            comp = new Application(originalCG, klass, root);
         }
         if (ancName.equals("Landroid/os/Handler")) {
-            comp = new Handler(klass, root);
+            comp = new Handler(originalCG, klass, root);
         }
+        if (comp != null) break;
       }
 
-      /*
-       * Important: check if this is a real component before going into the
-       * rest.
-       */
+      /* Important: check if this is a real component before going into the
+       * rest. */
       if (comp != null) {
-        E.log(DEBUG_LEVEL, comp.toString() + " : " + root.getMethod().getSignature().toString());
+        E.log(2, "PASS: " + root.getMethod().getSignature().toString() + " -> " + comp.toString());
         return comp;
       }
 
@@ -263,14 +257,13 @@ public class ComponentManager {
        * Has to be <init> or somethind...
        * */
       /*if (methName.equals("<init>") || methName.equals("<clinit>")) {
-        comp = new Initializer(klass, root);
-        E.log(DEBUG_LEVEL, comp.toString() + " : " + root.getMethod().getSignature().toString());
+        comp = new Initializer(klass, root);       
       }*/
       
       return comp;
     } else {
       /* Existing component: just update the callback */
-      E.log(DEBUG_LEVEL, comp.toString() + " : " + root.getMethod().getSignature().toString());
+      E.log(2, "OLD:  " + root.getMethod().getSignature().toString() + " -> " + comp.toString() );
       comp.registerCallback(methName, root);
       // update the callgraph node set
       return comp;
@@ -312,33 +305,41 @@ public class ComponentManager {
       for (IClass iI : allImplementedInterfaces) {
         String implName = iI.getName().toString();
         if (implName.equals("Ljava/lang/Runnable")) {
-          return new RunnableThread(klass, root);
+          comp = new RunnableThread(originalCG, klass, root);
         }
         if (implName.equals("Landroid/widget/AdapterView$OnItemClickListener")) {
-          return new AdapterViewOnItemClickListener(klass, root);
+          comp = new AdapterViewOnItemClickListener(originalCG, klass, root);
         }
         if (implName.equals("Landroid/view/View$OnClickListener")) {
-          return new ViewOnClickListener(klass, root);
+        	comp = new ViewOnClickListener(originalCG, klass, root);
         }
         if (implName.equals("Landroid/content/SharedPreferences$OnSharedPreferenceChangeListener")
             || implName.equals("Landroid/preference/Preference$OnPreferenceChangeListener")) {
-          return new OnSharedPreferenceChangeListener(klass, root);
+        	comp = new OnSharedPreferenceChangeListener(originalCG, klass, root);
         }
         if (implName.equals("Landroid/location/LocationListener")) {
-          return new LocationListener(klass, root);
+        	comp = new LocationListener(originalCG, klass, root);
         }
         if (implName.startsWith("Landroid/widget/CompoundButton")) {
-          return new CompoundButton(klass, root);
+        	comp = new CompoundButton(originalCG, klass, root);
         }
         if (implName.startsWith("Landroid/hardware/SensorEventListener")) {
-          return new SensorEventListener(klass, root);
-        }        
+        	comp = new SensorEventListener(originalCG, klass, root);
+        }
+        if (comp != null) break;
       }
-      return null;
+      if (comp != null) {
+    	  E.log(2, "PASS: " + root.getMethod().getSignature().toString() + " -> " + comp.toString() );
+      }
+      else {
+    	  E.log(1, "FAIL: " + root.getMethod().getSignature().toString());
+      }      
+      return comp;
     } else {
       /**
        * Existing component: just update the callback
        */
+      E.log(2, "OLD:  " + root.getMethod().getSignature().toString() + " -> " + comp.toString() );
       comp.registerCallback(methName, root);
       return comp;
     }
@@ -380,14 +381,15 @@ public class ComponentManager {
     /* Gather locking statistics */
     LockingStats ls = new LockingStats();
     
-    /* Build the constraints graph */
+    /* Build the constraints graph 
+     * (threads should be analyzed before their parents)*/
     Collection<Component> components = componentMap.values();    
     Graph<Component> constraintGraph = constraintGraph(components);
     BFSIterator<Component> bottomUpIterator = GraphBottomUp.bottomUpIterator(constraintGraph);
     
     /* And analyze the components based on this graph in bottom up order */
     while (bottomUpIterator.hasNext()) {
-    	Component component = bottomUpIterator.next();      
+    	Component component = bottomUpIterator.next();
     	
         /* assert that dependencies are met */
     	Collection<Component> compDep = 
@@ -399,13 +401,11 @@ public class ComponentManager {
 				return c.isSolved;
 			}
 		  };
-		assert com.ibm.wala.util.collections.Util.forAll(compDep, p);
-    	
-      
+	  assert com.ibm.wala.util.collections.Util.forAll(compDep, p);
       
       if (Opts.OUTPUT_COMPONENT_CALLGRAPH) {
         component.outputNormalCallGraph();
-      }      
+      }
 
       if (Opts.ONLY_ANALYSE_LOCK_REACHING_CALLBACKS) { 
           /* Use reachability results to see if we can actually get to a 
@@ -422,9 +422,9 @@ public class ComponentManager {
           component.setInteresting(isInteresting);   	  
     	  if (!isInteresting) {
     		  continue;
-    	  }
-    	  E.log(1, "Interesting component: " + component.toString());
+    	  }    	 
       }       
+      E.log(1, component.toString());
       
       if(Opts.OUTPUT_CFG_DOT) {
     	  component.outputCFGs();
@@ -437,7 +437,7 @@ public class ComponentManager {
     	  component.solveCICFG();      
       }
       
-      component.cacheColors();
+      component.cacheStates();
       
       if(Opts.OUTPUT_COLOR_CFG_DOT) {
         component.outputColoredCFGs();
@@ -459,37 +459,6 @@ public class ComponentManager {
     
   }
   
-  
-  private static CallGraph createComponentCG(Component component) {
-    HashSet<CGNode> rootSet = new HashSet<CGNode>();
-    E.log(DEBUG_LEVEL, "Creating callgraph: " + component.getKlass().getName().toString());
-    HashSet<CGNode> set = new HashSet<CGNode>();
-    for (CGNode node : component.getCallbacks()) {
-      set.addAll(getDescendants(originalCG, node));
-      rootSet.add(node);
-    }
-    PartialCallGraph pcg = PartialCallGraph.make(originalCG, rootSet, set);
-    E.log(2, "Partial CG #nodes: " + pcg.getNumberOfNodes());
-    return pcg;
-  }
-
-  /**
-   * Get all the callgraph nodes that are reachable from @param node in the @param
-   * cg
-   * 
-   * @return the set of these nodes
-   */
-  private static Set<CGNode> getDescendants(CallGraph cg, CGNode node) {
-    Filter<CGNode> filter = IndiscriminateFilter.<CGNode> singleton();
-    GraphReachability<CGNode> graphReachability = new GraphReachability<CGNode>(cg, filter);
-    try {
-      graphReachability.solve(null);
-    } catch (CancelException e) {
-      e.printStackTrace();
-    }
-    OrdinalSet<CGNode> reachableSet = graphReachability.getReachableSet(node);
-    return Util.iteratorToSet(reachableSet.iterator());
-  }
   
 
   @SuppressWarnings("unused")
@@ -537,8 +506,8 @@ public class ComponentManager {
 			CallGraph cg = c.getCallgraph();
 			if (cg == null) {
 			/* Create and dump the component's callgraph */
-			  cg = createComponentCG(c);
-			  c.setCallgraph(cg);
+			  c.createComponentCG();
+			  cg = c.getCallgraph();
 			}			
 			if (cg.containsNode(ti.getKey().getCGNode())) {
 			  compInv.put(ti.getKey(), ti.getValue());

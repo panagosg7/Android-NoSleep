@@ -77,7 +77,7 @@ import edu.ucsd.salud.mcmutton.ApkException;
 import edu.ucsd.salud.mcmutton.ApkInstance;
 import edu.ucsd.salud.mcmutton.RetargetException;
 import energy.analysis.ApplicationCallGraph;
-import energy.analysis.ClassHierarchyAnalysis;
+import energy.analysis.ApplicationClassHierarchy;
 import energy.analysis.Opts;
 import energy.components.ComponentManager;
 
@@ -86,7 +86,7 @@ public class Wala {
 	private File mAndroidJarPath;
 	private File mCachePath;
 	
-	private final static Logger LOGGER = Logger.getLogger(ApkInstance.class.getName());
+	private final Logger LOGGER = Logger.getLogger(ApkInstance.class.getName());
 	
 	public Wala(File path, File androidJarPath, File cachePath) {
 		mPath = path;
@@ -598,38 +598,28 @@ public class Wala {
 		}
 	}
 
-	public UsageType panosAnalyze() throws IOException, WalaException, CancelException, ApkException {
+	public void panosAnalyze() throws IOException, WalaException, CancelException, ApkException {
 		
-		String args[] = {"-appJar", mPath.getAbsolutePath(),
-						 "-exclusionFile", "/home/pvekris/dev/workspace/WALA_shared/" +
-						 		"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt"
-						 };
+		String appJar = mPath.getAbsolutePath();
+		String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/" +
+				"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";						
+		
 		energy.util.Util.setResultDirectory(mPath.getAbsolutePath());
-		energy.util.Util.printLabel(mPath.toString());
+		energy.util.Util.printLabel(mPath.getAbsolutePath());		
 		
-		File panosOutput = new File(mCachePath + "/panos");
-		panosOutput.mkdirs();
-		Opts.OUTPUT_FOLDER = panosOutput.getAbsolutePath();
-		
-		ClassHierarchy ch = new ClassHierarchyAnalysis(args).getClassHierarchy();
-		ApplicationCallGraph cg = new ApplicationCallGraph(args, ch);
+		ApplicationClassHierarchy	ch = new ApplicationClassHierarchy(appJar, exclusionFile);		
+		ApplicationCallGraph 		cg = new ApplicationCallGraph(ch);
 		
 		/*	
 		for (String arg: args) {
 			System.out.println(arg);
 		}
-		
 		System.out.println(CallGraphStats.getCGStats(cg).toString());
-		
 		Map<MethodReference, Set<MethodReference>> interestingSites = this.interestingCallSites(Interesting.sInterestingMethods, ch);
 		Map<MethodReference, Map<MethodReference, Double>> entryReachability = this.callGraphReachability(Interesting.sInterestingMethods, 
-																							  ch, cg);
-		
 		InterestingReachabilityResult res = new InterestingReachabilityResult(interestingSites, entryReachability);
-
 		UsageType result = analyzeReachability(new InterestingReachabilityStringResult(res));
 		*/
-		
 		
 		if (Opts.RESOLVE_ANDROID_COMPONENTS) {
 			
@@ -644,10 +634,6 @@ public class Wala {
 				e.printStackTrace();	
 			}
 		}
-		//return result;
-		return UsageType.UNKNOWN;
-		
-		
 		
 	}
 }

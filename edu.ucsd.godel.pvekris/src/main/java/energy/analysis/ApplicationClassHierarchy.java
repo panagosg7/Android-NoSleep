@@ -6,7 +6,6 @@ import java.util.Collection;
 import java.util.Properties;
 
 import com.ibm.wala.classLoader.IClass;
-import com.ibm.wala.core.tests.callGraph.CallGraphTestUtil;
 import com.ibm.wala.ipa.callgraph.AnalysisScope;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
@@ -19,53 +18,44 @@ import com.ibm.wala.util.config.AnalysisScopeReader;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphSlicer;
 import com.ibm.wala.util.graph.impl.SlowSparseNumberedGraph;
-import com.ibm.wala.util.io.CommandLine;
 import com.ibm.wala.util.io.FileProvider;
 import com.ibm.wala.viz.DotUtil;
 
 import energy.util.Util;
 
-public class ClassHierarchyAnalysis {
+public class ApplicationClassHierarchy {
 
-  private static ClassHierarchy cha;   
+  private static ClassHierarchy cha;
+  private String appJar;
+  private String exclusionFileName;
+	
+	
+  public ApplicationClassHierarchy(String appJar, String exclusionFileName) throws IOException, ClassHierarchyException {
+	  this.appJar = appJar;
+	  this.exclusionFileName = exclusionFileName;
+	  File exclusionFile        = FileProvider.getFile(exclusionFileName);
+	  AnalysisScope scope       = AnalysisScopeReader.makeJavaBinaryAnalysisScope(appJar, exclusionFile);    
+	  cha = ClassHierarchy.make(scope);
+	}
+
   
-
-  /**
-   * Create an application specific class hierarchy, and output it
-   * @param args
-   * @throws IOException
-   * @throws WalaException
-   */
-  public ClassHierarchyAnalysis(String[] args) throws IOException, WalaException {
-    Properties p              = CommandLine.parse(args);    
-    validateCommandLine(p);
-    String appJar             = p.getProperty("appJar");
-    String exclusionFileName  = p.getProperty("exclusionFile", CallGraphTestUtil.REGRESSION_EXCLUSIONS);
-    File exclusionFile        = FileProvider.getFile(exclusionFileName);
-    AnalysisScope scope       = AnalysisScopeReader.makeJavaBinaryAnalysisScope(appJar, exclusionFile);    
-    setClassHierarchy(ClassHierarchy.make(scope));    
-    Graph<IClass> g     = typeHierarchy2Graph(getClassHierarchy());
-    
-    /*
-     * Need to have this or the graph will be enormous
-     */
+  private void outputCHtoDot() throws WalaException {
+	Graph<IClass> g = typeHierarchy2Graph();
     g = pruneForAppLoader(g);
-    
     String dotFile = Util.getResultDirectory() + File.separatorChar + "ch.dot";    
-    DotUtil.writeDotFile(g, null, "Class Hierarchy", dotFile);    
-          
+    DotUtil.writeDotFile(g, null, "Class Hierarchy", dotFile);	    
   }
 
-  
-  /**
+
+/**
    * Return a view of an {@link IClassHierarchy} as a {@link Graph}, with edges from classes to immediate subtypes
    */
-  public static Graph<IClass> typeHierarchy2Graph(IClassHierarchy cha) throws WalaException {
+  public Graph<IClass> typeHierarchy2Graph() throws WalaException {
     Graph<IClass> result = SlowSparseNumberedGraph.make();
     for (IClass c : cha) {
       result.addNode(c);
     }
-    for (IClass c : cha) {
+    for (IClass c : cha) {          
       for (IClass x : cha.getImmediateSubclasses(c)) {
         result.addEdge(c, x);
       }
@@ -101,13 +91,17 @@ public class ClassHierarchyAnalysis {
   }
 
 
-  public ClassHierarchy getClassHierarchy() {
-    return cha;
-  }
+public String getAppJar() {
+	return appJar;
+}
 
+public String getExclusionFileName() {
+	return exclusionFileName;
+}
 
-  public void setClassHierarchy(ClassHierarchy cha) {
-    ClassHierarchyAnalysis.cha = cha;
-  }
+public ClassHierarchy getClassHierarchy() {
+	return cha;
+}
+
   
 }

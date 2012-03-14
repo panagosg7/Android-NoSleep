@@ -235,7 +235,7 @@ public class ContextSensitiveLocking {
     @Override
     public IUnaryFlowFunction getCallNoneToReturnFlowFunction(
         BasicBlockInContext<IExplodedBasicBlock> src,
-        BasicBlockInContext<IExplodedBasicBlock> dest) {      
+        BasicBlockInContext<IExplodedBasicBlock> dest) {
       /**
        * if we're missing callees, just keep what information we have. These are
        * cases where we don't have the code for the callee, e.g. android, java,

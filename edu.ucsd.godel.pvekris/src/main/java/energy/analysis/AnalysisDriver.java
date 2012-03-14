@@ -1,6 +1,5 @@
 package energy.analysis;
 
-import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 
@@ -21,21 +20,13 @@ public class AnalysisDriver {
    */
   public static void main(String[] args) throws WalaException, IllegalArgumentException, CancelException {
     try {
+//XXX: This will obviously fail...
+      String appJar = null;
+      String exclusionFile = null;
+      ApplicationClassHierarchy	ch = new ApplicationClassHierarchy(appJar, exclusionFile);		
+	  ApplicationCallGraph 		cg = new ApplicationCallGraph(ch);
 
-      /*
-       * Get the class hierarchy (include android)
-       */
-      ClassHierarchy ch = new ClassHierarchyAnalysis(args).getClassHierarchy();
-
-      /*
-       * Get the call graph for this appJar
-       */
-      ApplicationCallGraph cg = new ApplicationCallGraph(args, ch);
-
-      /*
-       * Resolve the component present in this callgraph
-       */
-      if (Opts.RESOLVE_ANDROID_COMPONENTS) {
+	  if (Opts.RESOLVE_ANDROID_COMPONENTS) {
         ComponentManager componentManager = new ComponentManager(cg);
         componentManager.prepareReachability();
         componentManager.resolveComponents();

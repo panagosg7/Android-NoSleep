@@ -25,7 +25,7 @@ public class Util {
     return hashSet;
   }
   
-  public static Collection<Integer> intIteratorToSet(IntIterator itr) {
+  public Collection<Integer> intIteratorToSet(IntIterator itr) {
     HashSet<Integer> hashSet = new HashSet<Integer>();
     while (itr.hasNext()) {
       hashSet.add(itr.next());
@@ -52,21 +52,17 @@ public class Util {
     File file = new File(appJar);
     if (!Pattern.matches(".+\\.jar", appJar)) {
       throw new IllegalArgumentException("Input file must be a jar file.");
-    };
-    
-    String name = file.getName();
-    resultDirectory = 
-        Opts.OUTPUT_FOLDER + File.separatorChar +
-        name.substring(0, name.lastIndexOf('.'));
-    
-    
+    };    
+    String name = file.toString();    
+    resultDirectory = Opts.OUTPUT_FOLDER + File.separatorChar + name.split(File.separatorChar+"")[5];
+    //XXX: This is very specific - won't work forever
     
     File newDir = new File(resultDirectory);
     if (!removeDirectory(newDir)) {
       System.err.println("Wrong result directory.");
     };
     newDir.mkdir();    
-    System.out.println("Result directory: " + newDir.toString());
+  
   }
   
   public static boolean removeDirectory(File directory) {
@@ -98,14 +94,9 @@ public class Util {
 
     E.plog(1, "#####################################" +
     		"########################################################\n");       
-    /*int lastIndexOf = arg.lastIndexOf("/");
-    if (lastIndexOf < 0)
-      System.out.println(arg);
-    else {
-      System.out.println("\t" + arg.subSequence(lastIndexOf + 1, arg.length()));
-    } 
-    */   
-    System.out.println("\t" + arg);
+    
+    System.out.println("\t\t" + arg.split(File.separatorChar+"")[5]);
+    System.out.println("\t\t" + arg.split(File.separatorChar+"")[6]);
     System.out.println("\n#########################################" +
     		"####################################################");
     

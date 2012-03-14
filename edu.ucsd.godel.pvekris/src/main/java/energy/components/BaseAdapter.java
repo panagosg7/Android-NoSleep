@@ -3,10 +3,12 @@ package energy.components;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 
+import energy.analysis.ApplicationCallGraph;
+
 public class BaseAdapter extends Component{
 
-  public BaseAdapter(IClass declaringClass, CGNode root) {
-    super(declaringClass, root);
+  public BaseAdapter(ApplicationCallGraph originalCG, IClass declaringClass, CGNode root) {
+    super(originalCG, declaringClass, root);
 
   }
 

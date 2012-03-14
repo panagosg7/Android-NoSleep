@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Set;
 
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.classLoader.IClass;
@@ -18,6 +19,7 @@ import com.ibm.wala.dataflow.graph.BooleanSolver;
 import com.ibm.wala.examples.properties.WalaExamplesProperties;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
+import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.properties.WalaProperties;
 import com.ibm.wala.ssa.ISSABasicBlock;
@@ -25,23 +27,31 @@ import com.ibm.wala.ssa.SSACFG;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
+import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
+import com.ibm.wala.util.collections.Filter;
+import com.ibm.wala.util.collections.IndiscriminateFilter;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.collections.Quartet;
 import com.ibm.wala.util.debug.Assertions;
+import com.ibm.wala.util.graph.GraphReachability;
 import com.ibm.wala.util.graph.impl.NodeWithNumber;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
+import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.viz.NodeDecorator;
 
 import energy.analysis.AnalysisDriver;
+import energy.analysis.ApplicationCallGraph;
 import energy.analysis.Opts;
 import energy.interproc.ContextInsensitiveLocking;
 import energy.interproc.ContextSensitiveLocking;
+import energy.interproc.EnergyState;
 import energy.interproc.SensibleCallGraph;
 import energy.interproc.SensibleExplodedInterproceduralCFG;
 import energy.util.E;
 import energy.util.SSAProgramPoint;
+import energy.util.Util;
 import energy.viz.ColorNodeDecorator;
 import energy.viz.GraphDotUtil;
 
@@ -52,6 +62,7 @@ public abstract class Component extends NodeWithNumber {
    */
   private HashMap<String, CGNode> callbacks;
   protected CallGraph callgraph;
+  protected ApplicationCallGraph originalCallgraph;
 
   /**
    * Contains a call graph regarding the callbacks for this component that makes
@@ -72,8 +83,9 @@ public abstract class Component extends NodeWithNumber {
   }
 
   
-  Component(IClass declaringClass, CGNode root) {
+  Component(ApplicationCallGraph cg, IClass declaringClass, CGNode root) {
     setKlass(declaringClass);
+    originalCallgraph = cg;
     callbacks = new HashMap<String, CGNode>();
     registerCallback(root.getMethod().getName().toString(), root);
 
@@ -82,6 +94,41 @@ public abstract class Component extends NodeWithNumber {
     callbackExpectedState = new HashSet<Pair<String,List<String>>>();
   }
 
+  void createComponentCG() {
+    HashSet<CGNode> rootSet = new HashSet<CGNode>();
+    E.log(2, "Creating callgraph: " + klass.getName().toString());
+    HashSet<CGNode> set = new HashSet<CGNode>();
+    for (CGNode node : getCallbacks()) {
+      set.addAll(getDescendants(originalCallgraph, node));
+      rootSet.add(node);
+    }
+    callgraph = PartialCallGraph.make(originalCallgraph, rootSet, set);
+    E.log(2, "Partial CG #nodes: " + callgraph.getNumberOfNodes());
+    
+  }
+
+  /**
+   * Get all the callgraph nodes that are reachable from @param node in the @param
+   * cg
+   * 
+   * @return the set of these nodes
+   */
+  private static Set<CGNode> getDescendants(CallGraph cg, CGNode node) {
+    Filter<CGNode> filter = IndiscriminateFilter.<CGNode> singleton();
+    GraphReachability<CGNode> graphReachability = new GraphReachability<CGNode>(cg, filter);
+    try {
+      graphReachability.solve(null);
+    } catch (CancelException e) {
+      e.printStackTrace();
+    }
+    OrdinalSet<CGNode> reachableSet = graphReachability.getReachableSet(node);
+    return Util.iteratorToSet(reachableSet.iterator());
+  }
+  
+
+  
+  
+  
   public String toString() {
     StringBuffer b = new StringBuffer();
     b.append(this.getClass().getName() + ": ");
@@ -186,15 +233,17 @@ public abstract class Component extends NodeWithNumber {
         BasicBlockInContext<IExplodedBasicBlock> bb = (BasicBlockInContext<IExplodedBasicBlock>) o;
         Pair<IMethod, Integer> pair = Pair.make(bb.getMethod(), bb.getNumber());
         E.log(2, "LOOKING FOR: " + pair.toString());
-        String col = colorHash.get(Pair.make(bb.getMethod(), bb.getNumber()));
-        if (col == null)
+        EnergyState st = stateHash.get(Pair.make(bb.getMethod(), bb.getNumber()));
+        if (st == null)
           Assertions.UNREACHABLE();
         else
-          return col;
+          return st.getColor();
       }
       if (o instanceof IExplodedBasicBlock) {
         IExplodedBasicBlock bb = (IExplodedBasicBlock) o;
-        return colorHash.get(Pair.make(bb.getMethod(), bb.getNumber()));
+        EnergyState st = stateHash.get(Pair.make(bb.getMethod(), bb.getNumber()));
+        return st.getColor();
+        		
       }
       return "black";
     }
@@ -216,6 +265,10 @@ public abstract class Component extends NodeWithNumber {
   };
 
   public void outputNormalCallGraph() {
+	if (callgraph == null) {
+	  /* Create and dump the component's callgraph */
+	  createComponentCG();		
+	}
     outputCallGraph(callgraph, "cg");
   }
 
@@ -308,7 +361,6 @@ public abstract class Component extends NodeWithNumber {
 	  icfg = createSensibleCG();
 	}
     ContextSensitiveLocking lockingProblem = new ContextSensitiveLocking(icfg);
-    E.log(1, "Analyzing: " + this.toString() + " ...");
     csSolver = lockingProblem.analyze();    
     csDomain = lockingProblem.getDomain();
     isSolved = true;
@@ -405,98 +457,48 @@ public abstract class Component extends NodeWithNumber {
   
   
   /* Super-ugly way to keep the colors for every method in the graph */
-  private HashMap<Pair<IMethod, Integer>, String> colorHash;
+  private HashMap<Pair<IMethod, Integer>, EnergyState> stateHash;
 
-  public void cacheColors() {
+  public void cacheStates() {
+	
+	/*  
     for (Iterator<Quartet<Boolean, Boolean, Boolean, Boolean>> it = 
         csDomain.iterator(); it.hasNext(); ) {
       Quartet<Boolean, Boolean, Boolean, Boolean> q = it.next();
       int i = csDomain.getMappedIndex(q);
       E.log(2, i + ": " + q.toString());
     }
-    
-    colorHash = new HashMap<Pair<IMethod, Integer>, String>();
+    */
+	  
+    stateHash = new HashMap<Pair<IMethod, Integer>, EnergyState>();
     Iterator<BasicBlockInContext<IExplodedBasicBlock>> iterator = icfg.iterator();
     while (iterator.hasNext()) {
       BasicBlockInContext<IExplodedBasicBlock> bb = iterator.next();
-      String col = null;
-      col = getTargetColor(bb);
+      
+      //col = getTargetColor(bb);
+      
+      Quartet<Boolean, Boolean, Boolean, Boolean> q;
+      EnergyState st;
+      
       if (Opts.DO_CS_ANALYSIS) {
-        /* Context sensitive analysis */
-        IntSet result = csSolver.getResult(bb);        
-        if (col == null) {
-          if (result.size() == 0) {
-            /* This node was just initialized */
-            col = "lightyellow";
-          } 
-          else {
-            Quartet<Boolean, Boolean, Boolean, Boolean> q = 
-                mergeResult(result);        
-            /* Single color here */
-            boolean maybeAcquired = q.fst;
-            boolean mustbeAcquired = q.snd;
-            boolean maybeReleased = q.thr;
-            boolean mustbeReleased = q.frt;
-            E.log(2, "RESULT: " + bb.toString()+ " " + q);
-            if (mustbeReleased) {
-              col = "green";
-            } else if (maybeReleased) {
-              col = "lightgreen";
-            } else if (mustbeAcquired) {
-              col = "red";
-            } else if (maybeAcquired) {
-              col = "lightpink";
-            } else {
-              col = "lightgrey";
-            }
-          }
-          /*
-          else {          
-            StringBuffer pred = new StringBuffer();
-            for (Iterator<BasicBlockInContext<IExplodedBasicBlock>> itr = icfg.getPredNodes(bb);
-                itr.hasNext(); ) {
-              BasicBlockInContext<IExplodedBasicBlock> p = itr.next();
-              pred.append("(" + p.getMethod().getName().toString() + ", " + p.getNumber() + 
-                  ", "  + csSolver.getResult(p) + ") ");
-            }            
-            ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> cfg = icfg.getCFG(bb);
-            IExplodedBasicBlock d = bb.getDelegate();
-            StringBuffer normPred = new StringBuffer();
-            try {
-              for (IExplodedBasicBlock i : cfg.getNormalPredecessors(d)) {
-                normPred.append("(" + i.getMethod().getName().toString() + ", " + i.getNumber() + ") ");
-              }
-            } catch (Exception e) {
-              normPred.append("ERROR");
-            }
-            E.log(1, "MULTI-RESULTS" +
-                bb.toString() + result
-                + " Pred: " + pred.toString()
-                + "NormPred: " + normPred.toString());
-            if (mayContainAcquired(result)) {
-              col = "orange";
-            } else {
-              col = "lightblue";
-            }
-          }
-          */
-        }
+      /* Context sensitive analysis */
+        IntSet result = csSolver.getResult(bb);    
+        assert result.size() > 0;
+        q = mergeResult(result);          
+    
       }
       else {
-        /* Context insensitive analysis */
-        boolean maybeAcquired = acquireMaySolver.getOut(bb).getValue();
-        boolean maybeReleased = releaseMaySolver.getOut(bb).getValue();
-        boolean mustbeReleased = releaseMustSolver.getOut(bb).getValue();
-        if (col == null) {
-          if (maybeAcquired) {
-            col = "lightpink";
-          } else {
-            col = "lightgrey";
-          }
-        }
+        /* Context insensitive analysis */        
+        q = Quartet.make(
+        		acquireMaySolver.getOut(bb).getValue(),
+        		releaseMaySolver.getOut(bb).getValue(),
+        		releaseMustSolver.getOut(bb).getValue(),
+        		false /* no info */);        
       }
+      
       Pair<IMethod, Integer> pair = Pair.make(bb.getMethod(), bb.getNumber());
-      colorHash.put(pair, col);
+      st = new EnergyState(q);
+      stateHash.put(pair, st);
     }
   }
 
@@ -566,6 +568,14 @@ public abstract class Component extends NodeWithNumber {
   /** Thread invocation info */
   private HashMap<SSAProgramPoint, Component> threadInvocations = null;	
   
+  private EnergyState getExitState(CGNode cgNode) {
+	  BasicBlockInContext<IExplodedBasicBlock> exit = icfg.getExit(cgNode);
+      Pair<IMethod, Integer> p = Pair.make(
+          cgNode.getMethod(), exit.getNumber());
+      return stateHash.get(p);
+  }
+  
+  
   /**
    * Apply the policies to the corresponding callbacks. This one checks that at
    * the end of the method, we have an expected state.
@@ -576,15 +586,12 @@ public abstract class Component extends NodeWithNumber {
       CGNode cgNode = callbacks.get(methName);
       
       if (cgNode != null) {
-        BasicBlockInContext<IExplodedBasicBlock> exit = icfg.getExit(cgNode);
-        Pair<IMethod, Integer> p = Pair.make(
-            cgNode.getMethod(), exit.getNumber());
-        String color = colorHash.get(p);
+    	EnergyState st = getExitState(cgNode);
         
         List<String> expStatus = elem.snd;
         String status = "BAD";
         /* Is this an expected exit state ? */
-        if (expStatus.contains(color)) {
+        if (expStatus.contains(st.getColor())) {
           status = "OK";
         }            
         else {
@@ -595,7 +602,7 @@ public abstract class Component extends NodeWithNumber {
         policyResult = status;
         
         E.slog(0, "locking.txt", this.toString() + " | " + methName + " : " + 
-            color + "\t[" + status + "]");        
+            st.toString() + "\t[" + status + "]");        
       } else {
         E.log(1, "Callback " + methName + " was not found.");
         for (Entry<String, CGNode> e : callbacks.entrySet()) {

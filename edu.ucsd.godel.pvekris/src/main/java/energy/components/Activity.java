@@ -6,6 +6,8 @@ import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.util.collections.Pair;
 
+import energy.analysis.ApplicationCallGraph;
+
 public class Activity extends Component {
   
   static String elements[] = {
@@ -19,8 +21,8 @@ public class Activity extends Component {
     };
  
   
-  public Activity(IClass declaringClass, CGNode root) {
-    super(declaringClass, root);
+  public Activity(ApplicationCallGraph originalCG, IClass declaringClass, CGNode root) {
+    super(originalCG, declaringClass, root);
       
     callbackNames.addAll(Arrays.asList(elements));
     callbackEdges.add(Pair.make("onCreate", "onStart"));
