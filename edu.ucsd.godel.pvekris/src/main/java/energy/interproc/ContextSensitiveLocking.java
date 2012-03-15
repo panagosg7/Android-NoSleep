@@ -226,7 +226,7 @@ public class ContextSensitiveLocking {
             return result;
           }
         };
-      }
+      }      
       
       if (isWLReleaseCall(src)) {
         E.log(2, dest.toString() + " Propagating Released");
