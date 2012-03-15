@@ -363,6 +363,10 @@ public class ApkInstance {
 	    mPreferredTranslation.buildOptimizedJava();
 	}
 	
+	public boolean successfullyRetargeted() throws IOException, RetargetException {
+		return mPreferredTranslation.retargetSuccess();
+	}
+	
 	public boolean successfullyOptimized() throws IOException, RetargetException {
 	    return mPreferredTranslation.successfullyOptimized();
 	}
@@ -405,11 +409,11 @@ public class ApkInstance {
 		
 	}
 	
-	public String getOptException() {
+	private String getException(File log) {
 		String exception = null;
 		
 		try {
-			FileInputStream is = new FileInputStream(this.getDedOptimizedErrLogTarget());
+			FileInputStream is = new FileInputStream(log);
 			try {
 				BufferedReader br = new BufferedReader(new InputStreamReader(is));
 				String line0 = br.readLine();
@@ -425,6 +429,14 @@ public class ApkInstance {
 		}
 		
 		return exception;
+	}
+
+	public String getRetargetException() {
+		return this.getException(this.getDedErrLogTarget());
+	}
+	
+	public String getOptException() {
+		return this.getException(this.getDedOptimizedErrLogTarget());
 	}
 
 	public void requiresExtraction() throws IOException { 

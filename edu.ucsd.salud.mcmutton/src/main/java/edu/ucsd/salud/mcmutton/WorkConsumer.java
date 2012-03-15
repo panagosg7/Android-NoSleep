@@ -77,6 +77,9 @@ public class WorkConsumer implements Watcher {
 					JSONObject obj = new JSONObject();
 					obj.put("hasWakelockCalls", apk.hasWakelockCalls());
 					if (apk.hasWakelockCalls()) {
+						obj.put("successfullyRetargeted", apk.successfullyRetargeted());
+						obj.put("retargetException", apk.getRetargetException());
+						
 						obj.put("successfullyOptimized", apk.successfullyOptimized());
 						obj.put("optimizationException", apk.getOptException());
 						Set<String> phantoms = apk.getOptPhantoms();
