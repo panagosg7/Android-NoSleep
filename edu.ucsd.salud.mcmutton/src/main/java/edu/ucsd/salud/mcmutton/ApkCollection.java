@@ -105,26 +105,30 @@ public class ApkCollection {
 		
 		for (ApkApplication app: this.listApplications()) {
 			for (ApkVersion ver: app.listVersions()) {
-				for (ApkSource src: ver.listSources()) {
-					try {
-						ApkInstance apk = src.getPreferred();
-
-						if (mContentMapFiles.contains(apk.getApkFile())) {
-//							System.out.println(apk.getName() + " " + apk.getVersion());
-							continue;
+				try {
+					for (ApkSource src: ver.listSources()) {
+						try {
+							ApkInstance apk = src.getPreferred();
+	
+							if (mContentMapFiles.contains(apk.getApkFile())) {
+	//							System.out.println(apk.getName() + " " + apk.getVersion());
+								continue;
+							}
+							
+							String hash = apk.getApkHash();
+							System.out.println(apk.getApkFile() + " " + hash);
+							
+							if (!result.containsKey(hash)) {
+								result.put(hash,  new LinkedList<File>());
+							}
+							result.get(hash).add(apk.getApkFile());
+							mContentMapFiles.add(apk.getApkFile());
+						} catch (IOException e) {
+							System.err.println("Error loading " + e);
 						}
-						
-						String hash = apk.getApkHash();
-						System.out.println(apk.getApkFile() + " " + hash);
-						
-						if (!result.containsKey(hash)) {
-							result.put(hash,  new LinkedList<File>());
-						}
-						result.get(hash).add(apk.getApkFile());
-						mContentMapFiles.add(apk.getApkFile());
-					} catch (IOException e) {
-						System.err.println("Error loading " + e);
 					}
+				} catch (IOException e) {
+					System.err.println("Error loading " + e);
 				}
 			}
 		}
@@ -298,12 +302,14 @@ public class ApkCollection {
 			mPath = path;
 		}
 		
-		List<ApkSource> listSources() {
+		List<ApkSource> listSources() throws IOException {
 			ArrayList<ApkSource> list = new ArrayList<ApkSource>();
 			
 			for (File sub: mPath.listFiles()) {
 				if (sub.isDirectory()) list.add(new ApkSource(sub));
 			}
+			
+			if (list.size() == 0) throw new FileNotFoundException("No sources for " + mPath);
 			
 			return list;
 		}
