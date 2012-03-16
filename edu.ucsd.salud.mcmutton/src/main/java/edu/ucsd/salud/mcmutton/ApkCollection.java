@@ -37,7 +37,25 @@ public class ApkCollection {
 		try {
 			Properties prop = new Properties();
 	
-			prop.load(new FileInputStream("mcmutton.properties"));
+			File defaultProperties = new File ("mcmutton.properties.default");
+			File localProperties = new File("mcmutton.properties");
+			
+			File[] loadOrder = { defaultProperties, localProperties };
+			
+			for (File propFile: loadOrder) {
+				if (propFile.exists()) {
+					FileInputStream is = null;
+					try {
+						is = new FileInputStream(propFile);
+						prop.load(is);
+					} finally {
+						if (is != null) is.close();
+					}
+				}
+			}
+				
+			
+			prop.load(new FileInputStream("mcmutton.properties.default"));
 	
 			loadPaths(prop);
 		} catch (IOException e) {
