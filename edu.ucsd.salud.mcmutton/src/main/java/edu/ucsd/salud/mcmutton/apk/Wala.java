@@ -600,6 +600,7 @@ public class Wala {
 	}
 
 	public Set<String> panosAnalyze() throws IOException, WalaException, CancelException, ApkException {
+		energy.analysis.Opts.TARGET_FUNCTIONS = "/home/jcm/working/WALA/com.ibm.wala.core.tests/dat/AndroidAnalysisTargetFunctions.txt";
 		String args[] = {"-appJar", mPath.getAbsolutePath(),
 						 "-exclusionFile", "/home/jcm/working/WALA/com.ibm.wala.core.tests/dat/Java60RegressionExclusions.txt"};
 		File panosOutput = new File(mCachePath + "/panos");
