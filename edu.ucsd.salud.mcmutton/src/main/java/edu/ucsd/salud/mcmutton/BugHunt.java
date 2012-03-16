@@ -416,6 +416,11 @@ public class BugHunt {
 		int retargeted = 0;
 		int optimized = 0;
 		
+		int panosFailure = 0;
+		int patternFailure = 0;
+		
+		Set<String> panosExceptions = new HashSet<String>();
+		
 		for (File resultsJson: resultsPath.listFiles(filter)) {
 			try {
 				FileInputStream is = new FileInputStream(resultsJson);
@@ -432,8 +437,17 @@ public class BugHunt {
 						if (obj.getBoolean("successfullyOptimized")) {
 							++optimized;
 							
-							System.out.println(obj.get("panosResult"));
-							System.out.println(obj.get("patternResult"));
+							JSONObject panos_result = (JSONObject)obj.get("panosResult");
+							if (panos_result.containsKey("_exception")) {
+								++panosFailure;
+								panosExceptions.add(panos_result.getString("_exception"));
+							} else if (panos_result.containsKey("_error")) {
+								++panosFailure;
+								panosExceptions.add(panos_result.getString("_error"));
+							}
+							
+							JSONObject pattern_result = (JSONObject)obj.getJSONObject("patternResult");
+							if (pattern_result.containsKey("_exception") | pattern_result.containsKey("_error")) ++ patternFailure;
 						}
 					}
 				}
@@ -447,6 +461,12 @@ public class BugHunt {
 		System.out.println("wakeLockCount: " + hasWakelockCalls);
 		System.out.println("retargeted: " + retargeted);
 		System.out.println("optimized: " + optimized);
+		System.out.println("panosFailure: " + panosFailure);
+		System.out.println("patternFailure: " + patternFailure);
+		
+		for (String err: panosExceptions) {
+			System.out.println("panos: " + err);
+		}
 	}
 		
 	/**
