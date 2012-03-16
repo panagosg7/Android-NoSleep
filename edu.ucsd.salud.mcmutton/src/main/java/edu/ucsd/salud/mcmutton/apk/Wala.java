@@ -612,13 +612,13 @@ public class Wala {
 		for (String arg: args) {
 			System.out.println(arg);
 		}
-		System.out.println(CallGraphStats.getCGStats(cg).toString());
-		
-		Map<MethodReference, Set<MethodReference>> interestingSites = this.interestingCallSites(Interesting.sInterestingMethods, ch);
-		Map<MethodReference, Map<MethodReference, Double>> entryReachability = this.callGraphReachability(Interesting.sInterestingMethods, 
-																							  ch, cg);
-		
-		InterestingReachabilityResult res = new InterestingReachabilityResult(interestingSites, entryReachability);
+//		System.out.println(CallGraphStats.getCGStats(cg).toString());
+//		
+//		Map<MethodReference, Set<MethodReference>> interestingSites = this.interestingCallSites(Interesting.sInterestingMethods, ch);
+//		Map<MethodReference, Map<MethodReference, Double>> entryReachability = this.callGraphReachability(Interesting.sInterestingMethods, 
+//																							  ch, cg);
+//		
+//		InterestingReachabilityResult res = new InterestingReachabilityResult(interestingSites, entryReachability);
 
 //		UsageType result = analyzeReachability(new InterestingReachabilityStringResult(res));
 		Set<String> result = new HashSet<String>();
@@ -628,23 +628,25 @@ public class Wala {
 //			DataflowTest.testMyContextSensitive(cg);
 //		}
 		
-		if (Opts.RESOLVE_ANDROID_COMPONENTS) {
+//		if (Opts.RESOLVE_ANDROID_COMPONENTS) {
 			ComponentManager componentManager = new ComponentManager(cg);
 			componentManager.prepareReachability();
-			componentManager.processComponents();
-		}
+			Map<String, String> componentColors = componentManager.processComponents();
+			
+			result.addAll(componentColors.values());
+//		}
 		
-		if (Opts.RESOLVE_SCC) {
-			SCCManager sccManager = new SCCManager(cg);
-			if (Opts.DO_SCC_ANALYSIS) {
-				sccManager.analyze();
-			}
-		}
-		
-		if (Opts.DO_INTRA_PROC_ANALYSIS) {
-			IntraProcAnalysis ipa = new IntraProcAnalysis();
-			cg.doBottomUpAnalysis(ipa);
-		}
+//		if (Opts.RESOLVE_SCC) {
+//			SCCManager sccManager = new SCCManager(cg);
+//			if (Opts.DO_SCC_ANALYSIS) {
+//				sccManager.analyze();
+//			}
+//		}
+//		
+//		if (Opts.DO_INTRA_PROC_ANALYSIS) {
+//			IntraProcAnalysis ipa = new IntraProcAnalysis();
+//			cg.doBottomUpAnalysis(ipa);
+//		}
 		
 		return result;
 	}
