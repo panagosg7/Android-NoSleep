@@ -1,6 +1,7 @@
 package edu.ucsd.salud.mcmutton;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -397,8 +398,55 @@ public class BugHunt {
 			}
 		}
 		
-		System.out.println(colorCount);
-			
+		System.out.println(colorCount);	
+	}
+	
+	public static void readWorkConsumerResults(ApkCollection collection) {
+		File resultsPath = new File(ApkInstance.sScratchPath + File.separator + "results");
+		
+		FileFilter filter = new FileFilter() {
+			public boolean accept(File arg0) {
+				return arg0.getName().matches(".*[.]json");
+			}
+		};
+		
+
+		int totalCount = 0;
+		int hasWakelockCalls = 0;
+		int retargeted = 0;
+		int optimized = 0;
+		
+		for (File resultsJson: resultsPath.listFiles(filter)) {
+			try {
+				FileInputStream is = new FileInputStream(resultsJson);
+				JSONObject obj = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
+				is.close();
+				++totalCount;
+//				System.err.println(resultsJson);
+				
+				if (obj.getBoolean("hasWakelockCalls")) {
+					++hasWakelockCalls;
+					
+					if (obj.getBoolean("successfullyRetargeted")) {
+						++retargeted;
+						if (obj.getBoolean("successfullyOptimized")) {
+							++optimized;
+							
+							System.out.println(obj.get("panosResult"));
+							System.out.println(obj.get("patternResult"));
+						}
+					}
+				}
+			} catch (IOException e) {
+				System.err.println("Error reading " + resultsJson + " " + e.toString());
+			} 
+		}
+		
+		
+		System.out.println("totalCount: " + totalCount);
+		System.out.println("wakeLockCount: " + hasWakelockCalls);
+		System.out.println("retargeted: " + retargeted);
+		System.out.println("optimized: " + optimized);
 	}
 		
 	/**
@@ -427,6 +475,10 @@ public class BugHunt {
 									   .hasArgs(2)
 									   .withDescription("integrate into collection w/args path, collectionname")
 									   .create());
+		options.addOption(OptionBuilder.withLongOpt("read-consumer")
+				   .hasArgs(0)
+				   .withDescription("process stats output by WorkConsumer")
+				   .create());
 		
 		try {
 	    	ApkCollection collection = new ApkCollection();
@@ -465,6 +517,8 @@ public class BugHunt {
 	    			collection.integrateApks(basePath, collectionName);
 	    		} else if (line.hasOption("panos")) {
 	    			runPanos(collection);
+	    		} else if (line.hasOption("read-consumer")) {
+	    			readWorkConsumerResults(collection);
 	    		} else {
 	    			for (Object opt: options.getOptions()) {
 	    				System.err.println(opt);

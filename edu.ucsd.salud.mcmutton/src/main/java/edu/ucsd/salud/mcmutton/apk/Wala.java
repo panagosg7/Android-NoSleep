@@ -601,7 +601,7 @@ public class Wala {
 
 	public Set<String> panosAnalyze() throws IOException, WalaException, CancelException, ApkException {
 		String args[] = {"-appJar", mPath.getAbsolutePath(),
-						 "-exclusionFile", "/home/jcm/working/AndroidEnergy/com.ibm.wala.core.tests/dat/Java60RegressionExclusions.txt"};
+						 "-exclusionFile", "/home/jcm/working/WALA/com.ibm.wala.core.tests/dat/Java60RegressionExclusions.txt"};
 		File panosOutput = new File(mCachePath + "/panos");
 		panosOutput.mkdirs();
 		Opts.OUTPUT_FOLDER = panosOutput.getAbsolutePath();
