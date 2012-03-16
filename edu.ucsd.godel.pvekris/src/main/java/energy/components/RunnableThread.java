@@ -9,6 +9,7 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.util.collections.Pair;
 
 import energy.analysis.ApplicationCallGraph;
+import energy.interproc.LockState;
 
 /**
  * TODO: This is not really a component
@@ -16,7 +17,7 @@ import energy.analysis.ApplicationCallGraph;
  * @author progsys
  *
  */
-public class RunnableThread extends Component{
+public class RunnableThread extends Component {
 
   static String elements[] = { "run" };
   
@@ -36,5 +37,11 @@ public class RunnableThread extends Component{
     b.append(getKlass().getName().toString());
     return b.toString();
   }  
+  
+  public LockState getThreadExitState() {
+	CGNode runNode = super.getCallBackByName("run");
+	return super.getExitState(runNode);
+  }
+  
   
 }

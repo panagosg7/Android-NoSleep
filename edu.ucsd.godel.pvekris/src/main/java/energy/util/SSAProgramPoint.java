@@ -31,12 +31,18 @@ public class SSAProgramPoint {
 		if (o instanceof SSAProgramPoint) {
 			SSAProgramPoint pp = (SSAProgramPoint) o;
 			return (
-				this.method.equals(pp.getMethod()) &&
-				this.bb.equals(pp.getBasicBlock()) &&
-				this.indices.equals(pp.getIndices()));
+				this.method.equals(pp.getMethod()) 
+				&& this.bb.equals(pp.getBasicBlock()) 
+				//&& this.indices.equals(pp.getIndices())
+				);
 		}
 		return false;
 	}
+	
+	public int hashCode() {
+		return (node.hashCode() * 7329) + (instruction.hashCode() * 9223);		
+	}
+	
 	
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
@@ -69,5 +75,7 @@ public class SSAProgramPoint {
 	public CGNode getCGNode() {
 		return node;
 	}
+	
+	
 
 }

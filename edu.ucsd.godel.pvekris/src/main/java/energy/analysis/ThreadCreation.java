@@ -11,6 +11,7 @@ import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSANewInstruction;
+import com.ibm.wala.util.debug.Assertions;
 
 import energy.components.Component;
 import energy.components.ComponentManager;
@@ -44,7 +45,7 @@ public class ThreadCreation {
 	private void gatherThreadInvocations() {
 		computedThreadInvocations = true;		
 		
-		for (CGNode n : cg) {			
+		for (CGNode n : cg) {
 			iSet.clear();
 			for (Iterator<SSAInstruction> it = n.getIR().iterateAllInstructions(); it.hasNext();) {
 				SSAInstruction instr = it.next();
@@ -72,16 +73,19 @@ public class ThreadCreation {
 							SSAInvokeInstruction inv = (SSAInvokeInstruction) user;							
 							//Get the thread <init>
 							if (inv.getDeclaredTarget().getName().toString().equals("<init>")) {
-								assert inv.getNumberOfParameters() == 1;
+								//E.log(1, "Initializer: " + n.getMethod().getSignature().toString() + " - " + inv.toString() );
+								//XXX: No harder tests necessary... (?)							
+							
 								int use = inv.getUse(1);
 								SSAInstruction def = du.getDef(use);
 								
 								if (def instanceof SSANewInstruction) {
 									SSANewInstruction inv1 = (SSANewInstruction) def;
-									assert targetComponent == null;	//this should be done only once																										
+									Assertions.productionAssertion(targetComponent == null);	//this should be done only once																										
 									targetComponent = cm.getComponent(inv1.getConcreteType());
-									assert (targetComponent instanceof RunnableThread);
+									Assertions.productionAssertion(targetComponent instanceof RunnableThread);
 									//E.log(1, " >>> param: " + dclass.toString());									
+								
 								}
 							}
 							//Get the thread start()
@@ -93,7 +97,7 @@ public class ThreadCreation {
 						}
 					} //for uses
 					if ((pp!=null) && (targetComponent!= null)) {
-						E.log(1, "adding: " + pp + " --> " + targetComponent);
+						E.log(1, "Adding: " + pp + " --> " + targetComponent);
 						siteToClass.put(pp, targetComponent);
 					}
 				}

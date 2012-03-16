@@ -50,7 +50,6 @@ import energy.interproc.LockState;
 import energy.interproc.SensibleCallGraph;
 import energy.interproc.SensibleExplodedInterproceduralCFG;
 import energy.util.E;
-import energy.util.SSAProgramPoint;
 import energy.util.Util;
 import energy.viz.ColorNodeDecorator;
 import energy.viz.GraphDotUtil;
@@ -61,8 +60,8 @@ public abstract class Component extends NodeWithNumber {
    * Gather all possible callbacks
    */
   private HashMap<String, CGNode> callbacks;
-  protected CallGraph callgraph;
-  protected ApplicationCallGraph originalCallgraph;
+  protected CallGraph 				componentCallgraph;
+  protected ApplicationCallGraph	originalCallgraph;
 
   /**
    * Contains a call graph regarding the callbacks for this component that makes
@@ -71,6 +70,8 @@ public abstract class Component extends NodeWithNumber {
    */
   private SensibleCallGraph sensibleAuxCG = null;
 
+  
+  /** Does it call any locking functions ? */
   private boolean interesting = false;
 
   protected HashSet<String> callbackNames;
@@ -96,14 +97,18 @@ public abstract class Component extends NodeWithNumber {
 
   void createComponentCG() {
     HashSet<CGNode> rootSet = new HashSet<CGNode>();
+    
     E.log(2, "Creating callgraph: " + klass.getName().toString());
+    
     HashSet<CGNode> set = new HashSet<CGNode>();
     for (CGNode node : getCallbacks()) {
       set.addAll(getDescendants(originalCallgraph, node));
       rootSet.add(node);
     }
-    callgraph = PartialCallGraph.make(originalCallgraph, rootSet, set);
-    E.log(2, "Partial CG #nodes: " + callgraph.getNumberOfNodes());
+    
+    componentCallgraph = PartialCallGraph.make(originalCallgraph, rootSet, set);
+    
+    E.log(2, "Partial CG #nodes: " + componentCallgraph.getNumberOfNodes());
     
   }
 
@@ -113,7 +118,7 @@ public abstract class Component extends NodeWithNumber {
    * 
    * @return the set of these nodes
    */
-  private static Set<CGNode> getDescendants(CallGraph cg, CGNode node) {
+  private Set<CGNode> getDescendants(CallGraph cg, CGNode node) {
     Filter<CGNode> filter = IndiscriminateFilter.<CGNode> singleton();
     GraphReachability<CGNode> graphReachability = new GraphReachability<CGNode>(cg, filter);
     try {
@@ -153,11 +158,14 @@ public abstract class Component extends NodeWithNumber {
   }
 
   public CallGraph getCallgraph() {
-    return callgraph;
+	if (componentCallgraph == null) {
+	  this.createComponentCG();
+	}
+    return componentCallgraph;
   }
 
   public void setCallgraph(CallGraph callgraph) {
-    this.callgraph = callgraph;
+    this.componentCallgraph = callgraph;
   }
 
   public HashSet<Pair<String, String>> getCallbackEdges() {
@@ -265,11 +273,11 @@ public abstract class Component extends NodeWithNumber {
   };
 
   public void outputNormalCallGraph() {
-	if (callgraph == null) {
+	if (componentCallgraph == null) {
 	  /* Create and dump the component's callgraph */
 	  createComponentCG();		
 	}
-    outputCallGraph(callgraph, "cg");
+    outputCallGraph(componentCallgraph, "cg");
   }
 
   public void outputCallGraph(CallGraph cg, String prefix) {
@@ -299,8 +307,15 @@ public abstract class Component extends NodeWithNumber {
    * 
    *******************************************************************************/
 
-  protected SensibleExplodedInterproceduralCFG icfg = null;
-
+	protected SensibleExplodedInterproceduralCFG icfg = null;
+  
+  public SensibleExplodedInterproceduralCFG getICFG() {
+	  if (icfg == null) {
+		icfg = createSensibleCG();
+	  }
+	  return icfg;
+  }
+  
   protected BooleanSolver<BasicBlockInContext<IExplodedBasicBlock>> acquireMaySolver = null;
   protected BooleanSolver<BasicBlockInContext<IExplodedBasicBlock>> releaseMaySolver = null;
   protected BooleanSolver<BasicBlockInContext<IExplodedBasicBlock>> releaseMustSolver = null;
@@ -331,11 +346,15 @@ public abstract class Component extends NodeWithNumber {
     /* First create the auxiliary call graph (SensibleAuxCallGraph) This is just
      * the graph that represents the logical relation of callbacks. */
     SensibleCallGraph sensibleCG = new SensibleCallGraph(this);
+    
     /* Test it */
     //sensibleCG.outputToDot();
+    
     /* Pack inter-procedural sensible edges */
     HashSet<Pair<CGNode, CGNode>> packedEdges = sensibleCG.packEdges();
-    return new SensibleExplodedInterproceduralCFG(getCallgraph(), packedEdges, threadInvocations);
+    
+    return new SensibleExplodedInterproceduralCFG(getCallgraph(), packedEdges);
+    
   }
 
   /**
@@ -343,9 +362,8 @@ public abstract class Component extends NodeWithNumber {
    * CFG based on the component's sensible callgraph
    */
   protected void solveCICFG() {
-	if (icfg == null) {
-		icfg = createSensibleCG();
-	}
+	icfg = getICFG();
+	
 	ContextInsensitiveLocking lockingProblem = new ContextInsensitiveLocking(icfg);
     acquireMaySolver = lockingProblem.analyze(true, true);
     releaseMaySolver = lockingProblem.analyze(true, false);
@@ -359,6 +377,7 @@ public abstract class Component extends NodeWithNumber {
   protected void solveCSCFG() {
 	if (icfg == null) {
 	  icfg = createSensibleCG();
+	  icfg.printBBToThreadMap();
 	}
     ContextSensitiveLocking lockingProblem = new ContextSensitiveLocking(icfg);
     csSolver = lockingProblem.analyze();    
@@ -389,7 +408,7 @@ public abstract class Component extends NodeWithNumber {
     }
     String cfgs = energy.util.Util.getResultDirectory() + File.separatorChar + "color_cfg";
     new File(cfgs).mkdirs();
-    Iterator<CGNode> it = callgraph.iterator();
+    Iterator<CGNode> it = componentCallgraph.iterator();
     while (it.hasNext()) {
       CGNode n = it.next();      
       ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> cfg = icfg.getCFG(n);
@@ -421,9 +440,9 @@ public abstract class Component extends NodeWithNumber {
     }
     String cfgs = energy.util.Util.getResultDirectory() + File.separatorChar + "cfg";
     new File(cfgs).mkdirs();
-    Iterator<CGNode> it = callgraph.iterator();
+    Iterator<CGNode> it = componentCallgraph.iterator();
     while (it.hasNext()) {
-      CGNode n = it.next();      
+      final CGNode n = it.next();      
       SSACFG cfg = n.getIR().getControlFlowGraph();      
       String bareFileName = n.getMethod().getDeclaringClass().getName().toString().replace('/', '.') + "_"
           + n.getMethod().getName().toString();
@@ -436,7 +455,15 @@ public abstract class Component extends NodeWithNumber {
 			public String getLabel(Object o) throws WalaException {
 				StringBuffer sb = new  StringBuffer();
 				if (o instanceof ISSABasicBlock) {
-					ISSABasicBlock bb = (ISSABasicBlock) o;					
+					
+					ISSABasicBlock bb = (ISSABasicBlock) o;
+					
+					SensibleExplodedInterproceduralCFG icfgLoc = getICFG();
+					ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> cfg = icfgLoc.getCFG(n);
+					
+					IExplodedBasicBlock ebb = cfg.getNode(bb.getNumber());
+					sb.append(ebb.toString() + "\\n");
+					sb.append(bb.toString() + "\\n");
 					for (Iterator<SSAInstruction> it = bb.iterator(); it.hasNext(); ) {
 						if (!sb.toString().equals("")) {
 							sb.append("\\n");
@@ -519,7 +546,7 @@ public abstract class Component extends NodeWithNumber {
 
 
   protected void outputSolvedICFG() {
-    E.log(2, "#nodes: " + callgraph.getNumberOfNodes());
+    E.log(2, "#nodes: " + componentCallgraph.getNumberOfNodes());
     Properties p = WalaExamplesProperties.loadProperties();
     try {
       p.putAll(WalaProperties.loadProperties());
@@ -547,10 +574,16 @@ public abstract class Component extends NodeWithNumber {
   public String  	policyResult	= null;
   
   
-  /** Thread invocation info */
-  private HashMap<SSAProgramPoint, Component> threadInvocations = null;	
+  /** Thread invocation info will live in icfg !!! */
+  	
   
-  private LockState getExitState(CGNode cgNode) {
+  
+  /**
+   * Get the state at the exit of a cg node
+   * @param cgNode
+   * @return
+   */
+  protected LockState getExitState(CGNode cgNode) {
 	  BasicBlockInContext<IExplodedBasicBlock> exit = icfg.getExit(cgNode);
       Pair<IMethod, Integer> p = Pair.make(
           cgNode.getMethod(), exit.getNumber());
@@ -628,19 +661,18 @@ public abstract class Component extends NodeWithNumber {
 
 
 
-  public HashMap<SSAProgramPoint, Component> getThreadInvocations() {
-	return threadInvocations;
+  public HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> getThreadInvocations() {
+	return icfg.getThreadInvocations();
   }
 
   public Collection<Component> getThreadDependencies() {
-	return threadInvocations.values();
+	return icfg.getThreadInvocations().values();
   }
-
-    
   
 
-  public void setThreadInvocations(HashMap<SSAProgramPoint, Component> threadInvocations) {
-	this.threadInvocations = threadInvocations;
+  public void setThreadInvocations(HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> compInv) {
+	  icfg.setThreadInvocations(compInv);
+	
   }
 
 }

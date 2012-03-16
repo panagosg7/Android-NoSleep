@@ -71,7 +71,7 @@ public class MutableMapping<T> implements OrdinalSetMapping<T> {
 
   public int getMappedIndex(T o) {
     Integer I = map.get(o);
-    if (I == null) {
+    if (I == null) {      
       return -1;
     } else {
       return I.intValue();
