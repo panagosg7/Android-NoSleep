@@ -3,10 +3,11 @@ package energy.interproc;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+
+import junit.framework.Assert;
 
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.ipa.callgraph.CGNode;
@@ -17,10 +18,11 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAReturnInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.util.collections.Pair;
+import com.ibm.wala.util.debug.Assertions;
 
 import energy.components.Component;
+import energy.components.RunnableThread;
 import energy.util.E;
-import energy.util.SSAProgramPoint;
 import energy.util.Util;
 
 public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralCFG {
@@ -30,11 +32,9 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
    * pairs of methods (Signatures) that need to be connected.
    * @param cg
    * @param packedEdges
-   * @param threadInvocations 
    */
   public SensibleExplodedInterproceduralCFG(CallGraph cg, 
-		  HashSet<Pair<CGNode, CGNode>> packedEdges, 
-		  HashMap<SSAProgramPoint, Component> threadInvocations) {
+		  HashSet<Pair<CGNode, CGNode>> packedEdges) {
     super(cg);
     /* Will only work like this - loses laziness. */
     constructFullGraph();
@@ -42,15 +42,15 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
     /* Do not add these edges at the moment - just use the information taken
      * from the analysis of the component (w\o context sensitivity). */
     
-    this.threadInvocations = threadInvocations; 
-    
     addReturnToEntryEdge(cg,packedEdges);  
     
     cacheCallbacks(cg,packedEdges);
   } 
   
-  private Map<String,CGNode> callbacks;  
-  private HashMap<SSAProgramPoint, Component> threadInvocations;  
+  private Map<String,CGNode> callbacks;
+  
+  private HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> bbToThreads = null;
+  
   
   /**
    * The adjacent nodes to the packed edges are the interesting callbacks.
@@ -92,38 +92,6 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
      E.log(2,"Added edge:" + p.toString() +" -> "+ b.toString());     
    }
   }
-
- /**
-  * Add call edges to thread invocations, using the mapping that we have 
-  * gathered earlier.
- * @param threadInvocations 
-  * @param m
-  */
- private void addThreadEdges(HashMap<SSAProgramPoint, Component> threadInvocations) {	 		
-	 for (Entry<SSAProgramPoint,Component> e : threadInvocations.entrySet()) {
-		 SSAProgramPoint callPP = e.getKey();
-		 CGNode caller = callPP.getCGNode();
-		 IExplodedBasicBlock callBlock = ppToIEBB(callPP);
-		 Component c = e.getValue();
-		 CGNode target = c.getCallBackByName("run");
-		 ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> tcfg = getCFG(target);
-		 if (target != null) { //this must be the case
-			 E.log(1, "Adding call to entry edge.");
-			 addEdgesFromCallToEntry(caller, callBlock, target, tcfg);
-			 //private void addEdgesFromExitToReturn(CGNode caller, T returnBlock, CGNode target,
-			 //ControlFlowGraph<SSAInstruction, ? extends T> targetCFG) {
-			 ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> cfg = getCFG(target);
-			 for (Iterator<IExplodedBasicBlock> returnBlocks = cfg.getSuccNodes(callBlock); returnBlocks.hasNext();) {
-				 IExplodedBasicBlock retBlock = returnBlocks.next();
-				 E.log(1, "Adding exit to return edge: " + target.getMethod().getName().toString() +
-		        		 " -> " + caller + retBlock.toString() );
-				 addEdgesFromExitToReturn(caller, retBlock, target, tcfg);
-		         
-			 }
-		 }
-	 }
-	 
- }
  
 
  protected boolean isReturn(BasicBlockInContext<IExplodedBasicBlock> B, 
@@ -150,16 +118,42 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
  		return callbacks;
  	}
 
+ 	public RunnableThread getThreadInvocations(BasicBlockInContext<IExplodedBasicBlock> bbic) {
+ 		if (bbToThreads == null) {
+ 			E.log(1, "Not initialized");
+ 		}
+ 		else { 		
+	 		Component component = bbToThreads.get(bbic);
+	 		if (component != null) {
+	 			Assertions.productionAssertion(component instanceof RunnableThread);
+	 			return (RunnableThread) component;
+	 		}
+ 		}
+ 		return null;
+ 	}
  	
  	
- 	private IExplodedBasicBlock ppToIEBB(SSAProgramPoint pp) {
- 		ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> cfg = getCFG(pp.getCGNode()); 		
-		int number = pp.getCGNode().getIR().getControlFlowGraph().getNumber(pp.getBasicBlock());
- 		IExplodedBasicBlock iebb = cfg.getNode(number);
- 		//BasicBlockInContext<IExplodedBasicBlock> bbic = new BasicBlockInContext<IExplodedBasicBlock>(pp.getCGNode(), bb);
-		return iebb;
- 	}	
-
-
+ 	
+ 	/**
+ 	 * WARNING: SET THIS RIGHT AFTER CONSTRAINTS HAVE BEEN RESOLVED 
+ 	 * @param m
+ 	 */
+ 	public void setThreadInvocations(HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> m) { 		
+ 		this.bbToThreads = m;
+ 	}
+ 	
+ 	public HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> getThreadInvocations() {
+ 		return bbToThreads;
+ 	}
+ 	
+ 	
+ 	public void printBBToThreadMap() {
+ 		E.log(1, "");
+ 		for ( Entry<BasicBlockInContext<IExplodedBasicBlock>, Component> e : bbToThreads.entrySet()) {
+ 			System.out.println(e.getKey().toString() + " -> " + e.getValue());
+ 		} 		
+ 	}
+ 	
+ 	
 }
 

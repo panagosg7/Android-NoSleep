@@ -12,13 +12,19 @@ import java.util.Map.Entry;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Predicate;
 
+import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
+import com.ibm.wala.ipa.cfg.BasicBlockInContext;
+import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.ssa.SSAInvokeInstruction;
+import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.collections.CollectionFilter;
 import com.ibm.wala.util.collections.Filter;
+import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.graph.Acyclic;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphReachability;
@@ -30,6 +36,7 @@ import com.ibm.wala.util.graph.traverse.DFSPathFinder;
 import energy.analysis.ApplicationCallGraph;
 import energy.analysis.Opts;
 import energy.analysis.ThreadCreation;
+import energy.interproc.SensibleExplodedInterproceduralCFG;
 import energy.util.E;
 import energy.util.GraphBottomUp;
 import energy.util.LockingStats;
@@ -294,9 +301,11 @@ public class ComponentManager {
    * @return
    */
   private static Component resolveKnownImplementors(CGNode root) {
-
+	  
     IClass klass = root.getMethod().getDeclaringClass();
+    
     TypeReference reference = klass.getReference();
+    
     String methName = root.getMethod().getName().toString();
 
     Component comp = componentMap.get(reference);
@@ -304,28 +313,36 @@ public class ComponentManager {
       Collection<IClass> allImplementedInterfaces = klass.getAllImplementedInterfaces();
       for (IClass iI : allImplementedInterfaces) {
         String implName = iI.getName().toString();
+    
         if (implName.equals("Ljava/lang/Runnable")) {
           comp = new RunnableThread(originalCG, klass, root);
         }
+        
         if (implName.equals("Landroid/widget/AdapterView$OnItemClickListener")) {
           comp = new AdapterViewOnItemClickListener(originalCG, klass, root);
         }
+        
         if (implName.equals("Landroid/view/View$OnClickListener")) {
         	comp = new ViewOnClickListener(originalCG, klass, root);
         }
+        
         if (implName.equals("Landroid/content/SharedPreferences$OnSharedPreferenceChangeListener")
             || implName.equals("Landroid/preference/Preference$OnPreferenceChangeListener")) {
         	comp = new OnSharedPreferenceChangeListener(originalCG, klass, root);
         }
+        
         if (implName.equals("Landroid/location/LocationListener")) {
         	comp = new LocationListener(originalCG, klass, root);
         }
+        
         if (implName.startsWith("Landroid/widget/CompoundButton")) {
         	comp = new CompoundButton(originalCG, klass, root);
         }
+        
         if (implName.startsWith("Landroid/hardware/SensorEventListener")) {
         	comp = new SensorEventListener(originalCG, klass, root);
         }
+        
         if (comp != null) break;
       }
       if (comp != null) {
@@ -384,7 +401,11 @@ public class ComponentManager {
     /* Build the constraints graph 
      * (threads should be analyzed before their parents)*/
     Collection<Component> components = componentMap.values();    
+    
+    
     Graph<Component> constraintGraph = constraintGraph(components);
+    
+    
     BFSIterator<Component> bottomUpIterator = GraphBottomUp.bottomUpIterator(constraintGraph);
     
     /* And analyze the components based on this graph in bottom up order */
@@ -429,12 +450,13 @@ public class ComponentManager {
       if(Opts.OUTPUT_CFG_DOT) {
     	  component.outputCFGs();
       }
+          
             
       if (Opts.DO_CS_ANALYSIS) {
-    	  component.solveCSCFG();
+    	component.solveCSCFG();
       }
       else {
-    	  component.solveCICFG();      
+    	component.solveCICFG();      
       }
       
       component.cacheStates();
@@ -479,12 +501,16 @@ public class ComponentManager {
   public ApplicationCallGraph getCG() {
 	  return originalCG;
   }
-  
-  /****************************************************************************/
 
+  
+  
+  
   /****************************************************************************
-   * Gather thread invocation info
-   */
+   * 
+   * 			THREAD INVOCATION STUFF
+   * 
+   ****************************************************************************/
+  
   private ThreadCreation threadCreation = null;
   
   private HashMap<SSAProgramPoint,Component> getGlobalThreadInvocations() {
@@ -494,35 +520,86 @@ public class ComponentManager {
 	return threadCreation.getThreadInvocations();
   }
   
-  private static HashMap<Component,HashMap<SSAProgramPoint,Component>> component2ThreadInvocations = 
-		  new HashMap<Component, HashMap<SSAProgramPoint,Component>>();
+  private HashMap<Component, HashMap<BasicBlockInContext<IExplodedBasicBlock>, 
+  	Component>> component2ThreadInvocations = null;
+		  
   
-  public HashMap<SSAProgramPoint,Component> getThreadInvocations(Component c) {
-	  HashMap<SSAProgramPoint, Component> compInv = component2ThreadInvocations.get(c);
-	  if (compInv == null) {
-		compInv = new HashMap<SSAProgramPoint, Component>();
-		HashMap<SSAProgramPoint, Component> threadInvocations = getGlobalThreadInvocations();
-		for(Entry<SSAProgramPoint, Component> ti : threadInvocations.entrySet()) {
-			CallGraph cg = c.getCallgraph();
-			if (cg == null) {
-			/* Create and dump the component's callgraph */
-			  c.createComponentCG();
-			  cg = c.getCallgraph();
-			}			
-			if (cg.containsNode(ti.getKey().getCGNode())) {
-			  compInv.put(ti.getKey(), ti.getValue());
-			}
-		}
-		component2ThreadInvocations.put(c, compInv);
-		c.setThreadInvocations(threadInvocations);
+  
+  
+  /**
+   * This should gather the thread invocation that are specific to a
+   * particular component.
+   * @param c
+   * @return
+   */
+  public HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> getThreadInvocations(Component c) {
+	  
+	  
+	  
+	  if (component2ThreadInvocations == null) {		  
+		  component2ThreadInvocations = new HashMap<Component, 
+				  		HashMap<BasicBlockInContext<IExplodedBasicBlock>,Component>>();
 	  }
+	  
+	  HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> compInv = component2ThreadInvocations.get(c);
+	   
+	  if (compInv == null) {
+		  compInv = new HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component>();
+
+		  SensibleExplodedInterproceduralCFG icfg = c.getICFG();
+		  
+		  //Iterate over the thread invocations
+		  HashMap<SSAProgramPoint, Component> globalThrInv = getGlobalThreadInvocations();		  
+		  
+		  //Get all the instructions ** from the exploded ** graph
+		  for(Iterator<BasicBlockInContext<IExplodedBasicBlock>> it = icfg.iterator();
+				  it.hasNext(); ) {
+			
+			  BasicBlockInContext<IExplodedBasicBlock> bbic = it.next();
+			  
+			  IExplodedBasicBlock ebb = bbic.getDelegate();
+			  
+			  CGNode node = icfg.getCGNode(bbic);
+			  
+			  SSAInstruction instruction = ebb.getInstruction();
+			  
+			  if (instruction instanceof SSAInvokeInstruction) {
+				  
+				  SSAInvokeInstruction inv = (SSAInvokeInstruction) instruction;
+				  
+				  SSAProgramPoint ssapp = new SSAProgramPoint(node, inv);
+				  				  
+				  Component callee = globalThrInv.get(ssapp);
+				  if (callee != null) {
+					  compInv.put(bbic, callee);
+					  E.log(2, "Found: " + ebb.toString());					  
+				  }			
+			  }
+		  }
+		  
+		  c.setThreadInvocations(compInv);
+		  
+		  component2ThreadInvocations.put(c, compInv);	
+		  
+		  E.log(1, "Setting thre inv for: " + c.toString());
+	  }
+	  Assertions.productionAssertion(compInv != null);
 	  return compInv;
   }
   
+  
+  
+  
   public Collection<Component> getThreadConstraints(Component c) {
-	  return getThreadInvocations(c).values();	  
+	HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> ti = 
+			getThreadInvocations(c);
+	
+	return ti.values();	  
   }
 
+  
+  
+  
   /**
    * The graph of constraints based on thread creation
    * @param cc
@@ -535,10 +612,13 @@ public class ComponentManager {
 			E.log(2, "Adding: " + g.getNumber(c) + " : " + c ); 
 	  }
 	  for (Component src : cc) {
+		  
 		  Collection<Component> threadDependencies = getThreadConstraints(src);
+		  Assertions.productionAssertion(threadDependencies != null);
+		  
 		  for (Component dst : threadDependencies) {
 			  if ((src != null) && (dst != null)) {
-				E.log(2, "adding: " + src + " --> " + dst);
+				E.log(2, "Adding: " + src + " --> " + dst);
 				g.addEdge(src,dst);
 			}
 		  }
@@ -553,7 +633,8 @@ public class ComponentManager {
 			return Acyclic.isAcyclic(g, c);				
 		}
 	};
-	assert com.ibm.wala.util.collections.Util.forAll(cc, p);
+	Assertions.productionAssertion(com.ibm.wala.util.collections.Util.forAll(cc, p), 
+			"Cannot handle circular dependencies in thread calls.");
 	/* TODO: not sure how to deal with circular dependencies */ 
 	//System.out.println("\n\nComponent dependence graph\n");
 	//System.out.println(g.toString());

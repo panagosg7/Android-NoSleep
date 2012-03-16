@@ -104,6 +104,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
   /*
    * @see com.ibm.wala.cfg.ControlFlowGraph#getCatchBlocks()
    */
+  @Override
   public BitVector getCatchBlocks() {
     BitVector original = ir.getControlFlowGraph().getCatchBlocks();
     BitVector result = new BitVector();
@@ -115,6 +116,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
     return result;
   }
 
+  @Override
   public Collection<IExplodedBasicBlock> getExceptionalPredecessors(IExplodedBasicBlock bb) {
     ExplodedBasicBlock eb = (ExplodedBasicBlock) bb;
     assert eb != null;
@@ -133,6 +135,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
     }
   }
 
+  @Override
   public List<IExplodedBasicBlock> getExceptionalSuccessors(IExplodedBasicBlock bb) {
     ExplodedBasicBlock eb = (ExplodedBasicBlock) bb;    
     assert eb != null;
@@ -155,14 +158,17 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
     }
   }
 
+  @Override
   public SSAInstruction[] getInstructions() {
     return ir.getInstructions();
   }
 
+  @Override
   public IMethod getMethod() throws UnimplementedError {
     return ir.getMethod();
   }
 
+  @Override
   public Collection<IExplodedBasicBlock> getNormalPredecessors(IExplodedBasicBlock bb) {
     ExplodedBasicBlock eb = (ExplodedBasicBlock) bb;
     assert eb != null;
@@ -350,32 +356,39 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
     }
   }
 
+  @Override
   public boolean hasEdge(IExplodedBasicBlock src, IExplodedBasicBlock dst) throws UnimplementedError {
     Assertions.UNREACHABLE();
     return false;
   }
 
+  @Override
   public void removeAllIncidentEdges(IExplodedBasicBlock node) throws UnsupportedOperationException {
     throw new UnsupportedOperationException();
 
   }
 
+  @Override
   public void removeEdge(IExplodedBasicBlock src, IExplodedBasicBlock dst) throws UnsupportedOperationException {
     throw new UnsupportedOperationException();
   }
 
+  @Override
   public void removeIncomingEdges(IExplodedBasicBlock node) throws UnsupportedOperationException {
     throw new UnsupportedOperationException();
   }
 
+  @Override
   public void removeOutgoingEdges(IExplodedBasicBlock node) throws UnsupportedOperationException {
     throw new UnsupportedOperationException();
   }
 
+  @Override
   public int getMaxNumber() {
     return getNumberOfNodes() - 1;
   }
 
+  @Override
   public IExplodedBasicBlock getNode(int number) {
     if (number == 0) {
       return entry();
@@ -386,6 +399,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
     }
   }
 
+  @Override
   public int getNumber(IExplodedBasicBlock n) throws IllegalArgumentException {
     if (n == null) {
       throw new IllegalArgumentException("n == null");
@@ -393,11 +407,13 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
     return n.getNumber();
   }
 
+  @Override
   public Iterator<IExplodedBasicBlock> iterateNodes(IntSet s) throws UnimplementedError {
     Assertions.UNREACHABLE();
     return null;
   }
 
+  @Override
   public IntSet getPredNodeNumbers(IExplodedBasicBlock node) {
     MutableSparseIntSet result = MutableSparseIntSet.makeEmpty();
     for (Iterator<? extends IExplodedBasicBlock> it = getPredNodes(node); it.hasNext();) {
@@ -406,6 +422,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
     return result;
   }
 
+  @Override
   public IntSet getSuccNodeNumbers(IExplodedBasicBlock node) throws UnimplementedError {
     Assertions.UNREACHABLE();
     return null;
@@ -433,6 +450,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
       return ExplodedControlFlowGraph.this;
     }
 
+    @Override
     public Iterator<TypeReference> getCaughtExceptionTypes() {
       if (original instanceof ExceptionHandlerBasicBlock) {
         ExceptionHandlerBasicBlock eb = (ExceptionHandlerBasicBlock) original;
@@ -442,18 +460,22 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
       }
     }
 
+    @Override
     public int getFirstInstructionIndex() {
       return instructionIndex;
     }
 
+    @Override
     public int getLastInstructionIndex() {
       return instructionIndex;
     }
 
+    @Override
     public IMethod getMethod() {
       return ExplodedControlFlowGraph.this.getMethod();
     }
 
+    @Override
     public int getNumber() {
       if (isEntryBlock()) {
         return 0;
@@ -464,6 +486,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
       }
     }
 
+    @Override
     public boolean isCatchBlock() {
       if (original == null) {
         return false;
@@ -471,6 +494,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
       return (original.isCatchBlock() && instructionIndex == original.getFirstInstructionIndex());
     }
 
+    @Override
     public SSAGetCaughtExceptionInstruction getCatchInstruction() {
       if (!(original instanceof ExceptionHandlerBasicBlock)) {
         throw new IllegalArgumentException("block does not represent an exception handler");
@@ -479,23 +503,28 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
       return e.getCatchInstruction();
     }
 
+    @Override
     public boolean isEntryBlock() {
       return instructionIndex == ENTRY_INDEX;
     }
 
+    @Override
     public boolean isExitBlock() {
       return instructionIndex == EXIT_INDEX;
     }
 
+    @Override
     public int getGraphNodeId() {
       return getNumber();
     }
 
+    @Override
     public void setGraphNodeId(int number) {
       Assertions.UNREACHABLE();
 
     }
 
+    @Override
     public Iterator<SSAInstruction> iterator() {
       if (isEntryBlock() || isExitBlock() || getInstruction() == null) {
         return EmptyIterator.instance();
@@ -532,6 +561,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
       return true;
     }
 
+    @Override
     public SSAInstruction getInstruction() {
       if (isEntryBlock() || isExitBlock()) {
         return null;
@@ -540,6 +570,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
       }
     }
 
+    @Override
     public SSAInstruction getLastInstruction() {
       if (getLastInstructionIndex() < 0) {
         return null;
@@ -548,6 +579,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
       }
     }
 
+    @Override
     public Iterator<SSAPhiInstruction> iteratePhis() {
       if (isEntryBlock() || isExitBlock() || instructionIndex != original.getFirstInstructionIndex()) {
         return EmptyIterator.instance();
@@ -556,6 +588,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
       }
     }
 
+    @Override
     public Iterator<SSAPiInstruction> iteratePis() {
       if (isEntryBlock() || isExitBlock() || instructionIndex != original.getLastInstructionIndex()) {
         return EmptyIterator.instance();
@@ -576,8 +609,8 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
     }
   }
 
-  @Override
-  public String toString() {
+  
+  public String toString1() {
     StringBuffer s = new StringBuffer("");
     for (Iterator<IExplodedBasicBlock> it = iterator(); it.hasNext();) {
       IExplodedBasicBlock bb = it.next();
