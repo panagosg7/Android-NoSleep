@@ -2,6 +2,7 @@ package edu.ucsd.salud.mcmutton;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.NoSuchElementException;
 import java.util.Properties;
 
 import org.apache.zookeeper.KeeperException;
@@ -21,7 +22,11 @@ public class WorkMonger implements Watcher {
 	}
 	
 	public void flushAll() throws InterruptedException, KeeperException {
-		mWorkSet.clear();
+		try {
+			mWorkSet.clear();
+		} catch (NoSuchElementException e) {
+			// Slurp
+		}
 	}
 	
 	public void enqueueAll() throws ConfigurationException, IOException, InterruptedException, KeeperException {

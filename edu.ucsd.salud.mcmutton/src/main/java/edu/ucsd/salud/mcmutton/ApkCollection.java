@@ -2,6 +2,7 @@ package edu.ucsd.salud.mcmutton;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -36,7 +37,25 @@ public class ApkCollection {
 		try {
 			Properties prop = new Properties();
 	
-			prop.load(new FileInputStream("mcmutton.properties"));
+			File defaultProperties = new File ("mcmutton.properties.default");
+			File localProperties = new File("mcmutton.properties");
+			
+			File[] loadOrder = { defaultProperties, localProperties };
+			
+			for (File propFile: loadOrder) {
+				if (propFile.exists()) {
+					FileInputStream is = null;
+					try {
+						is = new FileInputStream(propFile);
+						prop.load(is);
+					} finally {
+						if (is != null) is.close();
+					}
+				}
+			}
+				
+			
+			prop.load(new FileInputStream("mcmutton.properties.default"));
 	
 			loadPaths(prop);
 		} catch (IOException e) {
@@ -104,26 +123,30 @@ public class ApkCollection {
 		
 		for (ApkApplication app: this.listApplications()) {
 			for (ApkVersion ver: app.listVersions()) {
-				for (ApkSource src: ver.listSources()) {
-					try {
-						ApkInstance apk = src.getPreferred();
-
-						if (mContentMapFiles.contains(apk.getApkFile())) {
-//							System.out.println(apk.getName() + " " + apk.getVersion());
-							continue;
+				try {
+					for (ApkSource src: ver.listSources()) {
+						try {
+							ApkInstance apk = src.getPreferred();
+	
+							if (mContentMapFiles.contains(apk.getApkFile())) {
+	//							System.out.println(apk.getName() + " " + apk.getVersion());
+								continue;
+							}
+							
+							String hash = apk.getApkHash();
+							System.out.println(apk.getApkFile() + " " + hash);
+							
+							if (!result.containsKey(hash)) {
+								result.put(hash,  new LinkedList<File>());
+							}
+							result.get(hash).add(apk.getApkFile());
+							mContentMapFiles.add(apk.getApkFile());
+						} catch (IOException e) {
+							System.err.println("Error loading " + e);
 						}
-						
-						String hash = apk.getApkHash();
-						System.out.println(apk.getApkFile() + " " + hash);
-						
-						if (!result.containsKey(hash)) {
-							result.put(hash,  new LinkedList<File>());
-						}
-						result.get(hash).add(apk.getApkFile());
-						mContentMapFiles.add(apk.getApkFile());
-					} catch (IOException e) {
-						System.err.println("Error loading " + e);
 					}
+				} catch (IOException e) {
+					System.err.println("Error loading " + e);
 				}
 			}
 		}
@@ -274,6 +297,7 @@ public class ApkCollection {
 		
 		public ApkInstance getPreferred() throws IOException {
 			List<ApkVersion> vers = listVersions();
+			if (vers.size() == 0) throw new FileNotFoundException("No versions for " + mPath);
 			return vers.get(vers.size()-1).getPreferred();
 		}
 		
@@ -296,12 +320,14 @@ public class ApkCollection {
 			mPath = path;
 		}
 		
-		List<ApkSource> listSources() {
+		List<ApkSource> listSources() throws IOException {
 			ArrayList<ApkSource> list = new ArrayList<ApkSource>();
 			
 			for (File sub: mPath.listFiles()) {
 				if (sub.isDirectory()) list.add(new ApkSource(sub));
 			}
+			
+			if (list.size() == 0) throw new FileNotFoundException("No sources for " + mPath);
 			
 			return list;
 		}

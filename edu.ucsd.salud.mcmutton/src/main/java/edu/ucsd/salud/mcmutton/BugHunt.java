@@ -1,6 +1,7 @@
 package edu.ucsd.salud.mcmutton;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -192,7 +193,7 @@ public class BugHunt {
 			ApkInstance apk = collection.getApplication(app_name).getPreferred();
 			
 			Wala.UsageType usageType = Wala.UsageType.UNKNOWN;
-			Wala.UsageType panosUsageType = Wala.UsageType.UNKNOWN;
+			Set<String> panosResult = null;
 			
 			boolean successfullyOptimized = false;
 			try {
@@ -203,7 +204,7 @@ public class BugHunt {
 			
 			if (apk.successfullyOptimized()) {
 				try {				
-					usageType = apk.panosAnalyze();
+					panosResult = apk.panosAnalyze();
 				} catch(Exception e) {
 					System.err.println(e.toString());
 					usageType = Wala.UsageType.FAILURE;
@@ -211,7 +212,7 @@ public class BugHunt {
 			} else {
 				LOGGER.warning("Failed to optimize: " + key.toString());
 				usageType = Wala.UsageType.CONVERSION_FAILURE;
-				panosUsageType = usageType;
+				//panosResult = usageType;
 			}
 			
 			//TODO
@@ -220,7 +221,7 @@ public class BugHunt {
 					apk.successfullyOptimized() + " -- " + usageType + "==" + panosUsageType);
 			System.out.println();
 			*/
-			assert usageType == panosUsageType;
+			//assert usageType == panosUsageType;
 
 			if (histogram.containsKey(usageType)) {
 				histogram.put(usageType, histogram.get(usageType) + 1);
@@ -379,43 +380,110 @@ public class BugHunt {
 		}
 	}
 	
-//	public static void runPanos(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
-////		ApkInstance apk = collection.getApplication("DISH").getPreferred();
-////		ApkInstance apk = collection.getApplication(ApkCollection.cleanApkName("Robo Defense FREE")).getPreferred();
-////		System.out.println(apk.panosAnalyze());
-//		
-//		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
-//		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
-//	
-//		Map<String, Integer> colorCount = new HashMap<String, Integer>();
-//		
-//		for (Object key: acqrel_status.keySet()) {
-//			try {
-//				String app_name = ApkCollection.cleanApkName((String)key);
-//				ApkInstance apk = collection.getApplication(app_name).getPreferred();
-//				Set<String> colors = apk.panosAnalyze();
-//				
-//				for (String color: colors) {
-//					if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
-//					else colorCount.put(color, colorCount.get(color) + 1);
-//				}
-//				System.out.println(app_name + ": " + colors);
-//			} catch (Exception e) {
-//				System.out.println("explode!");
-//				String color = "failed";
-//				if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
-//				else colorCount.put(color, colorCount.get(color) + 1);
-//			} catch (Error e) {
-//				System.out.println("more explode!");
-//				String color = "failed";
-//				if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
-//				else colorCount.put(color, colorCount.get(color) + 1);
-//			}
-//		}
-//		
-//		System.out.println(colorCount);
-//			
-//	}
+	public static void runPanos(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
+//		ApkInstance apk = collection.getApplication("DISH").getPreferred();
+//		ApkInstance apk = collection.getApplication(ApkCollection.cleanApkName("Robo Defense FREE")).getPreferred();
+//		System.out.println(apk.panosAnalyze());
+		
+		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
+		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
+	
+		Map<String, Integer> colorCount = new HashMap<String, Integer>();
+		
+		for (Object key: acqrel_status.keySet()) {
+			try {
+				String app_name = ApkCollection.cleanApkName((String)key);
+				ApkInstance apk = collection.getApplication(app_name).getPreferred();
+				Set<String> colors = apk.panosAnalyze();
+				
+				for (String color: colors) {
+					if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
+					else colorCount.put(color, colorCount.get(color) + 1);
+				}
+				System.out.println(app_name + ": " + colors);
+			} catch (Exception e) {
+				System.out.println("explode!");
+				String color = "failed";
+				if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
+				else colorCount.put(color, colorCount.get(color) + 1);
+			} catch (Error e) {
+				System.out.println("more explode!");
+				String color = "failed";
+				if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
+				else colorCount.put(color, colorCount.get(color) + 1);
+			}
+		}
+		
+		System.out.println(colorCount);	
+	}
+	
+	public static void readWorkConsumerResults(ApkCollection collection) {
+		File resultsPath = new File(ApkInstance.sScratchPath + File.separator + "results");
+		
+		FileFilter filter = new FileFilter() {
+			public boolean accept(File arg0) {
+				return arg0.getName().matches(".*[.]json");
+			}
+		};
+		
+
+		int totalCount = 0;
+		int hasWakelockCalls = 0;
+		int retargeted = 0;
+		int optimized = 0;
+		
+		int panosFailure = 0;
+		int patternFailure = 0;
+		
+		Set<String> panosExceptions = new HashSet<String>();
+		
+		for (File resultsJson: resultsPath.listFiles(filter)) {
+			try {
+				FileInputStream is = new FileInputStream(resultsJson);
+				JSONObject obj = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
+				is.close();
+				++totalCount;
+//				System.err.println(resultsJson);
+				
+				if (obj.getBoolean("hasWakelockCalls")) {
+					++hasWakelockCalls;
+					
+					if (obj.getBoolean("successfullyRetargeted")) {
+						++retargeted;
+						if (obj.getBoolean("successfullyOptimized")) {
+							++optimized;
+							
+							JSONObject panos_result = (JSONObject)obj.get("panosResult");
+							if (panos_result.containsKey("_exception")) {
+								++panosFailure;
+								panosExceptions.add(panos_result.getString("_exception"));
+							} else if (panos_result.containsKey("_error")) {
+								++panosFailure;
+								panosExceptions.add(panos_result.getString("_error"));
+							}
+							
+							JSONObject pattern_result = (JSONObject)obj.getJSONObject("patternResult");
+							if (pattern_result.containsKey("_exception") | pattern_result.containsKey("_error")) ++ patternFailure;
+						}
+					}
+				}
+			} catch (IOException e) {
+				System.err.println("Error reading " + resultsJson + " " + e.toString());
+			} 
+		}
+		
+		
+		System.out.println("totalCount: " + totalCount);
+		System.out.println("wakeLockCount: " + hasWakelockCalls);
+		System.out.println("retargeted: " + retargeted);
+		System.out.println("optimized: " + optimized);
+		System.out.println("panosFailure: " + panosFailure);
+		System.out.println("patternFailure: " + patternFailure);
+		
+		for (String err: panosExceptions) {
+			System.out.println("panos: " + err);
+		}
+	}
 		
 	/**
 	 * @param args
@@ -443,6 +511,10 @@ public class BugHunt {
 									   .hasArgs(2)
 									   .withDescription("integrate into collection w/args path, collectionname")
 									   .create());
+		options.addOption(OptionBuilder.withLongOpt("read-consumer")
+				   .hasArgs(0)
+				   .withDescription("process stats output by WorkConsumer")
+				   .create());
 		
 		try {
 	    	ApkCollection collection = new ApkCollection();
@@ -479,8 +551,10 @@ public class BugHunt {
 	    				return;
 	    			}
 	    			collection.integrateApks(basePath, collectionName);
-//	    		} else if (line.hasOption("panos")) {
-//	    			runPanos(collection);
+	    		} else if (line.hasOption("panos")) {
+	    			runPanos(collection);
+	    		} else if (line.hasOption("read-consumer")) {
+	    			readWorkConsumerResults(collection);
 	    		} else {
 	    			for (Object opt: options.getOptions()) {
 	    				System.err.println(opt);

@@ -1,0 +1,8 @@
+.classpath-run
+*.class
+.*.swp
+*/target/*
+*/mcmutton.properties
+[core]
+  whitespace=nowarn
+

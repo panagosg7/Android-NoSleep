@@ -41,6 +41,11 @@
       </dependency>
       <dependency>
           <groupId>com.googlecode.dex2jar</groupId>
+          <artifactId>dex-ir</artifactId>
+          <version>1.6</version>
+      </dependency>
+      <dependency>
+          <groupId>com.googlecode.dex2jar</groupId>
           <artifactId>dex-tools</artifactId>
           <version>0.0.0.4</version>
           <!-- otherwise we collide with commons-io -->

@@ -87,7 +87,7 @@ public class ApkPaths {
 		manifestStringsEnPath = new File(extractedPath + File.separator + "res" + File.separator + "values-en" + File.separator + "strings.xml");
 		manifestStringsPath = new File(extractedPath + File.separator + "res" + File.separator + "values" + File.separator + "strings.xml");
 		
-		info = new File(basePath + File.separator + "info.json");
+		info = new File(workPath + File.separator + "info.json");
 		smali = new File(extractedPath + File.separator + "smali");
 		
 		ded = new File(workPath + File.separator + "ded");

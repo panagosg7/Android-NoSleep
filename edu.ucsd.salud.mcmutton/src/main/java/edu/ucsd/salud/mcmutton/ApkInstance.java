@@ -344,12 +344,10 @@ public class ApkInstance {
 		return interestingCallSites().keySet();
 	}
 	
-	public UsageType panosAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException {		
-		this.getWala().panosAnalyze();			//run my stuff
-		//return this.getWala().analyze();		//and John's ???
-		return UsageType.UNKNOWN;
+	public Set<String> panosAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException {		
+		return this.getWala().panosAnalyze();			//run my stuff		
 	}
-	
+ 
 	public Wala.UsageType analyze() throws IOException, RetargetException {
 		return this.getWala().analyze();
 	}
@@ -364,6 +362,10 @@ public class ApkInstance {
 	
 	public void buildOptimizedJava() throws IOException, RetargetException {
 	    mPreferredTranslation.buildOptimizedJava();
+	}
+	
+	public boolean successfullyRetargeted() throws IOException, RetargetException {
+		return mPreferredTranslation.retargetSuccess();
 	}
 	
 	public boolean successfullyOptimized() throws IOException, RetargetException {
@@ -408,11 +410,11 @@ public class ApkInstance {
 		
 	}
 	
-	public String getOptException() {
+	private String getException(File log) {
 		String exception = null;
 		
 		try {
-			FileInputStream is = new FileInputStream(this.getDedOptimizedErrLogTarget());
+			FileInputStream is = new FileInputStream(log);
 			try {
 				BufferedReader br = new BufferedReader(new InputStreamReader(is));
 				String line0 = br.readLine();
@@ -428,6 +430,14 @@ public class ApkInstance {
 		}
 		
 		return exception;
+	}
+
+	public String getRetargetException() {
+		return this.getException(this.getDedErrLogTarget());
+	}
+	
+	public String getOptException() {
+		return this.getException(this.getDedOptimizedErrLogTarget());
 	}
 
 	public void requiresExtraction() throws IOException { 

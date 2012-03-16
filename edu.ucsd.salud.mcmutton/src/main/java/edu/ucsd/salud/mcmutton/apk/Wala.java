@@ -598,7 +598,18 @@ public class Wala {
 		}
 	}
 
-	public void panosAnalyze() throws IOException, WalaException, CancelException, ApkException {
+	public Set<String> panosAnalyze() throws IOException, WalaException, CancelException, ApkException {
+		//energy.analysis.Opts.TARGET_FUNCTIONS = "/home/jcm/working/WALA/com.ibm.wala.core.tests/dat/AndroidAnalysisTargetFunctions.txt";
+		/*
+		String args[] = {"-appJar", mPath.getAbsolutePath(),
+						 "-exclusionFile", "/home/jcm/working/WALA/com.ibm.wala.core.tests/dat/Java60RegressionExclusions.txt"};
+		File panosOutput = new File(mCachePath + "/panos");
+		panosOutput.mkdirs();
+		Opts.OUTPUT_FOLDER = panosOutput.getAbsolutePath();
+		ClassHierarchy ch = new energy.analysis.ClassHierarchyAnalysis(args).getClassHierarchy();
+		ApplicationCallGraph cg = new ApplicationCallGraph(args, ch);
+		*/
+//>>>>>>> 2a5705570b39213761028efe01931b1fd9a5fe95
 		
 		String appJar = mPath.getAbsolutePath();
 		String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/" +
@@ -614,6 +625,7 @@ public class Wala {
 		for (String arg: args) {
 			System.out.println(arg);
 		}
+<<<<<<< HEAD
 		System.out.println(CallGraphStats.getCGStats(cg).toString());
 		Map<MethodReference, Set<MethodReference>> interestingSites = this.interestingCallSites(Interesting.sInterestingMethods, ch);
 		Map<MethodReference, Map<MethodReference, Double>> entryReachability = this.callGraphReachability(Interesting.sInterestingMethods, 
@@ -635,5 +647,44 @@ public class Wala {
 			}
 		}
 		
+//=======
+//		System.out.println(CallGraphStats.getCGStats(cg).toString());
+//		
+//		Map<MethodReference, Set<MethodReference>> interestingSites = this.interestingCallSites(Interesting.sInterestingMethods, ch);
+//		Map<MethodReference, Map<MethodReference, Double>> entryReachability = this.callGraphReachability(Interesting.sInterestingMethods, 
+//																							  ch, cg);
+//		
+//		InterestingReachabilityResult res = new InterestingReachabilityResult(interestingSites, entryReachability);
+
+//		UsageType result = analyzeReachability(new InterestingReachabilityStringResult(res));
+		Set<String> result = new HashSet<String>();
+		
+//		if (Opts.DO_SYSCALLS_ANALYSIS){
+//			System.out.println(CallGraphStats.getCGStats(cg).toString());
+//			DataflowTest.testMyContextSensitive(cg);
+//		}
+		
+//		if (Opts.RESOLVE_ANDROID_COMPONENTS) {
+			ComponentManager componentManager = new ComponentManager(cg);
+			componentManager.prepareReachability();
+			Map<String, String> componentColors = componentManager.processComponents();
+			
+			result.addAll(componentColors.values());
+//		}
+		
+//		if (Opts.RESOLVE_SCC) {
+//			SCCManager sccManager = new SCCManager(cg);
+//			if (Opts.DO_SCC_ANALYSIS) {
+//				sccManager.analyze();
+//			}
+//		}
+//		
+//		if (Opts.DO_INTRA_PROC_ANALYSIS) {
+//			IntraProcAnalysis ipa = new IntraProcAnalysis();
+//			cg.doBottomUpAnalysis(ipa);
+//		}
+		
+		return result;
+//>>>>>>> 2a5705570b39213761028efe01931b1fd9a5fe95
 	}
 }
