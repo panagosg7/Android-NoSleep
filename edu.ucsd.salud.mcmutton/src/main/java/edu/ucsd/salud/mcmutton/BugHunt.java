@@ -203,11 +203,9 @@ public class BugHunt {
 			}
 			
 			if (apk.successfullyOptimized()) {
-				try {				
-					panosResult = apk.panosAnalyze();
-					System.err.println(e.toString());
-					usageType = Wala.UsageType.FAILURE;
-				}							
+				panosResult = apk.panosAnalyze();				
+				usageType = Wala.UsageType.FAILURE;
+			
 			} else {
 				LOGGER.warning("Failed to optimize: " + key.toString());
 				usageType = Wala.UsageType.CONVERSION_FAILURE;

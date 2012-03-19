@@ -14,7 +14,7 @@ import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.util.debug.Assertions;
 
 import energy.components.Component;
-import energy.components.ComponentManager;
+import energy.analysis.ComponentManager;
 import energy.components.RunnableThread;
 import energy.util.E;
 import energy.util.SSAProgramPoint;

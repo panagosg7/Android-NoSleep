@@ -62,7 +62,7 @@ public abstract class Component extends NodeWithNumber {
    * @author pvekris
    *
    */
-<<<<<<< HEAD
+
   public class CallBack {
 	  
 	  private CGNode node;
@@ -101,11 +101,7 @@ public abstract class Component extends NodeWithNumber {
   protected HashSet<Pair<String, String>> callbackEdges;
   
   protected CallGraph 				componentCallgraph;
-  
-=======
-  private HashMap<String, CGNode> callbacks;
-  protected CallGraph 				componentCallgraph;
->>>>>>> 74c4df8b5f776eb993409cd693323c00f47416a3
+
   protected ApplicationCallGraph	originalCallgraph;
 
   /**
@@ -676,37 +672,6 @@ private String getTargetColor(ISSABasicBlock ebb) {
 	        
     return result;
     
-  protected void checkLockingPolicy() {
-    for (Pair<String, List<String>> elem : callbackExpectedState) {
-      String methName = elem.fst;      
-      CGNode cgNode = callbacks.get(methName);
-      
-      if (cgNode != null) {
-    	LockState st = getExitState(cgNode);
-        
-        List<String> expStatus = elem.snd;
-        String status = "BAD";
-        /* Is this an expected exit state ? */
-        if (expStatus.contains(st.getColor())) {
-          status = "OK";
-        }            
-        else {
-          AnalysisDriver.retCode = 1;          
-        }
-        //Register the result
-        checkedPolicy = true;
-        policyResult = status;
-        
-        E.slog(0, "locking.txt", this.toString() + " | " + methName + " : " + 
-            st.toString() + "\t[" + status + "]");        
-      } else {
-        E.log(1, "Callback " + methName + " was not found.");
-        for (Entry<String, CGNode> e : callbacks.entrySet()) {
-          E.log(2, " - " + e.getValue().getMethod().getSignature().toString());
-        }
-      }
-      
-    }
   }
 
   
