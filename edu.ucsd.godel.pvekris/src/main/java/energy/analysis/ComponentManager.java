@@ -1,4 +1,4 @@
-package energy.components;
+package energy.analysis;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -7,13 +7,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Predicate;
 
-import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
@@ -34,13 +31,27 @@ import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.graph.traverse.BFSIterator;
 import com.ibm.wala.util.graph.traverse.DFSPathFinder;
 
-import energy.analysis.ApplicationCallGraph;
-import energy.analysis.Opts;
-import energy.analysis.ThreadCreation;
+import energy.components.Activity;
+import energy.components.AdapterViewOnItemClickListener;
+import energy.components.Application;
+import energy.components.AsyncTask;
+import energy.components.BaseAdapter;
+import energy.components.BroadcastReceiver;
+import energy.components.Component;
+import energy.components.CompoundButton;
+import energy.components.ContentProvider;
+import energy.components.Handler;
+import energy.components.Initializer;
+import energy.components.LocationListener;
+import energy.components.OnSharedPreferenceChangeListener;
+import energy.components.RunnableThread;
+import energy.components.SensorEventListener;
+import energy.components.Service;
+import energy.components.View;
+import energy.components.ViewOnClickListener;
 import energy.interproc.SensibleExplodedInterproceduralCFG;
 import energy.util.E;
 import energy.util.GraphBottomUp;
-import energy.util.LockingStats;
 import energy.util.SSAProgramPoint;
 
 @SuppressWarnings("deprecation")
@@ -394,24 +405,21 @@ public class ComponentManager {
   /**
    * 2. Process the components that have been resolved
    */
-  public Map<String, String> processComponents() {
+  public AnalysisResults processComponents() {
      
-    /* Gather locking statistics */
-    LockingStats ls = new LockingStats();
     
-//<<<<<<< HEAD
     /* Build the constraints graph 
      * (threads should be analyzed before their parents)*/
-    Collection<Component> components = componentMap.values();    
+    Collection<Component> components = componentMap.values();
     
     Graph<Component> constraintGraph = constraintGraph(components);
     
     BFSIterator<Component> bottomUpIterator = GraphBottomUp.bottomUpIterator(constraintGraph);
     
-    /**
-     * Mapping with the results about this component
+    /*
+     * Results about all Components
      */
-    Map<String, String> result = new HashMap<String, String>();
+    AnalysisResults result = new AnalysisResults();
     
     
     /* And analyze the components based on this graph in bottom up order */
@@ -476,16 +484,15 @@ public class ComponentManager {
       
       
       /* Check the policy - defined for each type of component separately */
-      if (Opts.CHECK_LOCKING_POLICY) {        
-        Map<String, String> componentResult = component.checkLockingPolicy();
-        result.putAll(componentResult);
+      if (Opts.CHECK_LOCKING_POLICY) {    	  
+    	  
+    	result.registerExitLockState(component, component.getExitLockStates());        
+        
       }
-      /* Register the result - needs to be done after checking the policy */
-      ls.registerComponent(component);      
+      
+      
+            
     }
-    
-    /* Post-process */
-    ls.dumpStats();
     
     return result;
     
@@ -591,7 +598,6 @@ public class ComponentManager {
 		  
 		  component2ThreadInvocations.put(c, compInv);	
 		  
-		  E.log(1, "Setting thre inv for: " + c.toString());
 	  }
 	  Assertions.productionAssertion(compInv != null);
 	  return compInv;

@@ -2,8 +2,6 @@ package energy.interproc;
 
 import java.util.Collection;
 
-import org.junit.experimental.theories.Theories;
-
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.dataflow.IFDS.ICFGSupergraph;
 import com.ibm.wala.dataflow.IFDS.IFlowFunction;
@@ -25,7 +23,6 @@ import com.ibm.wala.ipa.cfg.ExplodedInterproceduralCFG;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
-import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.collections.HashSetFactory;
 import com.ibm.wala.util.debug.Assertions;
@@ -113,23 +110,6 @@ public class ContextSensitiveLocking {
 		return false;
 	}
 
-	/**
-	 * Get the method reference called by a bb (null if not a call site)
-	 * 
-	 * @param bb
-	 * @return
-	 */
-	private MethodReference getCalledMethodReference(
-			BasicBlockInContext<IExplodedBasicBlock> bb) {
-		final IExplodedBasicBlock ebb = bb.getDelegate();
-		SSAInstruction instruction = ebb.getInstruction();
-		if (instruction instanceof SSAInvokeInstruction) {
-			final SSAInvokeInstruction invInstr = (SSAInvokeInstruction) instruction;
-			return invInstr.getDeclaredTarget();
-		}
-		return null;
-	}
-	
 	/**
 	 * Check if we have an entry for this in the bb -> thread map
 	 * @param bb
@@ -294,25 +274,38 @@ public class ContextSensitiveLocking {
 			 * if we're missing callees, just keep what information we have.
 			 * These are cases where we don't have the code for the callee, e.g.
 			 * android, java, library code. Acquires and releases are not
-			 * handled here
+			 * handled here.
+			 * 
+			 * Also take thread info into account. 
 			 */
 			
-			LockState threadExitState = getCalledRunnable(src);
-			
-			/* 
-			 * TODO: OK we got the state, now use it !!! 
-			 * 
-			 * 
-			 * 
-			 */
+			final LockState threadExitState = getCalledRunnable(src);
 			
 
 			if (threadExitState != null) {
-				E.log(1, "Call to: " + threadExitState.toString());			
-			}
+
+				E.log(2, "Call to: " + threadExitState.toString());			
+					
+				return new IUnaryFlowFunction() {
+
+					@Override
+					public IntSet getTargets(int d1) {
+						MutableSparseIntSet result = MutableSparseIntSet.makeEmpty();
+						result.add(d1);
 						
+						int threadIndex = domain.add(threadExitState);
+						int mergedState = mergeStates(result, threadIndex);
+						result.clear();
+						result.add(mergedState);
+						return result;
+												
+					}
+				};
+			}
+									
 			return IdentityFlowFunction.identity();
 		}
+
 
 		private boolean isExceptionalEdge(
 				BasicBlockInContext<IExplodedBasicBlock> src,
@@ -342,6 +335,25 @@ public class ContextSensitiveLocking {
 		}
 
 	}
+	
+	protected int mergeStates(IntSet x, int j) {
+		IntIterator it = x.intIterator();
+		LockState n = domain.getMappedObject(j);
+		StringBuffer sb = new StringBuffer();
+		sb.append("Merging: " + n.toString());
+		while (it.hasNext()) {
+			int i = it.next();
+			LockState q = domain.getMappedObject(i);
+			n = n.merge(q);
+			sb.append(" + " + q.toString());
+		}
+		sb.append(" -> " + n.toString());
+		E.log(2, sb.toString());
+		return domain.add(n);
+		
+	}
+
+	
 
 	private class LockingProblem
 			implements
@@ -383,8 +395,7 @@ public class ContextSensitiveLocking {
 					final CGNode cgNode = bb.getNode();
 					BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(cgNode);
 					// note that the fact number used for the source of this
-					// path edge
-					// doesn't really matter
+					// path edge doesn't really matter
 					result.add(PathEdge.createPathEdge(fakeEntry, factNum, bb,
 							factNum));
 				}
@@ -420,20 +431,8 @@ public class ContextSensitiveLocking {
 			return new IMergeFunction() {
 
 				@Override
-				public int merge(IntSet x, int j) {
-					IntIterator it = x.intIterator();
-					LockState n = domain.getMappedObject(j);
-					StringBuffer sb = new StringBuffer();
-					sb.append("Merging: " + n.toString());
-					while (it.hasNext()) {
-						int i = it.next();
-						LockState q = domain.getMappedObject(i);
-						n = n.merge(q);
-						sb.append(" + " + q.toString());
-					}
-					sb.append(" -> " + n.toString());
-					E.log(2, sb.toString());
-					return domain.add(n);
+				public int merge(IntSet x, int j) {					
+					return mergeStates(x, j);
 				}
 			};
 		}

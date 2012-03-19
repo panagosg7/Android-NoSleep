@@ -5,9 +5,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 
@@ -42,7 +40,6 @@ import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.viz.NodeDecorator;
 
-import energy.analysis.AnalysisDriver;
 import energy.analysis.ApplicationCallGraph;
 import energy.analysis.Opts;
 import energy.interproc.ContextInsensitiveLocking;
@@ -57,11 +54,53 @@ import energy.viz.GraphDotUtil;
 
 public abstract class Component extends NodeWithNumber {
   protected IClass klass;
+  
+  
+  
   /**
-   * Gather all possible callbacks
+   * CallBack representation 
+   * @author pvekris
+   *
    */
-  private HashMap<String, CGNode> callbacks;
+  public class CallBack {
+	  
+	  private CGNode node;
+	  
+	  public String getSignature() {
+		  return node.getMethod().getSignature();
+	  }
+	  
+	  public CGNode getNode () {
+		  return node;
+	  }
+	  
+	  
+	  CallBack(CGNode node) {
+		  this.node = node;
+	  }
+
+      public String getName() {
+		return node.getMethod().getName().toString();
+      }
+	  
+  }
+  
+  
+  
+  /** These are the actual callbacks that get resolved */
+  private HashSet<CallBack> 			callbacks;
+  private HashMap<String, CallBack> 	callbackMap;
+  
+  /** These are the possible callbacks - initialized before 
+   * the analysis runs*/
+  protected HashSet<String> callbackNames;
+  
+  /** This is going to be needed for the construction of the 
+   * sensible graph */
+  protected HashSet<Pair<String, String>> callbackEdges;
+  
   protected CallGraph 				componentCallgraph;
+  
   protected ApplicationCallGraph	originalCallgraph;
 
   /**
@@ -75,36 +114,57 @@ public abstract class Component extends NodeWithNumber {
   /** Does it call any locking functions ? */
   private boolean interesting = false;
 
-  protected HashSet<String> callbackNames;
-  protected HashSet<Pair<String, String>> callbackEdges;
-  protected HashSet<Pair<String, List<String>>> callbackExpectedState;
+  
+  /* Deprecating this - not very useful*/
+  //protected HashSet<Pair<String, List<String>>> callbackExpectedState;
 
   public void registerCallback(String name, CGNode node) {
-    E.log(2, "Registering callback: " + name + " to " + this.toString());
-    callbacks.put(name, node);
+    
+	  E.log(2, "Registering callback: " + name + " to " + this.toString());
+    
+    if (callbacks == null) {
+    	callbacks = new HashSet<Component.CallBack>();
+    }
+    if (callbackMap == null) {
+    	callbackMap = new HashMap<String, Component.CallBack>();
+    }
+    
+    CallBack callBack = new CallBack(node);
+    
+    callbacks.add(callBack);
+    callbackMap.put(node.getMethod().getName().toString(), callBack);
+    
   }
 
   
   Component(ApplicationCallGraph cg, IClass declaringClass, CGNode root) {
+	  
     setKlass(declaringClass);
     originalCallgraph = cg;
-    callbacks = new HashMap<String, CGNode>();
+    
     registerCallback(root.getMethod().getName().toString(), root);
 
     callbackNames         = new HashSet<String>();
     callbackEdges         = new HashSet<Pair<String, String>>();
-    callbackExpectedState = new HashSet<Pair<String,List<String>>>();
+    
+    /* Depracate */
+    // callbackExpectedState = new HashSet<Pair<String,List<String>>>();
   }
 
   void createComponentCG() {
+	  
     HashSet<CGNode> rootSet = new HashSet<CGNode>();
     
     E.log(2, "Creating callgraph: " + klass.getName().toString());
     
     HashSet<CGNode> set = new HashSet<CGNode>();
-    for (CGNode node : getCallbacks()) {
-      set.addAll(getDescendants(originalCallgraph, node));
-      rootSet.add(node);
+    
+    for (CallBack cb : getCallbacks()) {
+    	
+      set.addAll(getDescendants(originalCallgraph, cb.getNode()));
+      
+      rootSet.add(cb.getNode());
+      
     }
     
     componentCallgraph = PartialCallGraph.make(originalCallgraph, rootSet, set);
@@ -150,12 +210,12 @@ public abstract class Component extends NodeWithNumber {
     this.klass = klass;
   }
 
-  public Collection<CGNode> getCallbacks() {
-    return callbacks.values();
+  public HashSet<CallBack> getCallbacks() {
+    return callbacks;
   }
 
-  public CGNode getCallBackByName(String name) {
-    return callbacks.get(name);
+  public CallBack getCallBackByName(String name) {
+    return callbackMap.get(name);
   }
 
   public CallGraph getCallgraph() {
@@ -181,7 +241,8 @@ public abstract class Component extends NodeWithNumber {
     return sensibleAuxCG;
   }
 
-  private String getTargetColor(ISSABasicBlock ebb) {
+  @SuppressWarnings("unused")
+private String getTargetColor(ISSABasicBlock ebb) {
     Iterator<SSAInstruction> iterator = ebb.iterator();
     while (iterator.hasNext()) {
       SSAInstruction instr = iterator.next();
@@ -362,7 +423,7 @@ public abstract class Component extends NodeWithNumber {
    * Solve the _context-insensitive_ problem on the exploded inter-procedural
    * CFG based on the component's sensible callgraph
    */
-  protected void solveCICFG() {
+  public void solveCICFG() {
 	icfg = getICFG();
 	
 	ContextInsensitiveLocking lockingProblem = new ContextInsensitiveLocking(icfg);
@@ -375,7 +436,7 @@ public abstract class Component extends NodeWithNumber {
    * Solve the _context-sensitive_ problem on the exploded inter-procedural CFG
    * based on the component's sensible callgraph
    */
-  protected void solveCSCFG() {
+  public void solveCSCFG() {
 	if (icfg == null) {
 	  icfg = createSensibleCG();
 	  icfg.printBBToThreadMap();
@@ -592,47 +653,31 @@ public abstract class Component extends NodeWithNumber {
   }
   
   
-  /**
+  /* 	
    * Apply the policies to the corresponding callbacks. This one checks that at
    * the end of the method, we have an expected state.
    */
-  protected Map<String, String> checkLockingPolicy() {
-	Map<String, String> result = new HashMap<String, String>();
+  public Map<String, LockState> getExitLockStates() {
 	
-    for (Pair<String, List<String>> elem : callbackExpectedState) {
-      String methName = elem.fst;      
-      CGNode cgNode = callbacks.get(methName);
-      
-      if (cgNode != null) {
-    	LockState st = getExitState(cgNode);
-        
-        result.put(methName, st.getColor());
-        
-        List<String> expStatus = elem.snd;
-        String status = "BAD";
-        /* Is this an expected exit state ? */
-        if (expStatus.contains(st.getColor())) {
-          status = "OK";
-        }            
-        else {
-          AnalysisDriver.retCode = 1;          
-        }
-        //Register the result
-        checkedPolicy = true;
-        policyResult = status;
-        
-        E.slog(0, "locking.txt", this.toString() + " | " + methName + " : " + 
-            st.toString() + "\t[" + status + "]");        
-      } else {
-        E.log(1, "Callback " + methName + " was not found.");
-        for (Entry<String, CGNode> e : callbacks.entrySet()) {
-          E.log(2, " - " + e.getValue().getMethod().getSignature().toString());
-        }
-      }
-    }
+	Map<String, LockState> result = new HashMap<String, LockState>();	
+	
+	/* get the defined callbacks */
+	HashSet<CallBack> callbacks = getCallbacks();
+	
+	for (CallBack cb : callbacks) {						    
+  		//Register the exit state of every callback
+  		result.put(cb.getName(), getExitState(cb.getNode()));
+	}
+	        
     return result;
+    
   }
 
+  
+  
+  
+  
+  
   public void lookForExceptionalEdges() {
     Iterator<BasicBlockInContext<IExplodedBasicBlock>> it = icfg.iterator();
     while (it.hasNext()) {
@@ -678,6 +723,15 @@ public abstract class Component extends NodeWithNumber {
   public void setThreadInvocations(HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> compInv) {
 	  icfg.setThreadInvocations(compInv);
 	
+  }
+
+
+  public boolean isThread() {	
+	return (this instanceof RunnableThread);
+  }
+  
+  public boolean isActivity() {	
+		return (this instanceof Activity);
   }
 
 }

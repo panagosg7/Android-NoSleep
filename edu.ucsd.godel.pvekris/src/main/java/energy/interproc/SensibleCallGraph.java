@@ -78,7 +78,7 @@ public class SensibleCallGraph extends SparseNumberedGraph<SensibleCGNode> {
   }
 
   public void addSensibleNode (String name) {    
-    CGNode callback = component.getCallBackByName(name);
+    CGNode callback = component.getCallBackByName(name).getNode();
     SensibleCGNode snode = new SensibleCGNode(name, callback);
     sensibleMap.put(name, snode);
     addNode(snode);

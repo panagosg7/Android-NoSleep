@@ -3,7 +3,6 @@ package energy.analysis;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 
-import energy.components.ComponentManager;
 import energy.intraproc.IntraProcAnalysis;
 
 public class AnalysisDriver {
@@ -26,7 +25,7 @@ public class AnalysisDriver {
       ApplicationClassHierarchy	ch = new ApplicationClassHierarchy(appJar, exclusionFile);		
 	  ApplicationCallGraph 		cg = new ApplicationCallGraph(ch);
 
-	  if (Opts.RESOLVE_ANDROID_COMPONENTS) {
+	  if (Opts.PROCESS_ANDROID_COMPONENTS) {
         ComponentManager componentManager = new ComponentManager(cg);
         componentManager.prepareReachability();
         componentManager.resolveComponents();

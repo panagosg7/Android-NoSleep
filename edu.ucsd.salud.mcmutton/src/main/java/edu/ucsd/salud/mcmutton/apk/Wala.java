@@ -76,10 +76,11 @@ import com.ibm.wala.util.config.AnalysisScopeReader;
 import edu.ucsd.salud.mcmutton.ApkException;
 import edu.ucsd.salud.mcmutton.ApkInstance;
 import edu.ucsd.salud.mcmutton.RetargetException;
+import energy.analysis.AnalysisResults;
 import energy.analysis.ApplicationCallGraph;
 import energy.analysis.ApplicationClassHierarchy;
+import energy.analysis.ComponentManager;
 import energy.analysis.Opts;
-import energy.components.ComponentManager;
 
 public class Wala {
 	private File mPath;
@@ -599,19 +600,10 @@ public class Wala {
 	}
 
 	public Set<String> panosAnalyze() throws IOException, WalaException, CancelException, ApkException {
-		//energy.analysis.Opts.TARGET_FUNCTIONS = "/home/jcm/working/WALA/com.ibm.wala.core.tests/dat/AndroidAnalysisTargetFunctions.txt";
-		/*
-		String args[] = {"-appJar", mPath.getAbsolutePath(),
-						 "-exclusionFile", "/home/jcm/working/WALA/com.ibm.wala.core.tests/dat/Java60RegressionExclusions.txt"};
-		File panosOutput = new File(mCachePath + "/panos");
-		panosOutput.mkdirs();
-		Opts.OUTPUT_FOLDER = panosOutput.getAbsolutePath();
-		ClassHierarchy ch = new energy.analysis.ClassHierarchyAnalysis(args).getClassHierarchy();
-		ApplicationCallGraph cg = new ApplicationCallGraph(args, ch);
-		*/
-//>>>>>>> 2a5705570b39213761028efe01931b1fd9a5fe95
 		
 		String appJar = mPath.getAbsolutePath();
+
+		//TODO: Put this somewhere else
 		String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/" +
 				"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";						
 		
@@ -619,72 +611,27 @@ public class Wala {
 		energy.util.Util.printLabel(mPath.getAbsolutePath());		
 		
 		ApplicationClassHierarchy	ch = new ApplicationClassHierarchy(appJar, exclusionFile);		
-		ApplicationCallGraph 		cg = new ApplicationCallGraph(ch);
+		ApplicationCallGraph 		cg = new ApplicationCallGraph(ch);		
 		
-		/*	
-		for (String arg: args) {
-			System.out.println(arg);
-		}
-<<<<<<< HEAD
-		System.out.println(CallGraphStats.getCGStats(cg).toString());
-		Map<MethodReference, Set<MethodReference>> interestingSites = this.interestingCallSites(Interesting.sInterestingMethods, ch);
-		Map<MethodReference, Map<MethodReference, Double>> entryReachability = this.callGraphReachability(Interesting.sInterestingMethods, 
-		InterestingReachabilityResult res = new InterestingReachabilityResult(interestingSites, entryReachability);
-		UsageType result = analyzeReachability(new InterestingReachabilityStringResult(res));
-		*/
-		
-		if (Opts.RESOLVE_ANDROID_COMPONENTS) {
-			
-			try {
-				//Resolve the components
-				ComponentManager componentManager = new ComponentManager(cg);
-				componentManager.prepareReachability();
-		        componentManager.resolveComponents();		        
-				componentManager.processComponents();			
-			}
-			catch (Exception e) {
-				e.printStackTrace();	
-			}
-		}
-		
-//=======
-//		System.out.println(CallGraphStats.getCGStats(cg).toString());
-//		
-//		Map<MethodReference, Set<MethodReference>> interestingSites = this.interestingCallSites(Interesting.sInterestingMethods, ch);
-//		Map<MethodReference, Map<MethodReference, Double>> entryReachability = this.callGraphReachability(Interesting.sInterestingMethods, 
-//																							  ch, cg);
-//		
-//		InterestingReachabilityResult res = new InterestingReachabilityResult(interestingSites, entryReachability);
-
-//		UsageType result = analyzeReachability(new InterestingReachabilityStringResult(res));
 		Set<String> result = new HashSet<String>();
-		
-//		if (Opts.DO_SYSCALLS_ANALYSIS){
-//			System.out.println(CallGraphStats.getCGStats(cg).toString());
-//			DataflowTest.testMyContextSensitive(cg);
-//		}
-		
-//		if (Opts.RESOLVE_ANDROID_COMPONENTS) {
-			ComponentManager componentManager = new ComponentManager(cg);
-			componentManager.prepareReachability();
-			Map<String, String> componentColors = componentManager.processComponents();
+
+		if (Opts.PROCESS_ANDROID_COMPONENTS) {
 			
-			result.addAll(componentColors.values());
-//		}
-		
-//		if (Opts.RESOLVE_SCC) {
-//			SCCManager sccManager = new SCCManager(cg);
-//			if (Opts.DO_SCC_ANALYSIS) {
-//				sccManager.analyze();
-//			}
-//		}
-//		
-//		if (Opts.DO_INTRA_PROC_ANALYSIS) {
-//			IntraProcAnalysis ipa = new IntraProcAnalysis();
-//			cg.doBottomUpAnalysis(ipa);
-//		}
+			ComponentManager componentManager = new ComponentManager(cg);
+			
+			componentManager.prepareReachability();
+			
+			componentManager.resolveComponents();
+			
+			AnalysisResults results = componentManager.processComponents();
+			
+			results.processResults();
+			
+			
+			
+		}
 		
 		return result;
-//>>>>>>> 2a5705570b39213761028efe01931b1fd9a5fe95
+
 	}
 }

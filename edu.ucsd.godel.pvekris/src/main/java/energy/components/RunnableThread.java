@@ -1,12 +1,9 @@
 package energy.components;
 
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
 
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
-import com.ibm.wala.util.collections.Pair;
 
 import energy.analysis.ApplicationCallGraph;
 import energy.interproc.LockState;
@@ -25,10 +22,15 @@ public class RunnableThread extends Component {
     super(originalCG, declaringClass, root);
     
     callbackNames.addAll(Arrays.asList(elements));          
+    
+    //Deprecating
+    /*
     callbackExpectedState = new HashSet<Pair<String,List<String>>>();
     callbackExpectedState.add(Pair.make(
         "run", 
-        Arrays.asList("lightgreen", "green","lightgrey")));   
+        Arrays.asList("lightgreen", "green","lightgrey")));
+    */
+           
   }
   
   public String toString() {
@@ -39,7 +41,7 @@ public class RunnableThread extends Component {
   }  
   
   public LockState getThreadExitState() {
-	CGNode runNode = super.getCallBackByName("run");
+	CGNode runNode = super.getCallBackByName("run").getNode();
 	return super.getExitState(runNode);
   }
   

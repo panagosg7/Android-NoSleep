@@ -80,7 +80,7 @@ public class Opts {
    * 
    * Define any new components in com.energy.components
    */
-  public static final boolean   RESOLVE_ANDROID_COMPONENTS  = true;
+  public static final boolean   PROCESS_ANDROID_COMPONENTS  = true;
   
   /**
    * This will help reduce the number of analyzed components
@@ -116,7 +116,7 @@ public class Opts {
    * This will generally be too big to display 
    */
   public static final boolean OUTPUT_SOLVED_EICFG         = false;
-  public static final boolean CHECK_LOCKING_POLICY        = false;
+  public static final boolean CHECK_LOCKING_POLICY        = true;
   
   
   /*******************************************
