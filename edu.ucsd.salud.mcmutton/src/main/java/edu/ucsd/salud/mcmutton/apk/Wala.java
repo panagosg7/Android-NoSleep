@@ -632,6 +632,5 @@ public class Wala {
 		}
 		
 		return result;
-
 	}
 }

@@ -19,7 +19,7 @@ import energy.analysis.ApplicationCallGraph;
  */
 public class Application extends Component {
 
-	public Application(ApplicationCallGraph originalCG, IClass declaringClass, CGNode root) {
+	Application(ApplicationCallGraph originalCG, IClass declaringClass, CGNode root) {
 		super(originalCG, declaringClass, root);
 
 	}

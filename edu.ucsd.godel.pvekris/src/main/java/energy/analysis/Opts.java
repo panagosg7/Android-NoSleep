@@ -116,7 +116,7 @@ public class Opts {
    * This will generally be too big to display 
    */
   public static final boolean OUTPUT_SOLVED_EICFG         = false;
-  public static final boolean CHECK_LOCKING_POLICY        = true;
+  public static final boolean CHECK_LOCKING_POLICY        = false;
   
   
   /*******************************************

@@ -8,6 +8,9 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import energy.analysis.ApplicationCallGraph;
 import energy.interproc.LockState;
 
+import energy.analysis.ApplicationCallGraph;
+import energy.interproc.LockState;
+
 /**
  * TODO: This is not really a component
  * Using it just for now  

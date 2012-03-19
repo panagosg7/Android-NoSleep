@@ -2,6 +2,8 @@ package energy.interproc;
 
 import java.util.Collection;
 
+import org.junit.experimental.theories.Theories;
+
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.dataflow.IFDS.ICFGSupergraph;
 import com.ibm.wala.dataflow.IFDS.IFlowFunction;
@@ -23,6 +25,7 @@ import com.ibm.wala.ipa.cfg.ExplodedInterproceduralCFG;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
+import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.collections.HashSetFactory;
 import com.ibm.wala.util.debug.Assertions;
@@ -110,6 +113,23 @@ public class ContextSensitiveLocking {
 		return false;
 	}
 
+	/**
+	 * Get the method reference called by a bb (null if not a call site)
+	 * 
+	 * @param bb
+	 * @return
+	 */
+	private MethodReference getCalledMethodReference(
+			BasicBlockInContext<IExplodedBasicBlock> bb) {
+		final IExplodedBasicBlock ebb = bb.getDelegate();
+		SSAInstruction instruction = ebb.getInstruction();
+		if (instruction instanceof SSAInvokeInstruction) {
+			final SSAInvokeInstruction invInstr = (SSAInvokeInstruction) instruction;
+			return invInstr.getDeclaredTarget();
+		}
+		return null;
+	}
+	
 	/**
 	 * Check if we have an entry for this in the bb -> thread map
 	 * @param bb

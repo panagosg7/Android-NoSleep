@@ -205,7 +205,6 @@ public class BugHunt {
 			if (apk.successfullyOptimized()) {
 				try {				
 					panosResult = apk.panosAnalyze();
-				} catch(Exception e) {
 					System.err.println(e.toString());
 					usageType = Wala.UsageType.FAILURE;
 				}							
