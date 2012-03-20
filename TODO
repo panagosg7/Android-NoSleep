@@ -1,0 +1,4 @@
+Account for all kinds of WakeLocks (Screen, Full, Partial) - and create a more
+fine grained domain, following the scheme in Pathak pg.4.
+
+Like WakeLocks we can have "exotic" components, e.g. camera on/off.
