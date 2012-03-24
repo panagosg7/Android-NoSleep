@@ -427,8 +427,8 @@ public class ComponentManager {
     	Component component = bottomUpIterator.next();
     	
         /* assert that dependencies are met */
-    	Collection<Component> compDep = 
-      		  component.getThreadDependencies();
+    	Collection<Component> compDep = component.getThreadDependencies();
+    	
     	com.ibm.wala.util.Predicate<Component> p =
     	  new com.ibm.wala.util.Predicate<Component>() {    		
 			@Override
@@ -436,7 +436,7 @@ public class ComponentManager {
 				return c.isSolved;
 			}
 		  };
-	  assert com.ibm.wala.util.collections.Util.forAll(compDep, p);
+	  Assertions.productionAssertion(com.ibm.wala.util.collections.Util.forAll(compDep, p));
 	  
 	  
       if (Opts.OUTPUT_COMPONENT_CALLGRAPH) {
@@ -489,7 +489,6 @@ public class ComponentManager {
     	result.registerExitLockState(component, component.getExitLockStates());        
         
       }
-      
       
             
     }

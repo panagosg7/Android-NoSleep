@@ -627,6 +627,8 @@ public class Wala {
 			
 			results.processResults();
 			
+			results.outputFinalResults();
+			
 			
 			
 		}

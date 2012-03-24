@@ -92,7 +92,7 @@ public abstract class Component extends NodeWithNumber {
   private HashSet<CallBack> 			callbacks;
   private HashMap<String, CallBack> 	callbackMap;
   
-  /** These are the possible callbacks - initialized before 
+  /** These are ALL the possible callbacks - initialized before 
    * the analysis runs*/
   protected HashSet<String> callbackNames;
   
@@ -399,11 +399,11 @@ private String getTargetColor(ISSABasicBlock ebb) {
    * Create a sensible exploded inter-procedural CFG analysis on it.
    * 
    * @param component
- * @return 
    * @return
    */
   public SensibleExplodedInterproceduralCFG createSensibleCG() {
-    E.log(2, "Creating sensible callgraph for " + this.toString());
+	  
+    E.log(2, "Creating sensible CFG for " + this.toString());
     
     /* First create the auxiliary call graph (SensibleAuxCallGraph) This is just
      * the graph that represents the logical relation of callbacks. */
@@ -735,4 +735,10 @@ private String getTargetColor(ISSABasicBlock ebb) {
 		return (this instanceof Activity);
   }
 
+  public String getComponentName() {
+	return componentName;
+  }
+
+ protected String componentName = null;
+  
 }

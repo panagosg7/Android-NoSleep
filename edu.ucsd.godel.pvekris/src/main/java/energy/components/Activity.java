@@ -21,9 +21,12 @@ public class Activity extends Component {
     };
  
   
+  
   public Activity(ApplicationCallGraph originalCG, IClass declaringClass, CGNode root) {
     super(originalCG, declaringClass, root);
-      
+  
+    componentName = "Activity";
+    
     callbackNames.addAll(Arrays.asList(elements));
     callbackEdges.add(Pair.make("onCreate", "onStart"));
     callbackEdges.add(Pair.make("onStart", "onResume"));
@@ -50,7 +53,7 @@ public class Activity extends Component {
 
   public String toString() {    
     StringBuffer b = new StringBuffer();
-    b.append("Activity: ");
+    b.append( componentName + ": ");
     b.append(getKlass().getName().toString());
     return b.toString();
   }  

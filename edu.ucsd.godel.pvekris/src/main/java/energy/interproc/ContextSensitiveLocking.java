@@ -2,8 +2,6 @@ package energy.interproc;
 
 import java.util.Collection;
 
-import org.junit.experimental.theories.Theories;
-
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.dataflow.IFDS.ICFGSupergraph;
 import com.ibm.wala.dataflow.IFDS.IFlowFunction;

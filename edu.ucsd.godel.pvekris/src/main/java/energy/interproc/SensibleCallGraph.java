@@ -18,6 +18,7 @@ import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.viz.NodeDecorator;
 
 import energy.components.Component;
+import energy.components.Component.CallBack;
 import energy.util.E;
 import energy.viz.GraphDotUtil;
 
@@ -34,7 +35,7 @@ public class SensibleCallGraph extends SparseNumberedGraph<SensibleCGNode> {
     /* Initialization part:
      * Add all nodes and edges to the sensible graph 
      * irrelevant of whether they are found in the 
-     * actual call graph
+     * actual call graph - they will be pruned later.
      */
     for (String nodeStr : component.getCallbackNames()) {
       addSensibleNode(nodeStr);
@@ -45,15 +46,18 @@ public class SensibleCallGraph extends SparseNumberedGraph<SensibleCGNode> {
       addSensibleEdge(src, dst);
     }
     
+    /* Prune empty nodes */
     removeEmptyNodes();       
   }
   
   /**
    * Remove nodes that are not found in the actual graph 
-   * keeping the actual flow.
+   * short-circuiting the adjacent edges.
    */
   private void removeEmptyNodes() {
+	  
     for (Iterator<SensibleCGNode> iter = iterator(); iter.hasNext();) {
+    	
       SensibleCGNode node = iter.next();
       if (node.isEmpty()) {
         E.log(2,"Removing: " + node.toString());
@@ -72,25 +76,45 @@ public class SensibleCallGraph extends SparseNumberedGraph<SensibleCGNode> {
             }
           }
         };
-        removeNodeAndEdges(node);        
+        removeNodeAndEdges(node);
       }
     }
   }
 
-  public void addSensibleNode (String name) {    
-    CGNode callback = component.getCallBackByName(name).getNode();
-    SensibleCGNode snode = new SensibleCGNode(name, callback);
-    sensibleMap.put(name, snode);
-    addNode(snode);
-    if (callback!=null) {
+  
+  
+  public void addSensibleNode(String name) {    
+    
+	CallBack callback = component.getCallBackByName(name);
+	
+	if (callback != null) {
+		CGNode cbNode = callback.getNode();
+	
+		SensibleCGNode snode = new SensibleCGNode(name, cbNode);
+	    sensibleMap.put(name, snode);
+	    addNode(snode);
+	}
+	else {
+		
+		SensibleCGNode snode = new SensibleCGNode(name, null);
+		
+	    sensibleMap.put(name, snode);
+	    
+	    addNode(snode);
+		
+	}
+	
+	if (callback!=null) {
       E.log(2,"Initializing: " + name);
     }
     else {
       /* add dummy node */
       E.log(3,"<null>");      
     }
-    return;
+    	
+	return;
   }
+  
   
   public void addSensibleEdge (String src, String dst) {
     SensibleCGNode snode = sensibleMap.get(src);
