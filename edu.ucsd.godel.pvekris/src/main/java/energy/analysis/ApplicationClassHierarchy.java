@@ -29,6 +29,8 @@ public class ApplicationClassHierarchy {
   private String appJar;
   private String exclusionFileName;
 	
+  private LockInvestigation lockFieldInfo = null;
+  
 	
   public ApplicationClassHierarchy(String appJar, String exclusionFileName) throws IOException, ClassHierarchyException {
 	  this.appJar = appJar;
@@ -103,5 +105,14 @@ public ClassHierarchy getClassHierarchy() {
 	return cha;
 }
 
+
+public LockInvestigation getLockFieldInfo() {
+	if (lockFieldInfo == null) {
+		lockFieldInfo = new LockInvestigation(cha);
+		lockFieldInfo.traceLockFields();
+	}
+	
+	return lockFieldInfo;
+}
   
 }

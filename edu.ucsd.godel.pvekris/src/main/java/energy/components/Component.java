@@ -21,6 +21,7 @@ import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.properties.WalaProperties;
+import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSACFG;
 import com.ibm.wala.ssa.SSAInstruction;
@@ -474,6 +475,12 @@ private String getTargetColor(ISSABasicBlock ebb) {
     while (it.hasNext()) {
       CGNode n = it.next();      
       ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> cfg = icfg.getCFG(n);
+      
+      if (cfg == null) {
+    	  //JNI methods are empty
+    	  continue;
+      }       
+      
       // ExceptionPrunedCFG.make(icfg.getCFG(n));
       String bareFileName = n.getMethod().getDeclaringClass().getName().toString().replace('/', '.') + "_"
           + n.getMethod().getName().toString();
@@ -494,7 +501,9 @@ private String getTargetColor(ISSABasicBlock ebb) {
    * Output the CFG for each node in the callgraph 
    */
   public void outputCFGs() {
+	  
     Properties p = WalaExamplesProperties.loadProperties();
+    
     try {
       p.putAll(WalaProperties.loadProperties());
     } catch (WalaException e) {
@@ -505,7 +514,15 @@ private String getTargetColor(ISSABasicBlock ebb) {
     Iterator<CGNode> it = componentCallgraph.iterator();
     while (it.hasNext()) {
       final CGNode n = it.next();      
-      SSACFG cfg = n.getIR().getControlFlowGraph();      
+      IR ir = n.getIR();
+      
+      if (ir == null) {
+    	  //JNI methods are empty
+    	  continue;
+      }      
+    		  
+      SSACFG cfg = ir.getControlFlowGraph();
+      
       String bareFileName = n.getMethod().getDeclaringClass().getName().toString().replace('/', '.') + "_"
           + n.getMethod().getName().toString();
       String cfgFileName = cfgs + File.separatorChar + bareFileName + ".dot";
@@ -524,8 +541,8 @@ private String getTargetColor(ISSABasicBlock ebb) {
 					ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> cfg = icfgLoc.getCFG(n);
 					
 					IExplodedBasicBlock ebb = cfg.getNode(bb.getNumber());
-					sb.append(ebb.toString() + "\\n");
-					sb.append(bb.toString() + "\\n");
+					//sb.append(ebb.toString() + "\\n");
+					//sb.append(bb.toString() + "\\n");
 					for (Iterator<SSAInstruction> it = bb.iterator(); it.hasNext(); ) {
 						if (!sb.toString().equals("")) {
 							sb.append("\\n");

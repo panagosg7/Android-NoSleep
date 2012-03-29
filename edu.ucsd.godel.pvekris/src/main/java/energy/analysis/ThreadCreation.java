@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
+import com.ibm.wala.classLoader.NewSiteReference;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ssa.DefUse;
 import com.ibm.wala.ssa.IR;
@@ -14,7 +15,6 @@ import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.util.debug.Assertions;
 
 import energy.components.Component;
-import energy.analysis.ComponentManager;
 import energy.components.RunnableThread;
 import energy.util.E;
 import energy.util.SSAProgramPoint;
@@ -37,30 +37,40 @@ public class ThreadCreation {
 	/**
 	 * This will map the point where a thread is spawned to the threads class reference 
 	 */
-	private HashMap<SSAProgramPoint,Component> siteToClass = new HashMap<SSAProgramPoint, Component>();
+	private HashMap<SSAProgramPoint,Component> siteToClass = null;
 	
 	/**
 	 * Invoke this to fill up the ProgPoint to thread mapping
 	 */
-	private void gatherThreadInvocations() {
-		computedThreadInvocations = true;		
+	private HashMap<SSAProgramPoint, Component> gatherThreadInvocations() {
+		
+		HashMap<SSAProgramPoint,Component> result = new HashMap<SSAProgramPoint, Component>();		
 		
 		for (CGNode n : cg) {
 			iSet.clear();
-			for (Iterator<SSAInstruction> it = n.getIR().iterateAllInstructions(); it.hasNext();) {
-				SSAInstruction instr = it.next();
+			
+			IR ir = n.getIR();
+			
+			/* Null for JNI methods */
+			if (ir == null) {
+				E.log(2, "Skipping: " + n.getMethod().toString());
+				continue;				
+			}
+			
+			for (Iterator<NewSiteReference> it = ir.iterateNewSites(); //ir.iterateAllInstructions(); 
+					it.hasNext();) {
 				
-				if (instr instanceof SSANewInstruction) {
-					SSANewInstruction newi = (SSANewInstruction) instr;
-					if (newi.toString().contains("Ljava/lang/Thread")) {						
-					/* This is a thread creation - keep this for later */
-						iSet.add(newi);						
-					}
+				SSANewInstruction newi = ir.getNew(it.next());			
+								
+				if (newi.toString().contains("Ljava/lang/Thread")) {
+					E.log(1, n.getMethod().getSignature().toString());
+					iSet.add(newi);						
 				}
+				
 			}
 			/* After the search is done, do the defuse only if there are interesting results */
 			if (iSet.size() > 0) {
-				IR ir = n.getIR();
+				
 				//System.out.println(ir);
 				DefUse du = new DefUse(ir);
 				for (SSANewInstruction i : iSet) {
@@ -97,12 +107,13 @@ public class ThreadCreation {
 						}
 					} //for uses
 					if ((pp!=null) && (targetComponent!= null)) {
-						E.log(1, "Adding: " + pp + " --> " + targetComponent);
-						siteToClass.put(pp, targetComponent);
+						E.log(2, "Adding: " + pp + " --> " + targetComponent);
+						result.put(pp, targetComponent);
 					}
 				}
 			}
-		}		
+		}
+		return result;
 	}
 	
 	public void printThreadPairs() {
@@ -113,8 +124,9 @@ public class ThreadCreation {
 	
 
 	public HashMap<SSAProgramPoint,Component> getThreadInvocations() {
-		if (!computedThreadInvocations) {
-			gatherThreadInvocations();
+				
+		if (siteToClass == null) {
+			siteToClass = gatherThreadInvocations();
 		}
 		
 		return siteToClass;

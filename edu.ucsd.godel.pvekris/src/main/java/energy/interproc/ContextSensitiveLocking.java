@@ -117,8 +117,7 @@ public class ContextSensitiveLocking {
 	 * @param bb
 	 * @return
 	 */
-	private MethodReference getCalledMethodReference(
-			BasicBlockInContext<IExplodedBasicBlock> bb) {
+	private MethodReference getCalledMethodReference(BasicBlockInContext<IExplodedBasicBlock> bb) {
 		final IExplodedBasicBlock ebb = bb.getDelegate();
 		SSAInstruction instruction = ebb.getInstruction();
 		if (instruction instanceof SSAInvokeInstruction) {

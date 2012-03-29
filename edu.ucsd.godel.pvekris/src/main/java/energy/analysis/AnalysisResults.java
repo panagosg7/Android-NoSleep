@@ -6,7 +6,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.ibm.wala.util.Predicate;
 import com.ibm.wala.util.collections.Pair;
+import com.ibm.wala.util.collections.Util;
 
 import energy.components.Component;
 import energy.interproc.LockState;
@@ -57,8 +59,6 @@ public class AnalysisResults {
 		FULL_UNLOCKING;
 	}
 	
-	private HashMap<LockUsage, Integer> threadStateCounts;
-	
 	private Map<Pair<String, String>, EnumMap<LockUsage, Integer>> callBackResultMap;
 	
 
@@ -66,7 +66,28 @@ public class AnalysisResults {
 		
 		resultStuff.add(Pair.make(component, exitLockStates));
 		
-		E.log(1, component.toString() + " |-> " + exitLockStates.toString());
+		/* Testing */    	
+    	
+    	Predicate<LockState> p =
+    	  new Predicate<LockState>() {    		
+			@Override
+			public boolean test(LockState s) {				
+				return s.isReached();
+			}
+		  };
+		  		  
+		  if (Util.forSome(exitLockStates.values(), p)) {
+			
+			E.log(1, component.toString() + " |-> ");
+			
+			for( Entry<String, LockState> e : exitLockStates.entrySet()) {
+				if(e.getValue().isReached()) {
+					E.log(1, "\t" + e.getKey() + " -> " + e.getValue()); 
+				}
+			}	
+			
+		  };		
+		
 		
 	}
 	
@@ -116,12 +137,15 @@ public class AnalysisResults {
 				String callBackName = e.getKey();				
 				LockState lockState = e.getValue();			
 				
-				Pair<String, String> compAndCB = Pair.make(componentName,callBackName);
+				Pair<String, String> compAndCB = Pair.make(component.toString(),callBackName);
+				Pair<String, String> abstCompAndCB = Pair.make(componentName,callBackName);
 				LockUsage lockUsage = getLockUsage(lockState);
 				
-				EnumMap<LockUsage, Integer> enumMap = callBackResultMap.get(compAndCB);
+				EnumMap<LockUsage, Integer> enumMap = callBackResultMap.get(abstCompAndCB);
 				
-				E.log(1, "Registering: " + component.toString() + " :: "  + lockUsage.toString());
+				if(lockUsage != LockUsage.EMPTY) {
+					E.log(1, compAndCB.toString() + " :: "  + lockUsage.toString());	
+				}				
 				
 				updateEnumMap(enumMap, lockUsage);
 			}		

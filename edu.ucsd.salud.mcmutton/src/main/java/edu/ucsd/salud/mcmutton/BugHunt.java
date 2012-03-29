@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import net.sf.json.JSONArray;
@@ -32,7 +33,9 @@ import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 
+import edu.ucsd.salud.mcmutton.ApkCollection.ApkApplication;
 import edu.ucsd.salud.mcmutton.apk.Wala;
+import energy.util.E;
 
 public class BugHunt {
 	
@@ -148,21 +151,40 @@ public class BugHunt {
 	public static void runTestPatternAnalysis(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		Set<String> theSet = new HashSet<String>();
 		
+		/* The applications you specify here need to be in apk_collection */
+		
 		//theSet.add("AndTweet");
 		//theSet.add("aFlashlight");	//conversion error
-		//theSet.add("FartDroid");
 		//theSet.add("AndroBOINC");
-		//theSet.add("");
-		//theSet.add("");
-		//theSet.add("");
 		//theSet.add("FBReader");		//conversion error
-		//theSet.add("Phonebook_2.0");
+		//theSet.add("Phonebook 2.0");	//conversion error
 		//theSet.add("ICQ");
-		//theSet.add("DISH");
-		theSet.add("JuiceDefender");
-		//theSet.add("Twidroyd");
-		//theSet.add("WebSMS");		
-		//theSet.add("3D_Level");
+		//theSet.add("DISH");			//OK
+		//theSet.add("JuiceDefender");	//OK
+		//theSet.add("Twidroyd");		//conversion error
+		//theSet.add("WebSMS");			//conversion error
+		//theSet.add("3D Level");		//OK
+		theSet.add("ColorNote");		//OK		
+		//theSet.add("Call Control");		//conversion error
+		//theSet.add("Slice Slice");	//Runnable exception
+		//theSet.add("Geohash Droid");	//conversion error
+		//theSet.add("Google Voice");		//conversion error
+//		theSet.add("AdvancedMapViewer");
+//		theSet.add("Farm Tower");
+		theSet.add("Pikachu");
+//		theSet.add("Google Sky Map");
+		theSet.add("RMaps");
+		//theSet.add("Tangram");
+//		theSet.add("2 Player Reactor");
+		//theSet.add("TagReader");		//conversion error
+//		theSet.add("ReChat");			//conversion error
+//		theSet.add("Foursquare");
+//		theSet.add("Brain Sooth");
+//		theSet.add("Maxthon");			//conversion error
+//		theSet.add("Craigslist");
+//		theSet.add("Alchemy");
+//		theSet.add("Strawberry Shortcake PhoneImage");
+		
 		
 		runPatternAnalysis(collection, theSet);
 	}
@@ -184,18 +206,28 @@ public class BugHunt {
 						
 			String app_name = collection.cleanApkName((String)key);
 			
+			System.out.println("Looking for: " + app_name);					
+			
 			String[] catsArray = acqrel_status.getString((String)key).split("[,]");			
+
+			
 			
 			ArrayList<String> cats = new ArrayList<String>(catsArray.length);
 			
 			for (String cat: catsArray) cats.add(cat);			
 			
-			ApkInstance apk = collection.getApplication(app_name).getPreferred();
+			ApkApplication application = collection.getApplication(app_name);
+			
+			
+			
+			ApkInstance apk = application.getPreferred();
 			
 			Wala.UsageType usageType = Wala.UsageType.UNKNOWN;
+			
 			Set<String> panosResult = null;
 			
 			boolean successfullyOptimized = false;
+			
 			try {
 				successfullyOptimized = apk.successfullyOptimized();
 			} catch (RetargetException e) {

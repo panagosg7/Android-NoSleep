@@ -1,4 +1,8 @@
-Account for all kinds of WakeLocks (Screen, Full, Partial) - and create a more
-fine grained domain, following the scheme in Pathak pg.4.
+1.  Account for all kinds of WakeLocks (Screen, Full, Partial) - and create a more
+    fine grained domain, following the scheme in Pathak pg.4.
+
+2.  Uninteresting Callbacks: propagate thread information too
+
+3.  Get rid of JNI methods from CG construction.
 
 Like WakeLocks we can have "exotic" components, e.g. camera on/off.

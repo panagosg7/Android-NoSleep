@@ -25,6 +25,7 @@ import java.util.Properties;
 import java.util.Queue;
 import java.util.Set;
 
+import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.cfg.cdg.ControlDependenceGraph;
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
@@ -37,6 +38,7 @@ import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.AnalysisScope;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
+import com.ibm.wala.ipa.callgraph.CallGraphBuilder;
 import com.ibm.wala.ipa.callgraph.Context;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.impl.AllApplicationEntrypoints;
@@ -53,9 +55,11 @@ import com.ibm.wala.properties.WalaProperties;
 import com.ibm.wala.shrikeBT.IInvokeInstruction;
 import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.ISSABasicBlock;
+import com.ibm.wala.ssa.SSACFG;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSAOptions;
+import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
@@ -76,8 +80,10 @@ import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.io.FileProvider;
 import com.ibm.wala.util.io.FileUtil;
 import com.ibm.wala.viz.DotUtil;
+import com.ibm.wala.viz.NodeDecorator;
 import com.ibm.wala.viz.PDFViewUtil;
 
+import energy.interproc.SensibleExplodedInterproceduralCFG;
 import energy.intraproc.IntraProcAnalysis;
 import energy.util.E;
 import energy.util.GraphBottomUp;
@@ -86,6 +92,8 @@ import energy.viz.GraphDotUtil;
 @SuppressWarnings("deprecation")
 public class ApplicationCallGraph implements CallGraph {
 
+	
+  
 
   // Output Files
   private final static String PDF_FILE = "cg.pdf";
@@ -105,6 +113,10 @@ public class ApplicationCallGraph implements CallGraph {
   private static Hashtable<String, CGNode> targetCGNodeHash;
   private static ArrayList<String> targetMethods = null;
 
+  
+  private ApplicationClassHierarchy appCha = null;
+  
+  
   // /////////////////////////////////////////////////////////
 
   public Hashtable<String, IClass> getTargetClassHash() {
@@ -148,20 +160,29 @@ public class ApplicationCallGraph implements CallGraph {
   }
 
 
-  public ApplicationCallGraph(ApplicationClassHierarchy ch) 
+  public ApplicationCallGraph(ApplicationClassHierarchy app_cha) 
 		  throws IllegalArgumentException, WalaException, CancelException, IOException {    
-    String appJar = ch.getAppJar();
-    String exclusionFile = ch.getExclusionFileName();
-    cha = ch.getClassHierarchy();
+    String appJar = app_cha.getAppJar();
+    String exclusionFile = app_cha.getExclusionFileName();
+    cha = app_cha.getClassHierarchy();
+    
+    appCha = app_cha;
+    
 
     // Get the graph on which we will work
     g = buildPrunedCallGraph(appJar, FileProvider.getFile(exclusionFile));
 
     if (Opts.OUTPUT_CG_DOT_FILE) {
       outputCallGraphToDot(g);
+      
     }
-	  
-	  
+    
+    app_cha.getLockFieldInfo().setAppCallGraph(this);
+    
+    app_cha.getLockFieldInfo().traceLockCreation();
+
+    outputCFGs();
+    
   }
 
 public void outputCallGraphToDot(CallGraph g) {
@@ -218,16 +239,14 @@ public void outputCallGraphToDot(CallGraph g) {
     
     E.log(0,"#Nodes: " + entrypoints.size());
     
-    /* 
-     * Build the call graph
-     */
-    com.ibm.wala.ipa.callgraph.CallGraphBuilder builder = Util.makeZeroCFABuilder(options, cache, cha, scope);
+    /* Build the call graph */
+    CallGraphBuilder builder = Util.makeZeroCFABuilder(options, cache, cha, scope);
+    
     ExplicitCallGraph cg = (ExplicitCallGraph) builder.makeCallGraph(options, null);
 
-    /*
-     * Add wakelock methods and their callsites to the call graph 
-     */
-    insertTargetMethodsToCallgraph(cg);    
+    /* Add wakelock methods and their callsites to the call graph */
+    insertTargetMethodsToCallgraph(cg);
+    
     
     if (Opts.KEEP_ONLY_WAKELOCK_SPECIFIC_NODES) {        
       /*
@@ -537,8 +556,7 @@ public void outputCallGraphToDot(CallGraph g) {
             String methSig = imethod.getSignature();
             if (methSig.equals(targetMethodName)) {
               targetClassHash.put(targetMethodName, iclass);
-              targetMethodHash.put(targetMethodName, imethod);              
-              E.log(2,"Found target method: " + targetMethodName.toString());              
+              targetMethodHash.put(targetMethodName, imethod);                           
             }
           }
         }
@@ -553,41 +571,44 @@ public void outputCallGraphToDot(CallGraph g) {
       targetCGNodeHash.put(entry.getKey(), targetNode);
     }
     
-    E.log(0,"Created target methods");
-    
     // ===========================================================================
     
     Iterator<CGNode> iter = cg.iterator();
     while (iter.hasNext()) {
       CGNode currNode = iter.next();
+      
       // Set up options which govern analysis choices. In particular, we
       // will use all Pi nodes when building the IR.
       options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
+      
       // Create an object which caches IRs and related information,
       // reconstructing them lazily on demand.
       AnalysisCache cache = new AnalysisCache();
+      
       // Build the IR and cache it.
       IR ir = cache.getSSACache().findOrCreateIR(currNode.getMethod(), 
           Everywhere.EVERYWHERE, options.getSSAOptions());
+      
       if (ir != null) {
         SSAInstruction[] insts = ir.getInstructions();
         for (SSAInstruction inst : insts) {
           if (inst instanceof SSAInvokeInstruction) {
             SSAInvokeInstruction invInstr = (SSAInvokeInstruction) inst;
             String methSig = invInstr.getDeclaredTarget().getSignature().toString();
+            
             for (Entry<String, CGNode> entry : targetCGNodeHash.entrySet()) {
               // We got a target call instruction
               if (methSig.equals(entry.getKey())) {
-                // THIS IS THE WAY TO ADD A NODE AND AN EDGE TO THE GRAPH !!!
+                // XXX: IS THE WAY TO ADD A NODE AND AN EDGE TO THE GRAPH !!!
                 CallSiteReference site = CallSiteReference.make(1, 
                     entry.getValue().getMethod().getReference(),
-                    IInvokeInstruction.Dispatch.STATIC);
+                    IInvokeInstruction.Dispatch.VIRTUAL);
                 site = invInstr.getCallSite();
                 // WARNING: This is deprecated and intended to be used only by builder
                 // Might have to change
                 currNode.addTarget(site, entry.getValue());
-                E.log(2,"Adding \"" + 
-                    site.getDeclaredTarget().getSignature().toString() + "\" edge.");
+                
+                E.log(1, currNode.getMethod().getSignature().toString());
                 
               }
             }
@@ -733,6 +754,77 @@ public void outputCallGraphToDot(CallGraph g) {
       }
     }
   }
+  
+  
+  
+
+  /**
+   * Output the CFG for each node in the callgraph 
+   */
+  public void outputCFGs() {
+	  
+    Properties p = WalaExamplesProperties.loadProperties();
+    
+    try {
+      p.putAll(WalaProperties.loadProperties());
+    } catch (WalaException e) {
+      e.printStackTrace();
+    }
+    String cfgs = energy.util.Util.getResultDirectory() + File.separatorChar + "cfg";
+    new File(cfgs).mkdirs();
+    
+    Iterator<CGNode> it = this.iterator();
+    
+    while (it.hasNext()) {
+      final CGNode n = it.next();      
+      IR ir = n.getIR();
+      
+      if (ir == null) {
+    	  //JNI methods are empty
+    	  continue;
+      }      
+    		  
+      SSACFG cfg = ir.getControlFlowGraph();
+      
+      String bareFileName = n.getMethod().getDeclaringClass().getName().toString().replace('/', '.') + "_"
+          + n.getMethod().getName().toString();
+      String cfgFileName = cfgs + File.separatorChar + bareFileName + ".dot";
+      String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
+      String pdfFile = null;
+      try {      
+    	NodeDecorator nd = new NodeDecorator() {			
+			@Override
+			public String getLabel(Object o) throws WalaException {
+				StringBuffer sb = new  StringBuffer();
+				if (o instanceof ISSABasicBlock) {
+					
+					ISSABasicBlock bb = (ISSABasicBlock) o;
+					
+					//sb.append(ebb.toString() + "\\n");
+					//sb.append(bb.toString() + "\\n");
+					for (Iterator<SSAInstruction> it = bb.iterator(); it.hasNext(); ) {
+						if (!sb.toString().equals("")) {
+							sb.append("\\n");
+						}
+						sb.append(it.next().toString());
+					}
+				}					
+				return sb.toString();
+			}
+		};
+        GraphDotUtil.dotify(cfg, nd, cfgFileName, pdfFile, dotExe);
+      } catch (WalaException e) {
+        e.printStackTrace();
+      }
+      
+    }
+  }
+  
+  
+  
+  
+  
+  
   
   
 
@@ -896,4 +988,9 @@ public void outputCallGraphToDot(CallGraph g) {
   public boolean isTargetMethod(CGNode root) {
     return targetCGNodeHash.contains(root);
   }
+  
+  public LockInvestigation getLockFieldInfo() {
+	  return appCha.getLockFieldInfo();
+  }
+  
 }

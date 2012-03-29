@@ -234,7 +234,7 @@ public class ApkCollection {
 		
 		if (f.exists()) {
 			return new ApkApplication(f);
-		} else {
+		} else {			
 			return null;
 		}
 	}

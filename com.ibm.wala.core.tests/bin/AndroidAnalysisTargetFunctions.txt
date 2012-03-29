@@ -1,4 +1,5 @@
 android.os.PowerManager$WakeLock.acquire()V
 android.os.PowerManager$WakeLock.release()V
+android.os.PowerManager$WakeLock.acquire(J)V
 android.net.wifi.WifiManager$WifiLock.acquire()V
 android.net.wifi.WifiManager$WifiLock.release()V

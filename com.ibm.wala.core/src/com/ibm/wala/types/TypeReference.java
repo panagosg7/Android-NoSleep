@@ -328,6 +328,30 @@ public final class TypeReference implements Serializable {
 
   public final static TypeReference Unknown = findOrCreate(ClassLoaderReference.Primordial, UnknownName);
 
+  
+  
+  
+  /*********************************************************************************************************************
+   * WakeLock stuff *
+   ********************************************************************************************************************/
+
+  private final static TypeName WakeLockName = TypeName.string2TypeName("Landroid/os/PowerManager$WakeLock");
+
+  public final static TypeReference PrimordialWakeLock = findOrCreate(ClassLoaderReference.Primordial, WakeLockName);
+  public final static TypeReference ApplicationWakeLock = findOrCreate(ClassLoaderReference.Application, WakeLockName);
+  
+  private final static TypeName PowerManagerName = TypeName.string2TypeName("Landroid/os/PowerManager");
+
+  public final static TypeReference PrimordialPowerManager = findOrCreate(ClassLoaderReference.Primordial, PowerManagerName);
+  public final static TypeReference ApplicationPowerManager = findOrCreate(ClassLoaderReference.Application, PowerManagerName);
+    
+  /*********************************************************************************************************************
+   * Methods *
+   ********************************************************************************************************************/
+  
+  
+  
+  
   private static TypeReference makePrimitive(TypeName n) {
     TypeReference t = new TypeReference(ClassLoaderReference.Primordial, n);
     primitiveMap.put(t.name, t);

@@ -89,14 +89,25 @@ public class LockState  {
 	}
 	
 	public String toString () {
-		StringBuffer sb = new StringBuffer();
-		sb.append(maybeAcquired); sb.append(" ");
-		sb.append(mustbeAcquired); sb.append(" ");
-		sb.append(maybeReleased); sb.append(" ");
-		sb.append(mustbeReleased);
-		return sb.toString();
+		if (isReached()) {
+			StringBuffer sb = new StringBuffer();
+			sb.append("WA:"); sb.append(maybeAcquired); 
+			sb.append(" SA:"); sb.append(mustbeAcquired);
+			sb.append(" WR:"); sb.append(maybeReleased); 
+			sb.append(" SR:"); sb.append(mustbeReleased);
+			return sb.toString();
+		}
+		else {
+			return "empty";
+		}
 	}
 
+	
+	public boolean isReached () {
+		return (maybeAcquired || maybeReleased);
+	}
+	
+	
 	
 	/*XXX: should I return a new LockState every time?? */
 	public LockState merge(LockState l) {		

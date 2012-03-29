@@ -80,6 +80,7 @@ import energy.analysis.AnalysisResults;
 import energy.analysis.ApplicationCallGraph;
 import energy.analysis.ApplicationClassHierarchy;
 import energy.analysis.ComponentManager;
+import energy.analysis.LockInvestigation;
 import energy.analysis.Opts;
 
 public class Wala {
@@ -611,6 +612,10 @@ public class Wala {
 		energy.util.Util.printLabel(mPath.getAbsolutePath());		
 		
 		ApplicationClassHierarchy	ch = new ApplicationClassHierarchy(appJar, exclusionFile);		
+
+		
+		
+		
 		ApplicationCallGraph 		cg = new ApplicationCallGraph(ch);		
 		
 		Set<String> result = new HashSet<String>();

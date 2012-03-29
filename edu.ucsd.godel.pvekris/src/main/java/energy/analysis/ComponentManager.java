@@ -44,6 +44,7 @@ import energy.components.Handler;
 import energy.components.Initializer;
 import energy.components.LocationListener;
 import energy.components.OnSharedPreferenceChangeListener;
+import energy.components.PhoneStateListener;
 import energy.components.RunnableThread;
 import energy.components.SensorEventListener;
 import energy.components.Service;
@@ -262,6 +263,10 @@ public class ComponentManager {
         if (ancName.equals("Landroid/os/Handler")) {
             comp = new Handler(originalCG, klass, root);
         }
+        if (ancName.equals("Landroid/telephony/PhoneStateListener")) {
+            comp = new PhoneStateListener(originalCG, klass, root);
+        }
+        
         if (comp != null) break;
       }
 
@@ -361,7 +366,7 @@ public class ComponentManager {
     	  E.log(2, "PASS: " + root.getMethod().getSignature().toString() + " -> " + comp.toString() );
       }
       else {
-    	  E.log(1, "FAIL: " + root.getMethod().getSignature().toString());
+    	  E.log(DEBUG_LEVEL, "FAIL: " + root.getMethod().getSignature().toString());
       }      
       return comp;
     } else {
@@ -414,6 +419,11 @@ public class ComponentManager {
     
     Graph<Component> constraintGraph = constraintGraph(components);
     
+    
+    //LockInvestigation lockInvestigation = new LockInvestigation(this);    
+    //lockInvestigation.traceLockCreation();
+    
+    
     BFSIterator<Component> bottomUpIterator = GraphBottomUp.bottomUpIterator(constraintGraph);
     
     /*
@@ -460,11 +470,11 @@ public class ComponentManager {
     		  continue;
     	  }    	 
       }       
-      E.log(1, component.toString());
+      E.log(2, component.toString());
       
-      if(Opts.OUTPUT_CFG_DOT) {
-    	  component.outputCFGs();
-      }
+      //if(Opts.OUTPUT_CFG_DOT) {
+    	//  component.outputCFGs();
+      //}
           
             
       if (Opts.DO_CS_ANALYSIS) {
@@ -621,6 +631,7 @@ public class ComponentManager {
    * @return
    */
   public Graph<Component> constraintGraph(Collection<Component> cc) {
+	  
 	  final SparseNumberedGraph<Component> g = new SparseNumberedGraph<Component>(1);			
 	  for(Component c : cc) {
 			g.addNode(c);
@@ -633,7 +644,7 @@ public class ComponentManager {
 		  
 		  for (Component dst : threadDependencies) {
 			  if ((src != null) && (dst != null)) {
-				E.log(2, "Adding: " + src + " --> " + dst);
+				E.log(1, src + " --> " + dst);
 				g.addEdge(src,dst);
 			}
 		  }
@@ -656,7 +667,11 @@ public class ComponentManager {
 	return g;
   }
 	  
-	  
+  
+  
+  
+  
+  
   
   /****************************************************************************
    * TODO: Maybe at some point create a merge function for components
