@@ -154,33 +154,33 @@ public class BugHunt {
 		/* The applications you specify here need to be in apk_collection */
 		
 		//theSet.add("AndTweet");
-		//theSet.add("aFlashlight");	//conversion error
+		//theSet.add("aFlashlight");		//conversion error
 		//theSet.add("AndroBOINC");
-		//theSet.add("FBReader");		//conversion error
-		//theSet.add("Phonebook 2.0");	//conversion error
+		//theSet.add("FBReader");			//conversion error
+		//theSet.add("Phonebook 2.0");		//conversion error
 		//theSet.add("ICQ");
-		//theSet.add("DISH");			//OK
-		//theSet.add("JuiceDefender");	//OK
-		//theSet.add("Twidroyd");		//conversion error
-		//theSet.add("WebSMS");			//conversion error
-		//theSet.add("3D Level");		//OK
-		theSet.add("ColorNote");		//OK		
+		theSet.add("DISH");					//OK
+		theSet.add("JuiceDefender");		//OK
+		//theSet.add("Twidroyd");			//conversion error
+		//theSet.add("WebSMS");				//conversion error
+		theSet.add("3D Level");				//OK
+		theSet.add("ColorNote");			//OK		
 		//theSet.add("Call Control");		//conversion error
-		//theSet.add("Slice Slice");	//Runnable exception
-		//theSet.add("Geohash Droid");	//conversion error
+		//theSet.add("Slice Slice");		//Runnable exception
+		//theSet.add("Geohash Droid");		//conversion error
 		//theSet.add("Google Voice");		//conversion error
-//		theSet.add("AdvancedMapViewer");
-//		theSet.add("Farm Tower");
-		theSet.add("Pikachu");
-//		theSet.add("Google Sky Map");
-		theSet.add("RMaps");
-		//theSet.add("Tangram");
+//		theSet.add("AdvancedMapViewer");	//conversion error
+		theSet.add("Farm Tower");
+//		theSet.add("Pikachu");				//OK
+		theSet.add("Google Sky Map");
+		theSet.add("RMaps");				//OK
+//		theSet.add("Tangram");
 //		theSet.add("2 Player Reactor");
-		//theSet.add("TagReader");		//conversion error
-//		theSet.add("ReChat");			//conversion error
+		//theSet.add("TagReader");			//conversion error
+//		theSet.add("ReChat");				//conversion error
 //		theSet.add("Foursquare");
 //		theSet.add("Brain Sooth");
-//		theSet.add("Maxthon");			//conversion error
+//		theSet.add("Maxthon");				//conversion error
 //		theSet.add("Craigslist");
 //		theSet.add("Alchemy");
 //		theSet.add("Strawberry Shortcake PhoneImage");

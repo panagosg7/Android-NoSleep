@@ -167,19 +167,45 @@ public class LockInvestigation {
 						int lockNum = inv.getDef();
 						
 						//The use should be an instruction right next to the one creating the lock 
-						Iterator<SSAInstruction> uses = du.getUses(lockNum);
+						Iterator<SSAInstruction> uses = du.getUses(lockNum);						
 						
-						SSAInstruction useInstr = uses.next();						
-						SSAPutInstruction put = (SSAPutInstruction) useInstr;						
-						FieldReference field = put.getDeclaredField();
-						
-						Assertions.productionAssertion(variousWakeLocks.containsKey(field));
-						
-						variousWakeLocks.put(field, lockType);
-						
-						E.log(1, "Field: " + field + "Type = " + lockType);	
+						SSAInstruction useInstr = uses.next();				
 					
+						if (useInstr instanceof SSAPutInstruction) {
+						/*	This is the case that the lock is a field, so we expect a put 
+							instruction right after the creation of the wakelock.	*/ 
 							
+							SSAPutInstruction put = (SSAPutInstruction) useInstr;						
+							FieldReference field = put.getDeclaredField();
+							
+							Assertions.productionAssertion(variousWakeLocks.containsKey(field));
+							
+							variousWakeLocks.put(field, lockType);
+							
+							E.log(1, "Field: " + field + "Type = " + lockType);
+						}
+						else {
+						/* TODO :
+						 * This is probably a local variable, like the case of:
+						 * try {
+          					...
+          					} catch (FileNotFoundException localObject1)
+          					{
+          						...
+					          localObject1 = ((PowerManager)paramActivity.getSystemService("power")).newWakeLock(536870913, str2);
+					          ((PowerManager.WakeLock)localObject1).setReferenceCounted(false);
+					          ((PowerManager.WakeLock)localObject1).acquire(15000L);
+					          Intent localIntent = new android/content/Intent;
+					          localIntent.<init>("android.intent.action.VIEW");
+					          ...
+					          SystemClock.sleep(5000L);
+					          ((PowerManager.WakeLock)localObject1).release();
+					        } 
+						 */							
+							E.log(1, "Locking a local variable (???)");
+							
+							
+						}
 						
 					}					
 				}

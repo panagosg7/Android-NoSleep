@@ -104,7 +104,8 @@ public class ContextSensitiveLocking {
 			final SSAInvokeInstruction invInstr = (SSAInvokeInstruction) instruction;
 			String methSig = invInstr.getDeclaredTarget().getSignature()
 					.toString();
-			if (methSig.equals("android.os.PowerManager$WakeLock.acquire()V")) {
+			if (methSig.equals("android.os.PowerManager$WakeLock.acquire()V") ||
+				methSig.equals("android.os.PowerManager$WakeLock.acquire(J)V")) {
 				return true;
 			}
 		}

@@ -667,14 +667,5 @@ public class ComponentManager {
 	return g;
   }
 	  
-  
-  
-  
-  
-  
-  
-  /****************************************************************************
-   * TODO: Maybe at some point create a merge function for components
-   */
-  
+
 }
