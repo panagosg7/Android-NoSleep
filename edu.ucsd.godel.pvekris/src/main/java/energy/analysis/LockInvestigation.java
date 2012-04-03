@@ -4,6 +4,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IField;
@@ -86,7 +89,51 @@ public class LockInvestigation {
 	}
 	
 
-
+	private Set<FieldReference> getAllWakeLocks() {
+		if (variousWakeLocks == null) {
+			variousWakeLocks = new HashMap<FieldReference, Collection<LockType>>();
+		}
+		return variousWakeLocks.keySet();		
+	}
+	
+	private Map<FieldReference, Collection<LockType>> getAllUnresolvedWakeLocks() {
+		if (variousWakeLocks == null) {
+			variousWakeLocks = new HashMap<FieldReference, Collection<LockType>>();
+		}
+		Set<Entry<FieldReference, Collection<LockType>>> entrySet = variousWakeLocks.entrySet();
+		
+		HashMap<FieldReference, Collection<LockType>> result = 
+				new HashMap<FieldReference, Collection<LockType>>();
+		
+		for (Entry<FieldReference, Collection<LockType>> e : entrySet) {
+			if (e.getValue() == null) {
+				result.put(e.getKey(), e.getValue());
+			}			
+		}
+		return result;		
+	}
+	
+	
+	public Collection<LockType> getWakeLockType(FieldReference fr) {
+		
+		if (variousWakeLocks == null) {
+			traceLockCreation();
+		}		
+		return variousWakeLocks.get(fr);	
+		
+	}
+	
+	public  boolean isWakeLock(FieldReference fr) {
+		
+		if (variousWakeLocks == null) {
+			traceLockCreation();
+		}		
+		return variousWakeLocks.containsKey(fr);	
+		
+	}
+ 
+	
+	
 	public enum LockType {
 		
 		// Values taken from here:
@@ -145,16 +192,16 @@ public class LockInvestigation {
 				 * 		  PowerManager.SCREEN_DIM_WAKE_LOCK | PowerManager.ON_AFTER_RELEASE, 
 				 * 		  TAG);
 				 */				
-				if (instr instanceof SSAInvokeInstruction) {		
+				if (instr instanceof SSAInvokeInstruction) {
 					
 					SSAInvokeInstruction inv = (SSAInvokeInstruction) instr;							
 					
 					if (inv.toString().contains("newWakeLock")) {
 						//Assertions.productionAssertion(call.getNumberOfParameters() == 3);
-						E.log(1, n.getMethod().getSignature().toString());
+						E.log(2, n.getMethod().getSignature().toString());
 						
-						E.log(1,inv.toString());
-						
+						E.log(2,inv.toString());
+						  
 						if (du == null) {
 							du = new DefUse(ir);
 						}
@@ -182,7 +229,7 @@ public class LockInvestigation {
 							
 							variousWakeLocks.put(field, lockType);
 							
-							E.log(1, "Field: " + field + "Type = " + lockType);
+							E.log(1, "Field: " + field + "\nType = " + lockType);
 						}
 						else {
 						/* TODO :
@@ -211,6 +258,12 @@ public class LockInvestigation {
 				}
 			}			
 		}		
+		
+		//Check to see if there are unresolved wakelocks
+		if (getAllUnresolvedWakeLocks().size() > 0) {
+			E.log(1, "Could not resolve some WakeLocks.");
+		}
+		
 	}
 	
 	

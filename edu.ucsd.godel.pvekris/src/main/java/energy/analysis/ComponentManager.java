@@ -537,11 +537,11 @@ public class ComponentManager {
    * 
    ****************************************************************************/
   
-  private ThreadCreation threadCreation = null;
+  private ThreadInvestigation threadCreation = null;
   
   private HashMap<SSAProgramPoint,Component> getGlobalThreadInvocations() {
 	if (threadCreation == null) {
-		threadCreation = new ThreadCreation(this);
+		threadCreation = new ThreadInvestigation(this);
 	}
 	return threadCreation.getThreadInvocations();
   }
@@ -558,9 +558,7 @@ public class ComponentManager {
    * @param c
    * @return
    */
-  public HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> getThreadInvocations(Component c) {
-	  
-	  
+  public HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> getThreadInvocations(Component c) {	  	 
 	  
 	  if (component2ThreadInvocations == null) {		  
 		  component2ThreadInvocations = new HashMap<Component, 

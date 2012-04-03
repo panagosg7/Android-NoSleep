@@ -39,8 +39,9 @@ public class SSAOptions {
    * return a policy that enables all built-in pi node policies
    */
   public static SSAPiNodePolicy getAllBuiltInPiNodes() {
-    return CompoundPiPolicy.createCompoundPiPolicy(InstanceOfPiPolicy.createInstanceOfPiPolicy(), NullTestPiPolicy
-        .createNullTestPiPolicy());
+    return CompoundPiPolicy.createCompoundPiPolicy(
+        InstanceOfPiPolicy.createInstanceOfPiPolicy(), 
+        NullTestPiPolicy.createNullTestPiPolicy());
   }
 
 

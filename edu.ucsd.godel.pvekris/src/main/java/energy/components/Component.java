@@ -45,7 +45,7 @@ import energy.analysis.ApplicationCallGraph;
 import energy.analysis.Opts;
 import energy.interproc.ContextInsensitiveLocking;
 import energy.interproc.ContextSensitiveLocking;
-import energy.interproc.LockState;
+import energy.interproc.SingleLockState;
 import energy.interproc.SensibleCallGraph;
 import energy.interproc.SensibleExplodedInterproceduralCFG;
 import energy.util.E;
@@ -304,7 +304,7 @@ private String getTargetColor(ISSABasicBlock ebb) {
         BasicBlockInContext<IExplodedBasicBlock> bb = (BasicBlockInContext<IExplodedBasicBlock>) o;
         Pair<IMethod, Integer> pair = Pair.make(bb.getMethod(), bb.getNumber());
         E.log(2, "LOOKING FOR: " + pair.toString());
-        LockState st = stateHash.get(Pair.make(bb.getMethod(), bb.getNumber()));
+        SingleLockState st = stateHash.get(Pair.make(bb.getMethod(), bb.getNumber()));
         if (st == null)
           Assertions.UNREACHABLE();
         else
@@ -312,7 +312,7 @@ private String getTargetColor(ISSABasicBlock ebb) {
       }
       if (o instanceof IExplodedBasicBlock) {
         IExplodedBasicBlock bb = (IExplodedBasicBlock) o;
-        LockState st = stateHash.get(Pair.make(bb.getMethod(), bb.getNumber()));
+        SingleLockState st = stateHash.get(Pair.make(bb.getMethod(), bb.getNumber()));
         return st.getColor();
         		
       }
@@ -384,8 +384,8 @@ private String getTargetColor(ISSABasicBlock ebb) {
   protected BooleanSolver<BasicBlockInContext<IExplodedBasicBlock>> releaseMustSolver = null;
 
   protected TabulationResult<BasicBlockInContext<IExplodedBasicBlock>,
-    CGNode, LockState> csSolver;
-  private TabulationDomain<LockState, 
+    CGNode, SingleLockState> csSolver;
+  private TabulationDomain<SingleLockState, 
     BasicBlockInContext<IExplodedBasicBlock>> csDomain;
 
   public boolean isInteresting() {
@@ -416,7 +416,7 @@ private String getTargetColor(ISSABasicBlock ebb) {
     /* Pack inter-procedural sensible edges */
     HashSet<Pair<CGNode, CGNode>> packedEdges = sensibleCG.packEdges();
     
-    return new SensibleExplodedInterproceduralCFG(getCallgraph(), packedEdges);
+    return new SensibleExplodedInterproceduralCFG(getCallgraph(), originalCallgraph, packedEdges);
     
   }
 
@@ -563,7 +563,7 @@ private String getTargetColor(ISSABasicBlock ebb) {
   
   
   /* Super-ugly way to keep the colors for every method in the graph */
-  private HashMap<Pair<IMethod, Integer>, LockState> stateHash;
+  private HashMap<Pair<IMethod, Integer>, SingleLockState> stateHash;
 
   public void cacheStates() {
 	
@@ -576,14 +576,14 @@ private String getTargetColor(ISSABasicBlock ebb) {
     }
     */
 	  
-    stateHash = new HashMap<Pair<IMethod, Integer>, LockState>();
+    stateHash = new HashMap<Pair<IMethod, Integer>, SingleLockState>();
     Iterator<BasicBlockInContext<IExplodedBasicBlock>> iterator = icfg.iterator();
     while (iterator.hasNext()) {
       BasicBlockInContext<IExplodedBasicBlock> bb = iterator.next();
       
       //col = getTargetColor(bb);
       
-      LockState q;
+      SingleLockState q;
       
       if (Opts.DO_CS_ANALYSIS) {
       /* Context sensitive analysis */
@@ -594,7 +594,7 @@ private String getTargetColor(ISSABasicBlock ebb) {
       }
       else {
         /* Context insensitive analysis */        
-        q = new LockState(Quartet.make(
+        q = new SingleLockState(Quartet.make(
         		acquireMaySolver.getOut(bb).getValue(),
         		releaseMaySolver.getOut(bb).getValue(),
         		releaseMustSolver.getOut(bb).getValue(),
@@ -610,13 +610,13 @@ private String getTargetColor(ISSABasicBlock ebb) {
   
   
   
-  private LockState mergeResult(IntSet x) {
+  private SingleLockState mergeResult(IntSet x) {
     IntIterator it = x.intIterator();
-    LockState n = new LockState(
+    SingleLockState n = new SingleLockState(
         Quartet.make(Boolean.FALSE, Boolean.TRUE, Boolean.FALSE, Boolean.TRUE)); 
     while (it.hasNext()) {
       int i = it.next();
-      LockState q = csDomain.getMappedObject(i);
+      SingleLockState q = csDomain.getMappedObject(i);
       n = n.merge(q);
     }
     return n;
@@ -663,7 +663,7 @@ private String getTargetColor(ISSABasicBlock ebb) {
    * @param cgNode
    * @return
    */
-  protected LockState getExitState(CGNode cgNode) {
+  protected SingleLockState getExitState(CGNode cgNode) {
 	  BasicBlockInContext<IExplodedBasicBlock> exit = icfg.getExit(cgNode);
       Pair<IMethod, Integer> p = Pair.make(
           cgNode.getMethod(), exit.getNumber());
@@ -675,9 +675,9 @@ private String getTargetColor(ISSABasicBlock ebb) {
    * Apply the policies to the corresponding callbacks. This one checks that at
    * the end of the method, we have an expected state.
    */
-  public Map<String, LockState> getExitLockStates() {
+  public Map<String, SingleLockState> getExitLockStates() {
 	
-	Map<String, LockState> result = new HashMap<String, LockState>();	
+	Map<String, SingleLockState> result = new HashMap<String, SingleLockState>();	
 	
 	/* get the defined callbacks */
 	HashSet<CallBack> callbacks = getCallbacks();

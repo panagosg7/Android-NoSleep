@@ -32,6 +32,7 @@ import org.apache.commons.io.IOUtils;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
+import com.ibm.wala.util.debug.UnimplementedError;
 
 import edu.ucsd.salud.mcmutton.ApkCollection.ApkApplication;
 import edu.ucsd.salud.mcmutton.apk.Wala;
@@ -159,23 +160,23 @@ public class BugHunt {
 		//theSet.add("FBReader");			//conversion error
 		//theSet.add("Phonebook 2.0");		//conversion error
 		//theSet.add("ICQ");
-		theSet.add("DISH");					//OK
-		theSet.add("JuiceDefender");		//OK
+//		theSet.add("DISH");					//OK
+		//theSet.add("JuiceDefender");		//OK
 		//theSet.add("Twidroyd");			//conversion error
 		//theSet.add("WebSMS");				//conversion error
-		theSet.add("3D Level");				//OK
-		theSet.add("ColorNote");			//OK		
+//		theSet.add("3D Level");				//OK
+		//theSet.add("ColorNote");			//OK		
 		//theSet.add("Call Control");		//conversion error
 		//theSet.add("Slice Slice");		//Runnable exception
 		//theSet.add("Geohash Droid");		//conversion error
 		//theSet.add("Google Voice");		//conversion error
 //		theSet.add("AdvancedMapViewer");	//conversion error
-		theSet.add("Farm Tower");
+//		theSet.add("Farm Tower");
 //		theSet.add("Pikachu");				//OK
-		theSet.add("Google Sky Map");
-		theSet.add("RMaps");				//OK
+//		theSet.add("Google Sky Map");		//OK
+//		theSet.add("RMaps");				//OK
 //		theSet.add("Tangram");
-//		theSet.add("2 Player Reactor");
+//		theSet.add("2 Player Reactor");		//has recursive threads
 		//theSet.add("TagReader");			//conversion error
 //		theSet.add("ReChat");				//conversion error
 //		theSet.add("Foursquare");
@@ -184,6 +185,15 @@ public class BugHunt {
 //		theSet.add("Craigslist");
 //		theSet.add("Alchemy");
 //		theSet.add("Strawberry Shortcake PhoneImage");
+//		theSet.add("Farm Tower");
+		
+//		theSet.add("InstaFetch PRO");
+//		theSet.add("YouTube");
+//		theSet.add("imo");
+//		theSet.add("aLogcat");
+		
+		theSet.add("Android Agenda Widget");
+		
 		
 		
 		runPatternAnalysis(collection, theSet);
@@ -206,37 +216,36 @@ public class BugHunt {
 						
 			String app_name = collection.cleanApkName((String)key);
 			
-			System.out.println("Looking for: " + app_name);					
+			//System.out.println("\n\n\nLooking for: " + app_name);					
 			
-			String[] catsArray = acqrel_status.getString((String)key).split("[,]");			
-
-			
+			String[] catsArray = acqrel_status.getString((String)key).split("[,]");
 			
 			ArrayList<String> cats = new ArrayList<String>(catsArray.length);
 			
-			for (String cat: catsArray) cats.add(cat);			
-			
+			for (String cat: catsArray) cats.add(cat);
 			ApkApplication application = collection.getApplication(app_name);
-			
-			
-			
 			ApkInstance apk = application.getPreferred();
-			
-			Wala.UsageType usageType = Wala.UsageType.UNKNOWN;
-			
-			Set<String> panosResult = null;
-			
+			Wala.UsageType usageType = Wala.UsageType.UNKNOWN;			
+			Set<String> panosResult = null;			
 			boolean successfullyOptimized = false;
 			
 			try {
 				successfullyOptimized = apk.successfullyOptimized();
 			} catch (RetargetException e) {
-				System.err.println("Retarget failed: " + e.toString());
+				LOGGER.warning("Retarget failed: " + e.toString());
 			}
 			
 			if (apk.successfullyOptimized()) {
-				panosResult = apk.panosAnalyze();				
-				usageType = Wala.UsageType.FAILURE;
+				try {
+					panosResult = apk.panosAnalyze();
+				} catch(Exception e) {
+					//Any exception should be notified
+					e.printStackTrace();
+					usageType = Wala.UsageType.FAILURE;
+				}
+				catch (UnimplementedError e) {
+					LOGGER.warning(e.getMessage());					
+				}								
 			
 			} else {
 				LOGGER.warning("Failed to optimize: " + key.toString());
@@ -244,7 +253,7 @@ public class BugHunt {
 				//panosResult = usageType;
 			}
 			
-			//TODO
+
 			/*
 			System.out.println(key + ":" + StringUtils.join(cats, ", ") + " -- " + 
 					apk.successfullyOptimized() + " -- " + usageType + "==" + panosUsageType);
@@ -274,15 +283,12 @@ public class BugHunt {
 			} else {
 				likelihood.put(e.getKey().bugLikely, e.getValue() + likelihood.get(e.getKey().bugLikely));
 			}
-		}
-		
-		
+		}				
 		
 		for (Map.Entry<Wala.BugLikely, Integer> e: likelihood.entrySet()) {
 			System.out.println(e.getKey() + " -- " + e.getValue() + " (" + e.getValue()/(float)total + ")");
 		}
 		
-//		
 //		
 //		ApkInstance apk = collection.getApplication("ColorDict").getPreferred();
 //		

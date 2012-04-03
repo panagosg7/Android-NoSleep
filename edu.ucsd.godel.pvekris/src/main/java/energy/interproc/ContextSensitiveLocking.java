@@ -133,13 +133,13 @@ public class ContextSensitiveLocking {
 	 * @param bb
 	 * @return
 	 */
-	private LockState getCalledRunnable(BasicBlockInContext<IExplodedBasicBlock> bb) {
+	private SingleLockState getCalledRunnable(BasicBlockInContext<IExplodedBasicBlock> bb) {
 		
 		RunnableThread calleeThread = icfg.getThreadInvocations(bb);
 		
 		if (calleeThread != null) {
 			Assertions.productionAssertion(calleeThread.isSolved);
-			LockState threadExitState = calleeThread.getThreadExitState();
+			SingleLockState threadExitState = calleeThread.getThreadExitState();
 			
 			E.log(2, calleeThread.toString() + " :: " + threadExitState.toString() );
 			
@@ -158,9 +158,9 @@ public class ContextSensitiveLocking {
 	 * 
 	 * @author pvekris
 	 */
-	private class TabDomain extends MutableMapping<LockState>
+	private class TabDomain extends MutableMapping<SingleLockState>
 			implements
-			TabulationDomain<LockState, BasicBlockInContext<IExplodedBasicBlock>> {
+			TabulationDomain<SingleLockState, BasicBlockInContext<IExplodedBasicBlock>> {
 
 		public boolean hasPriorityOver(
 				PathEdge<BasicBlockInContext<IExplodedBasicBlock>> p1,
@@ -253,7 +253,7 @@ public class ContextSensitiveLocking {
 				return new IUnaryFlowFunction() {
 					@Override
 					public IntSet getTargets(int d1) {
-						LockState fact = new LockState(true, true, false, false);
+						SingleLockState fact = new SingleLockState(true, true, false, false);
 						int factNum = domain.getMappedIndex(fact);
 						MutableSparseIntSet result = MutableSparseIntSet
 								.makeEmpty();
@@ -268,7 +268,7 @@ public class ContextSensitiveLocking {
 				return new IUnaryFlowFunction() {
 					@Override
 					public IntSet getTargets(int d1) {
-						LockState fact = new LockState(false, false, true, true);
+						SingleLockState fact = new SingleLockState(false, false, true, true);
 						// int factNum = domain.add(fact);
 						int factNum = domain.getMappedIndex(fact);
 						MutableSparseIntSet result = MutableSparseIntSet
@@ -297,7 +297,7 @@ public class ContextSensitiveLocking {
 			 * Also take thread info into account. 
 			 */
 			
-			final LockState threadExitState = getCalledRunnable(src);
+			final SingleLockState threadExitState = getCalledRunnable(src);
 			
 
 			if (threadExitState != null) {
@@ -356,12 +356,12 @@ public class ContextSensitiveLocking {
 	
 	protected int mergeStates(IntSet x, int j) {
 		IntIterator it = x.intIterator();
-		LockState n = domain.getMappedObject(j);
+		SingleLockState n = domain.getMappedObject(j);
 		StringBuffer sb = new StringBuffer();
 		sb.append("Merging: " + n.toString());
 		while (it.hasNext()) {
 			int i = it.next();
-			LockState q = domain.getMappedObject(i);
+			SingleLockState q = domain.getMappedObject(i);
 			n = n.merge(q);
 			sb.append(" + " + q.toString());
 		}
@@ -375,7 +375,7 @@ public class ContextSensitiveLocking {
 
 	private class LockingProblem
 			implements
-			PartiallyBalancedTabulationProblem<BasicBlockInContext<IExplodedBasicBlock>, CGNode, LockState> {
+			PartiallyBalancedTabulationProblem<BasicBlockInContext<IExplodedBasicBlock>, CGNode, SingleLockState> {
 		private Collection<PathEdge<BasicBlockInContext<IExplodedBasicBlock>>> initialSeeds = collectInitialSeeds();
 		private IPartiallyBalancedFlowFunctions<BasicBlockInContext<IExplodedBasicBlock>> flowFunctions = new LockingFunctions(
 				domain);
@@ -396,7 +396,7 @@ public class ContextSensitiveLocking {
 
 			for (BasicBlockInContext<IExplodedBasicBlock> bb : supergraph) {
 				if (isWLAcquireCall(bb)) {
-					LockState fact = new LockState(true, true, false, false);
+					SingleLockState fact = new SingleLockState(true, true, false, false);
 					int factNum = domain.add(fact);
 					final CGNode cgNode = bb.getNode();
 					BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(cgNode);
@@ -408,7 +408,7 @@ public class ContextSensitiveLocking {
 				}
 				if (isWLReleaseCall(bb)) {
 					E.log(2, bb.toString() + " Adding release fact");
-					LockState fact = new LockState(false, false, true, true);
+					SingleLockState fact = new SingleLockState(false, false, true, true);
 					int factNum = domain.add(fact);
 					final CGNode cgNode = bb.getNode();
 					BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(cgNode);
@@ -419,7 +419,7 @@ public class ContextSensitiveLocking {
 				}
 				if ((supergraph.getPredNodeCount(bb) == 0)) {
 					E.log(2, bb.toString() + " Adding entry point");
-					LockState fact = new LockState(false, false, false, false);
+					SingleLockState fact = new SingleLockState(false, false, false, false);
 					int factNum = domain.add(fact);
 					final CGNode cgNode = bb.getNode();
 					BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(cgNode);
@@ -435,7 +435,7 @@ public class ContextSensitiveLocking {
 		}
 
 		@Override
-		public TabulationDomain<LockState, BasicBlockInContext<IExplodedBasicBlock>> getDomain() {
+		public TabulationDomain<SingleLockState, BasicBlockInContext<IExplodedBasicBlock>> getDomain() {
 			return domain;
 		}
 
@@ -481,13 +481,13 @@ public class ContextSensitiveLocking {
 	/**
 	 * perform the tabulation analysis and return the {@link TabulationResult}
 	 */
-	public TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, LockState> analyze() {
+	public TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, SingleLockState> analyze() {
 
-		PartiallyBalancedTabulationSolver<BasicBlockInContext<IExplodedBasicBlock>, CGNode, LockState> solver = PartiallyBalancedTabulationSolver
+		PartiallyBalancedTabulationSolver<BasicBlockInContext<IExplodedBasicBlock>, CGNode, SingleLockState> solver = PartiallyBalancedTabulationSolver
 				.createPartiallyBalancedTabulationSolver(new LockingProblem(),
 						null);
 
-		TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, LockState> result = null;
+		TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, SingleLockState> result = null;
 
 		try {
 			result = solver.solve();
@@ -503,7 +503,7 @@ public class ContextSensitiveLocking {
 		return supergraph;
 	}
 
-	public TabulationDomain<LockState, BasicBlockInContext<IExplodedBasicBlock>> getDomain() {
+	public TabulationDomain<SingleLockState, BasicBlockInContext<IExplodedBasicBlock>> getDomain() {
 		return domain;
 	}
 

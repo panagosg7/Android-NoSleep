@@ -11,21 +11,21 @@ import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.collections.Util;
 
 import energy.components.Component;
-import energy.interproc.LockState;
+import energy.interproc.SingleLockState;
 import energy.util.E;
 
 public class AnalysisResults {
 	
 	/* Ugly structure to keep interesting stuff */	
-	private HashSet<Pair<Component, Map<String, LockState>>> resultStuff = null;
+	private HashSet<Pair<Component, Map<String, SingleLockState>>> resultStuff = null;
 	//The string is the component callback 
 	
 	
 	public class ComponentResult {
-		HashMap<String,LockState> callBackExitStates;
+		HashMap<String,SingleLockState> callBackExitStates;
 		
 		public ComponentResult() {
-			callBackExitStates = new HashMap<String,LockState>();
+			callBackExitStates = new HashMap<String,SingleLockState>();
 		}	
 		
 	}
@@ -35,7 +35,7 @@ public class AnalysisResults {
 	 */
 	AnalysisResults() {
 				
-		resultStuff = new HashSet<Pair<Component,Map<String,LockState>>>();
+		resultStuff = new HashSet<Pair<Component,Map<String,SingleLockState>>>();
 		callBackResultMap = new HashMap<Pair<String,String>, EnumMap<LockUsage,Integer>>();
 		
 	}
@@ -62,16 +62,16 @@ public class AnalysisResults {
 	private Map<Pair<String, String>, EnumMap<LockUsage, Integer>> callBackResultMap;
 	
 
-	public void registerExitLockState(Component component, Map<String, LockState> exitLockStates) {
+	public void registerExitLockState(Component component, Map<String, SingleLockState> exitLockStates) {
 		
 		resultStuff.add(Pair.make(component, exitLockStates));
 		
 		/* Testing */    	
     	
-    	Predicate<LockState> p =
-    	  new Predicate<LockState>() {    		
+    	Predicate<SingleLockState> p =
+    	  new Predicate<SingleLockState>() {    		
 			@Override
-			public boolean test(LockState s) {				
+			public boolean test(SingleLockState s) {				
 				return s.isReached();
 			}
 		  };
@@ -80,7 +80,7 @@ public class AnalysisResults {
 			
 			E.log(1, component.toString() + " |-> ");
 			
-			for( Entry<String, LockState> e : exitLockStates.entrySet()) {
+			for( Entry<String, SingleLockState> e : exitLockStates.entrySet()) {
 				if(e.getValue().isReached()) {
 					E.log(1, "\t" + e.getKey() + " -> " + e.getValue()); 
 				}
@@ -92,7 +92,7 @@ public class AnalysisResults {
 	}
 	
 	
-	private LockUsage getLockUsage(LockState runState) {								
+	private LockUsage getLockUsage(SingleLockState runState) {								
 		
 		if (runState != null) {
 			
@@ -125,17 +125,17 @@ public class AnalysisResults {
 	
 	public void processResults() {
 
-		for (Pair<Component, Map<String, LockState>> pair : resultStuff) {
+		for (Pair<Component, Map<String, SingleLockState>> pair : resultStuff) {
 			
 			Component component = pair.fst;
 			String componentName = component.getComponentName();
 			
-			Map<String, LockState> callBackMap = pair.snd;
+			Map<String, SingleLockState> callBackMap = pair.snd;
 			
-			for(Entry<String, LockState> e : callBackMap.entrySet()) {
+			for(Entry<String, SingleLockState> e : callBackMap.entrySet()) {
 				
 				String callBackName = e.getKey();				
-				LockState lockState = e.getValue();			
+				SingleLockState lockState = e.getValue();			
 				
 				Pair<String, String> compAndCB = Pair.make(component.toString(),callBackName);
 				Pair<String, String> abstCompAndCB = Pair.make(componentName,callBackName);

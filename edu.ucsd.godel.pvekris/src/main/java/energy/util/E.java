@@ -43,7 +43,11 @@ public class E {
         methName = methName.substring(0, MAX_METHOD_NAME - 3) + "...";
       }      
       String out = String.format("[%30s] ", methName);
-      out+=str;      
+      String spaces = String.format("%33s", "");
+      
+      String strAndSpaces = str.replaceAll("\n", "\n" + spaces);
+      
+      out+=strAndSpaces;
       plog(i,f,out);     
     }
   }

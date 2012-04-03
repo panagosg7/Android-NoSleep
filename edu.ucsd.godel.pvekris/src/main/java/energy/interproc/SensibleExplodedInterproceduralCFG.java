@@ -20,6 +20,7 @@ import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
 
+import energy.analysis.ApplicationCallGraph;
 import energy.components.Component;
 import energy.components.RunnableThread;
 import energy.util.E;
@@ -31,11 +32,18 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
    * Constructor that takes as arguments the initial call graph and the
    * pairs of methods (Signatures) that need to be connected.
    * @param cg
+ * @param originalCallgraph 
    * @param packedEdges
    */
-  public SensibleExplodedInterproceduralCFG(CallGraph cg, 
+  public SensibleExplodedInterproceduralCFG(
+		  CallGraph cg,									//The components CG 
+		  ApplicationCallGraph originalCallgraph,		//The whole application's CG 
 		  HashSet<Pair<CGNode, CGNode>> packedEdges) {
+	  
     super(cg);
+    
+    this.applicationCG = originalCallgraph;    
+    
     /* Will only work like this - loses laziness. */
     constructFullGraph();
       
@@ -46,6 +54,9 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
     
     cacheCallbacks(cg,packedEdges);
   } 
+  
+  private ApplicationCallGraph applicationCG;
+  
   
   private Map<String,CGNode> callbacks;
   
@@ -153,6 +164,10 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
  			System.out.println(e.getKey().toString() + " -> " + e.getValue());
  		} 		
  	}
+
+	public ApplicationCallGraph getApplicationCG() {
+		return applicationCG;
+	}
  	
  	
 }
