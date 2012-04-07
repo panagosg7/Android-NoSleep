@@ -192,7 +192,8 @@ public class BugHunt {
 //		theSet.add("imo");
 //		theSet.add("aLogcat");
 		
-		theSet.add("Android Agenda Widget");
+//		theSet.add("Android Agenda Widget");
+		theSet.add("ServicesDemo");
 		
 		
 		
@@ -244,7 +245,9 @@ public class BugHunt {
 					usageType = Wala.UsageType.FAILURE;
 				}
 				catch (UnimplementedError e) {
-					LOGGER.warning(e.getMessage());					
+					
+					LOGGER.warning(e.getMessage());
+					e.printStackTrace();
 				}								
 			
 			} else {

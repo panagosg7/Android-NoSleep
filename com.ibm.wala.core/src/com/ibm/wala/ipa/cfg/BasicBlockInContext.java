@@ -142,18 +142,20 @@ public final class BasicBlockInContext<T extends ISSABasicBlock> extends NodeWit
 
   @Override
   public String toString() {
-    /*
+    return delegate.toString();
+  }
+  
+  public String toShortString() {
+    
     StringBuffer sb = new StringBuffer();
     sb.append("(");
     sb.append(this.getMethod().getName().toString());
     sb.append(", ");
     sb.append(this.getNumber());
     sb.append(")");
-    return sb.toString();
-    */
-    return delegate.toString();
+    return sb.toString();       
   }
-
+  
   @Override
   public Iterator<TypeReference> getCaughtExceptionTypes() {
     return delegate.getCaughtExceptionTypes();

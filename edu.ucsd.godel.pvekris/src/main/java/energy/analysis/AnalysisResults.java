@@ -6,26 +6,26 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import com.ibm.wala.util.Predicate;
+import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.util.collections.Pair;
-import com.ibm.wala.util.collections.Util;
 
 import energy.components.Component;
+import energy.interproc.CompoundLockState;
 import energy.interproc.SingleLockState;
 import energy.util.E;
 
 public class AnalysisResults {
 	
 	/* Ugly structure to keep interesting stuff */	
-	private HashSet<Pair<Component, Map<String, SingleLockState>>> resultStuff = null;
+	private HashSet<Pair<Component, Map<String, Map<FieldReference, SingleLockState>>>> resultStuff = null;
 	//The string is the component callback 
 	
 	
 	public class ComponentResult {
-		HashMap<String,SingleLockState> callBackExitStates;
+		HashMap<String,CompoundLockState> callBackExitStates;
 		
 		public ComponentResult() {
-			callBackExitStates = new HashMap<String,SingleLockState>();
+			callBackExitStates = new HashMap<String,CompoundLockState>();
 		}	
 		
 	}
@@ -35,7 +35,7 @@ public class AnalysisResults {
 	 */
 	AnalysisResults() {
 				
-		resultStuff = new HashSet<Pair<Component,Map<String,SingleLockState>>>();
+		resultStuff = new HashSet<Pair<Component,Map<String, Map<FieldReference, SingleLockState>>>>();
 		callBackResultMap = new HashMap<Pair<String,String>, EnumMap<LockUsage,Integer>>();
 		
 	}
@@ -62,52 +62,40 @@ public class AnalysisResults {
 	private Map<Pair<String, String>, EnumMap<LockUsage, Integer>> callBackResultMap;
 	
 
-	public void registerExitLockState(Component component, Map<String, SingleLockState> exitLockStates) {
+	public void registerExitLockState(Component component, 
+			Map<String, Map<FieldReference, SingleLockState>> map) {
 		
-		resultStuff.add(Pair.make(component, exitLockStates));
-		
-		/* Testing */    	
-    	
-    	Predicate<SingleLockState> p =
-    	  new Predicate<SingleLockState>() {    		
-			@Override
-			public boolean test(SingleLockState s) {				
-				return s.isReached();
-			}
-		  };
-		  		  
-		  if (Util.forSome(exitLockStates.values(), p)) {
-			
-			E.log(1, component.toString() + " |-> ");
-			
-			for( Entry<String, SingleLockState> e : exitLockStates.entrySet()) {
-				if(e.getValue().isReached()) {
-					E.log(1, "\t" + e.getKey() + " -> " + e.getValue()); 
+		resultStuff.add(Pair.make(component, map));
+		StringBuffer sb = new StringBuffer();			
+		for(Entry<String, Map<FieldReference, SingleLockState>> e : map.entrySet()) {
+			//Check if this is an interesting callback 
+			if (e.getValue().size() > 0) {
+				sb.append(e.getKey() + "\n");
+				for (Entry<FieldReference, SingleLockState> entry : e.getValue().entrySet()) {
+					sb.append(entry.getKey() + " -> " + entry.getValue().toString());					
 				}
-			}	
-			
-		  };		
-		
-		
+			}
+		}
+		//Output only when there's something to output
+		if (sb.length() > 0 ) {
+			E.log(1, component.toString() + "\n" + sb.toString());				
+		}				
 	}
+	
 	
 	
 	private LockUsage getLockUsage(SingleLockState runState) {								
 		
-		if (runState != null) {
-			
+		if (runState != null) {			
 			if(runState.isMaybeAcquired() && (!runState.isMaybeReleased())) {				
 				return LockUsage.LOCKING;
-			}
-			
+			}			
 			else if(!runState.isMaybeReleased() && (!runState.isMaybeAcquired())) {
 				return LockUsage.EMPTY;
-			}
-			
+			}			
 			else if(runState.isMaybeReleased() && (!runState.isMaybeAcquired())) {				
 				return LockUsage.FULL_UNLOCKING;
-			}
-			
+			}			
 			else if(runState.isMaybeReleased()) {				
 				return LockUsage.UNLOCKING;
 			}
@@ -118,36 +106,47 @@ public class AnalysisResults {
 		else {
 			return LockUsage.EMPTY;
 		}		
-		
 	}
-	
-	
+		
 	
 	public void processResults() {
 
-		for (Pair<Component, Map<String, SingleLockState>> pair : resultStuff) {
+		for (Pair<Component, Map<String, Map<FieldReference, SingleLockState>>> pair : resultStuff) {
 			
 			Component component = pair.fst;
 			String componentName = component.getComponentName();
 			
-			Map<String, SingleLockState> callBackMap = pair.snd;
+			Map<String, Map<FieldReference, SingleLockState>> callBackMap = pair.snd;
 			
-			for(Entry<String, SingleLockState> e : callBackMap.entrySet()) {
+			for(Entry<String, Map<FieldReference, SingleLockState>> e : callBackMap.entrySet()) {
 				
 				String callBackName = e.getKey();				
-				SingleLockState lockState = e.getValue();			
-				
 				Pair<String, String> compAndCB = Pair.make(component.toString(),callBackName);
 				Pair<String, String> abstCompAndCB = Pair.make(componentName,callBackName);
-				LockUsage lockUsage = getLockUsage(lockState);
 				
-				EnumMap<LockUsage, Integer> enumMap = callBackResultMap.get(abstCompAndCB);
+				//TODO: add a more complete representation
+				/*
+				 * Need a lock usage for every lock
+				 */
+				HashMap<FieldReference,LockUsage> lockUsages = new HashMap<FieldReference, AnalysisResults.LockUsage>();
+				for ( Entry<FieldReference, SingleLockState>  fs : e.getValue().entrySet()) {
+					FieldReference field = fs.getKey();
+					SingleLockState sls = fs.getValue();
+					LockUsage lockUsage= getLockUsage(sls);
+					lockUsages.put(field, lockUsage);
+					
+
+					EnumMap<LockUsage, Integer> enumMap = callBackResultMap.get(abstCompAndCB);
+					
+					if(lockUsage != LockUsage.EMPTY) {
+						E.log(1, compAndCB.toString() + " :: "  + lockUsage.toString());	
+					}				
+					
+					updateEnumMap(enumMap, lockUsage);
+					
+				}
 				
-				if(lockUsage != LockUsage.EMPTY) {
-					E.log(1, compAndCB.toString() + " :: "  + lockUsage.toString());	
-				}				
-				
-				updateEnumMap(enumMap, lockUsage);
+								
 			}		
 		}	
 	}

@@ -372,6 +372,7 @@ public class GraphDotUtil {
     
     if (d instanceof ColorNodeDecorator) {
       result.append(" [color="+ ((ColorNodeDecorator) d).getFillColor(n)+", style=filled]\n");
+      //result.append(" [fillcolor=\"orange:yellow\"]\n");
       result.append(" [fontcolor="+ ((ColorNodeDecorator) d).getFontColor(n)+"]\n");
     }
     else {

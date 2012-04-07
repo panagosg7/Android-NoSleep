@@ -472,10 +472,6 @@ public class ComponentManager {
       }       
       E.log(2, component.toString());
       
-      //if(Opts.OUTPUT_CFG_DOT) {
-    	//  component.outputCFGs();
-      //}
-          
             
       if (Opts.DO_CS_ANALYSIS) {
     	component.solveCSCFG();
@@ -489,20 +485,14 @@ public class ComponentManager {
       if(Opts.OUTPUT_COLOR_CFG_DOT) {
         component.outputColoredCFGs();
         //component.outputSolvedICFG();
-      }
-      
-      
-      
-      /* Check the policy - defined for each type of component separately */
-      if (Opts.CHECK_LOCKING_POLICY) {    	  
-    	  
-    	result.registerExitLockState(component, component.getExitLockStates());        
-        
-      }
-      
+      }      
             
-    }
-    
+      /* Check the policy - defined for each type of component separately */
+      if (Opts.CHECK_LOCKING_POLICY) {
+    	result.registerExitLockState(component, component.getExitLockStates());               
+      }
+            
+    }    
     return result;
     
   }

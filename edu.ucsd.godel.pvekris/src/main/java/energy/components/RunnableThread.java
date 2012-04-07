@@ -1,12 +1,11 @@
 package energy.components;
 
 import java.util.Arrays;
+import java.util.Map;
 
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
-
-import energy.analysis.ApplicationCallGraph;
-import energy.interproc.SingleLockState;
+import com.ibm.wala.types.FieldReference;
 
 import energy.analysis.ApplicationCallGraph;
 import energy.interproc.SingleLockState;
@@ -43,8 +42,8 @@ public class RunnableThread extends Component {
     return b.toString();
   }  
   
-  public SingleLockState getThreadExitState() {
-	CGNode runNode = super.getCallBackByName("run").getNode();
+  public Map<FieldReference,SingleLockState> getThreadExitState() {
+	CGNode runNode = super.getCallBackByName("run").getNode();	
 	return super.getExitState(runNode);
   }
   

@@ -90,10 +90,10 @@ public class SingleLockState  {
 	public String toString () {
 		if (isReached()) {
 			StringBuffer sb = new StringBuffer();
-			sb.append("WA:"); sb.append(maybeAcquired); 
-			sb.append(" SA:"); sb.append(mustbeAcquired);
-			sb.append(" WR:"); sb.append(maybeReleased); 
-			sb.append(" SR:"); sb.append(mustbeReleased);
+			sb.append("WA:"); sb.append(maybeAcquired?"T":"F"); 
+			sb.append(" SA:"); sb.append(mustbeAcquired?"T":"F");
+			sb.append(" WR:"); sb.append(maybeReleased?"T":"F"); 
+			sb.append(" SR:"); sb.append(mustbeReleased?"T":"F");
 			return sb.toString();
 		}
 		else {

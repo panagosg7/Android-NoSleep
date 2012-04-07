@@ -1,6 +1,9 @@
 package energy.interproc;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.dataflow.IFDS.ICFGSupergraph;
@@ -12,7 +15,6 @@ import com.ibm.wala.dataflow.IFDS.IUnaryFlowFunction;
 import com.ibm.wala.dataflow.IFDS.IdentityFlowFunction;
 import com.ibm.wala.dataflow.IFDS.KillEverything;
 import com.ibm.wala.dataflow.IFDS.PartiallyBalancedTabulationProblem;
-import com.ibm.wala.dataflow.IFDS.PartiallyBalancedTabulationSolver;
 import com.ibm.wala.dataflow.IFDS.PathEdge;
 import com.ibm.wala.dataflow.IFDS.TabulationDomain;
 import com.ibm.wala.dataflow.IFDS.TabulationResult;
@@ -20,19 +22,25 @@ import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.ipa.cfg.ExplodedInterproceduralCFG;
+import com.ibm.wala.ssa.DefUse;
+import com.ibm.wala.ssa.SSAGetInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
+import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.collections.HashSetFactory;
+import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.MutableMapping;
 import com.ibm.wala.util.intset.MutableSparseIntSet;
 
+import energy.analysis.LockInvestigation.LockType;
 import energy.components.RunnableThread;
+import energy.interproc.LockingTabulationSolver.LockingResult;
 import energy.util.E;
 
 public class ContextSensitiveLocking {
@@ -82,42 +90,99 @@ public class ContextSensitiveLocking {
 	/**
 	 * Useful functions
 	 */
+	ArrayList<String> acquireSigs = new ArrayList<String>() {
+	private static final long serialVersionUID = 8053296118288414916L;
+	{
+	    add("android.os.PowerManager$WakeLock.acquire()V");
+		add("android.os.PowerManager$WakeLock.acquire(J)V");
+	}};
+	
+	ArrayList<String> releaseSigs = new ArrayList<String>() {
+	private static final long serialVersionUID = 8672603895106192877L;
+	{
+	    add("android.os.PowerManager$WakeLock.release()V");		
+	}};
+	
+	
+	/** 
+	 * These functions will return a field reference or null if something went wrong
+	 * @param bb
+	 * @return
+	 */
+	private FieldReference acquire(BasicBlockInContext<IExplodedBasicBlock> bb) {
+		return lockingCall(bb, acquireSigs);
+	}
+	
 
-	private boolean isWLReleaseCall(BasicBlockInContext<IExplodedBasicBlock> bb) {
+	private FieldReference release(BasicBlockInContext<IExplodedBasicBlock> bb) {
+		return lockingCall(bb, releaseSigs);
+	}
+	
+	
+	
+	//TODO: cache results bb |-> field
+	
+	private FieldReference lockingCall(BasicBlockInContext<IExplodedBasicBlock> bb, 
+			Collection<String> acceptedSigs) {
+		
 		final IExplodedBasicBlock ebb = bb.getDelegate();
+		
+		//XXX: is this the only instruction in the basic block ?
 		SSAInstruction instruction = ebb.getInstruction();
+		
 		if (instruction instanceof SSAInvokeInstruction) {
 			final SSAInvokeInstruction invInstr = (SSAInvokeInstruction) instruction;
-			String methSig = invInstr.getDeclaredTarget().getSignature()
-					.toString();
-			if (methSig.equals("android.os.PowerManager$WakeLock.release()V")) {
-				return true;
-			}
+		
+			String methSig = invInstr.getDeclaredTarget().getSignature().toString();
+			if (acceptedSigs.contains(methSig)) {								
+				int use = invInstr.getUse(0);				
+				CGNode node = bb.getNode();
+				DefUse du = getDU(node);					
+				SSAInstruction def = du.getDef(use);				
+				if (def instanceof SSAGetInstruction) {				
+					SSAGetInstruction get = (SSAGetInstruction) def;					
+					FieldReference field = get.getDeclaredField();	
+					Collection<LockType> wakeLockType = 
+							icfg.getApplicationCG().getLockFieldInfo().getWakeLockType(field);					
+					//This must not be null
+					Assertions.productionAssertion(wakeLockType != null);
+					E.log(2, "Operating on field: " + field );				
+					return field;
+				}
+				else {					
+					Assertions.UNREACHABLE("Could not get field");
+				}
+			}									
 		}
-		return false;
+		return null;
+	}	
+	
+	
+	/** 
+	 * Cache and get the DefUse info
+	 */
+	private DefUse currDU = null; 
+	private CGNode currNode = null;
+	private DefUse getDU(CGNode node) {
+		if(node.equals(currNode)) {
+			return currDU;
+		}
+		else {
+			currNode = node;			
+			currDU = new DefUse(node.getIR());
+			return currDU;
+		}
 	}
 
-	private boolean isWLAcquireCall(BasicBlockInContext<IExplodedBasicBlock> bb) {
-		final IExplodedBasicBlock ebb = bb.getDelegate();
-		SSAInstruction instruction = ebb.getInstruction();
-		if (instruction instanceof SSAInvokeInstruction) {
-			final SSAInvokeInstruction invInstr = (SSAInvokeInstruction) instruction;
-			String methSig = invInstr.getDeclaredTarget().getSignature()
-					.toString();
-			if (methSig.equals("android.os.PowerManager$WakeLock.acquire()V") ||
-				methSig.equals("android.os.PowerManager$WakeLock.acquire(J)V")) {
-				return true;
-			}
-		}
-		return false;
-	}
-
+	
+	
 	/**
 	 * Get the method reference called by a bb (null if not a call site)
 	 * 
 	 * @param bb
 	 * @return
 	 */
+	@SuppressWarnings("unused")
 	private MethodReference getCalledMethodReference(BasicBlockInContext<IExplodedBasicBlock> bb) {
 		final IExplodedBasicBlock ebb = bb.getDelegate();
 		SSAInstruction instruction = ebb.getInstruction();
@@ -133,13 +198,14 @@ public class ContextSensitiveLocking {
 	 * @param bb
 	 * @return
 	 */
-	private SingleLockState getCalledRunnable(BasicBlockInContext<IExplodedBasicBlock> bb) {
+	private Map<FieldReference, SingleLockState>
+		getCalledRunnable(BasicBlockInContext<IExplodedBasicBlock> bb) {
 		
 		RunnableThread calleeThread = icfg.getThreadInvocations(bb);
 		
 		if (calleeThread != null) {
 			Assertions.productionAssertion(calleeThread.isSolved);
-			SingleLockState threadExitState = calleeThread.getThreadExitState();
+			Map<FieldReference, SingleLockState> threadExitState = calleeThread.getThreadExitState();
 			
 			E.log(2, calleeThread.toString() + " :: " + threadExitState.toString() );
 			
@@ -158,9 +224,8 @@ public class ContextSensitiveLocking {
 	 * 
 	 * @author pvekris
 	 */
-	private class TabDomain extends MutableMapping<SingleLockState>
-			implements
-			TabulationDomain<SingleLockState, BasicBlockInContext<IExplodedBasicBlock>> {
+	private class TabDomain extends MutableMapping<Pair<FieldReference,SingleLockState>>	implements
+			TabulationDomain<Pair<FieldReference,SingleLockState>, BasicBlockInContext<IExplodedBasicBlock>> {
 
 		public boolean hasPriorityOver(
 				PathEdge<BasicBlockInContext<IExplodedBasicBlock>> p1,
@@ -170,8 +235,7 @@ public class ContextSensitiveLocking {
 		}
 	}
 
-	private class LockingFunctions
-			implements
+	private class LockingFunctions implements
 			IPartiallyBalancedFlowFunctions<BasicBlockInContext<IExplodedBasicBlock>> {
 
 		private static final int PRINT_EXCEPTIONAL = 2;
@@ -218,15 +282,26 @@ public class ContextSensitiveLocking {
 			 * acquire/release is involved. BE CAREFUL : exceptional edges that
 			 * span across multiple procedures are not determined.
 			 */
-			if (isExceptionalEdge(call, dest) && isWLAcquireCall(call)) {
+			FieldReference acquireField = acquire(call);
+			if (isExceptionalEdge(call, dest) && (acquireField != null)) {
+				
 				E.log(PRINT_EXCEPTIONAL, "Killing [" + src.toString() + " -> "
 						+ dest.toString() + "]");
+				
 				return KillEverything.singleton();
+							
 			}
-			if (isWLAcquireCall(call) || isWLReleaseCall(call)) {
+			
+			FieldReference releaseField = release(call);
+			
+			if ((acquireField != null) || (releaseField != null)) {
+				
 				return KillEverything.singleton();
+				
 			}
+			
 			return IdentityFlowFunction.identity();
+			
 		}
 
 		/**
@@ -237,94 +312,113 @@ public class ContextSensitiveLocking {
 		public IUnaryFlowFunction getCallToReturnFlowFunction(
 				BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest) {
+			
 			E.log(2, "[" + src.toString() + " -> " + dest.toString() + "]");
+			
 			/**
 			 * Exceptional edges should be treated as normal in cases where no
 			 * acquire/release is involved. BE CAREFUL : exceptional edges that
 			 * span across multiple procedures are not determined.
 			 */
-			if (isExceptionalEdge(src, dest) && isWLAcquireCall(src)) {
-				E.log(PRINT_EXCEPTIONAL, "Killing [" + src.toString() + " -> "
-						+ dest.toString() + "]");
-				return KillEverything.singleton();
+			final FieldReference acquiredField = acquire(src);			
+			if (isExceptionalEdge(src, dest) && (acquiredField != null)) {				
+				E.log(PRINT_EXCEPTIONAL, "Killing [" + src.toString() + " -> " + dest.toString() + "]");				
+				return KillEverything.singleton();				
 			}
 
-			if (isWLAcquireCall(src)) {
+			
+			if (acquiredField != null) {
+				E.log(2, "Acq: " + acquiredField.toString());				
 				return new IUnaryFlowFunction() {
 					@Override
 					public IntSet getTargets(int d1) {
-						SingleLockState fact = new SingleLockState(true, true, false, false);
-						int factNum = domain.getMappedIndex(fact);
-						MutableSparseIntSet result = MutableSparseIntSet
-								.makeEmpty();
-						result.add(factNum);
-						return result;
+						return getWakeLockTargets(d1, acquiredField,
+								new SingleLockState(true, true, false, false));
 					}
 				};
 			}
 
-			if (isWLReleaseCall(src)) {
-				E.log(2, dest.toString() + " Propagating Released");
+			final FieldReference releasedField = release(src);			
+			if (releasedField != null) {
+				E.log(2, "Rel: " + releasedField.toString());				
 				return new IUnaryFlowFunction() {
 					@Override
 					public IntSet getTargets(int d1) {
-						SingleLockState fact = new SingleLockState(false, false, true, true);
-						// int factNum = domain.add(fact);
-						int factNum = domain.getMappedIndex(fact);
-						MutableSparseIntSet result = MutableSparseIntSet
-								.makeEmpty();
-						result.add(factNum);
-						E.log(2, "Propagating Released. fact: "
-								+ fact.toString() + " result: "
-								+ result);
-						return result;
+						IntSet wakeLockTargets = getWakeLockTargets(d1, releasedField,
+								new SingleLockState(false, false, true, true));
+						if(wakeLockTargets.size() > 1) {
+							E.log(1, "QQQQQ");
+						}
+						return wakeLockTargets; 						
 					}
 				};
 			}
 			return KillEverything.singleton();
 		}
+		
+		
+		
+		private IntSet getWakeLockTargets(int d1, FieldReference field , SingleLockState st) {
+			
+			Pair<FieldReference, SingleLockState> fact = Pair.make(field, st);
+			int factNum = domain.getMappedIndex(fact);
+			Assertions.productionAssertion(factNum>=0, fact.toString());
+			MutableSparseIntSet result = MutableSparseIntSet.makeEmpty();						
+									
+			if (d1 != factNum) {
+				Pair<FieldReference, SingleLockState> old = domain.getMappedObject(d1);							
+				if (!(old.fst).equals(field)) {
+				//This is a completely different field we're operating on
+				//so put both states								
+					result.add(d1);
+					result.add(factNum);					
+				}
+				else {					
+					result.add(factNum);								
+				}							
+			}
+			else {										
+				result.add(d1);							
+			}						
+			//else they are exactly the same so don't do anything
+			return result;
+		}
+	
+		
 
 		@Override
 		public IUnaryFlowFunction getCallNoneToReturnFlowFunction(
-				BasicBlockInContext<IExplodedBasicBlock> src,
+				final BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest) {
 			/**
 			 * if we're missing callees, just keep what information we have.
 			 * These are cases where we don't have the code for the callee, e.g.
 			 * android, java, library code. Acquires and releases are not
-			 * handled here.
-			 * 
-			 * Also take thread info into account. 
-			 */
-			
-			final SingleLockState threadExitState = getCalledRunnable(src);
-			
+			 * handled here. 	
+			 */			
+			final Map<FieldReference, SingleLockState> threadExitState = getCalledRunnable(src);			
 
 			if (threadExitState != null) {
-
-				E.log(2, "Call to: " + threadExitState.toString());			
-					
+				//This is a thread start point
+				E.log(1, "Call to: " + threadExitState.toString());
 				return new IUnaryFlowFunction() {
-
 					@Override
 					public IntSet getTargets(int d1) {
-						MutableSparseIntSet result = MutableSparseIntSet.makeEmpty();
-						result.add(d1);
-						
-						int threadIndex = domain.add(threadExitState);
-						int mergedState = mergeStates(result, threadIndex);
-						result.clear();
-						result.add(mergedState);
-						return result;
-												
-					}
+						MutableSparseIntSet threadSet = MutableSparseIntSet.makeEmpty();
+						for(Entry<FieldReference, SingleLockState> e : threadExitState.entrySet()) {
+							Pair<FieldReference, SingleLockState> p = Pair.make(e.getKey(), e.getValue());
+							int ind = domain.add(p);
+							threadSet.add(ind);
+						}								//TODO : checck this				
+						return mergeStates(threadSet, d1);						
+			        }
 				};
 			}
 									
 			return IdentityFlowFunction.identity();
 		}
 
-
+				
 		private boolean isExceptionalEdge(
 				BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest) {
@@ -354,31 +448,51 @@ public class ContextSensitiveLocking {
 
 	}
 	
-	protected int mergeStates(IntSet x, int j) {
+	protected IntSet mergeStates(IntSet x, int j) {
 		IntIterator it = x.intIterator();
-		SingleLockState n = domain.getMappedObject(j);
+		
+		Pair<FieldReference, SingleLockState> n = domain.getMappedObject(j);
+		
 		StringBuffer sb = new StringBuffer();
 		sb.append("Merging: " + n.toString());
+		
+		MutableSparseIntSet result = MutableSparseIntSet.makeEmpty();
+		
+		boolean merged = false;
+		
 		while (it.hasNext()) {
 			int i = it.next();
-			SingleLockState q = domain.getMappedObject(i);
-			n = n.merge(q);
-			sb.append(" + " + q.toString());
-		}
-		sb.append(" -> " + n.toString());
-		E.log(2, sb.toString());
-		return domain.add(n);
 		
+			Pair<FieldReference, SingleLockState> q = domain.getMappedObject(i);
+			if (q.fst.equals(n.fst)) {
+				merged = true;
+				SingleLockState mergedState = q.snd.merge(n.snd);
+				Pair<FieldReference, SingleLockState> newPair = Pair.make(q.fst, mergedState);
+				int factNum = domain.getMappedIndex(newPair);
+				Assertions.productionAssertion(factNum>=0, newPair.toString());
+				result.add(factNum);				
+			}
+			else {
+				result.add(i);
+			}			
+			sb.append(" + " + q.toString());
+		}		
+		if (!merged) {
+			result.add(j);
+		}		
+		sb.append(" -> " + n.toString());		
+		E.log(1, sb.toString());		
+		return result;		
 	}
-
+	
 	
 
-	private class LockingProblem
-			implements
-			PartiallyBalancedTabulationProblem<BasicBlockInContext<IExplodedBasicBlock>, CGNode, SingleLockState> {
+	private class LockingProblem implements
+			PartiallyBalancedTabulationProblem<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<FieldReference, SingleLockState>> {
+		
 		private Collection<PathEdge<BasicBlockInContext<IExplodedBasicBlock>>> initialSeeds = collectInitialSeeds();
-		private IPartiallyBalancedFlowFunctions<BasicBlockInContext<IExplodedBasicBlock>> flowFunctions = new LockingFunctions(
-				domain);
+		private IPartiallyBalancedFlowFunctions<BasicBlockInContext<IExplodedBasicBlock>> flowFunctions = 
+				new LockingFunctions(domain);
 
 		@Override
 		public ISupergraph<BasicBlockInContext<IExplodedBasicBlock>, CGNode> getSupergraph() {
@@ -391,25 +505,18 @@ public class ContextSensitiveLocking {
 		 * @return
 		 */
 		private Collection<PathEdge<BasicBlockInContext<IExplodedBasicBlock>>> collectInitialSeeds() {
-			Collection<PathEdge<BasicBlockInContext<IExplodedBasicBlock>>> result = HashSetFactory
-					.make();
+			Collection<PathEdge<BasicBlockInContext<IExplodedBasicBlock>>> result = 
+					HashSetFactory.make();
 
 			for (BasicBlockInContext<IExplodedBasicBlock> bb : supergraph) {
-				if (isWLAcquireCall(bb)) {
-					SingleLockState fact = new SingleLockState(true, true, false, false);
+				FieldReference acquiredField = acquire(bb);
+				if (acquiredField != null) {
+					E.log(1, bb.toShortString() + ":: adding acquire fact: " + acquiredField.toString());
+					
+					SingleLockState sls = new SingleLockState(true, true, false, false);					
+					Pair<FieldReference, SingleLockState> fact = Pair.make(acquiredField, sls);					
 					int factNum = domain.add(fact);
-					final CGNode cgNode = bb.getNode();
-					BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(cgNode);
-					// note that the fact number used for the source of this
-					// path edge
-					// doesn't really matter
-					result.add(PathEdge.createPathEdge(fakeEntry, factNum, bb,
-							factNum));
-				}
-				if (isWLReleaseCall(bb)) {
-					E.log(2, bb.toString() + " Adding release fact");
-					SingleLockState fact = new SingleLockState(false, false, true, true);
-					int factNum = domain.add(fact);
+					
 					final CGNode cgNode = bb.getNode();
 					BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(cgNode);
 					// note that the fact number used for the source of this
@@ -417,25 +524,31 @@ public class ContextSensitiveLocking {
 					result.add(PathEdge.createPathEdge(fakeEntry, factNum, bb,
 							factNum));
 				}
-				if ((supergraph.getPredNodeCount(bb) == 0)) {
-					E.log(2, bb.toString() + " Adding entry point");
-					SingleLockState fact = new SingleLockState(false, false, false, false);
+				
+				FieldReference releasedField = release(bb);
+				if (releasedField != null)  {					
+					E.log(1, bb.toShortString() + ":: adding release fact: " + releasedField.toString());
+					
+					SingleLockState sls = new SingleLockState(false, false, true, true);					
+					Pair<FieldReference, SingleLockState> fact = Pair.make(releasedField, sls);
 					int factNum = domain.add(fact);
+					
 					final CGNode cgNode = bb.getNode();
 					BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(cgNode);
 					// note that the fact number used for the source of this
-					// path edge
-					// doesn't really matter
+					// path edge doesn't really matter
 					result.add(PathEdge.createPathEdge(fakeEntry, factNum, bb,
 							factNum));
 				}
-			}
-			E.log(2, "Collected: " + result.size());
+				//XXX: don't have to worry about entry points - nothing's gonna be inserted there (?)				
+			}			
 			return result;
 		}
+		
+		
 
 		@Override
-		public TabulationDomain<SingleLockState, BasicBlockInContext<IExplodedBasicBlock>> getDomain() {
+		public TabulationDomain<Pair<FieldReference, SingleLockState>, BasicBlockInContext<IExplodedBasicBlock>> getDomain() {
 			return domain;
 		}
 
@@ -447,10 +560,30 @@ public class ContextSensitiveLocking {
 		@Override
 		public IMergeFunction getMergeFunction() {
 			return new IMergeFunction() {
-
+				/**
+				 * This method should return the factoid number z which should 
+				 * actually be propagated, based on a merge of the new fact j into 
+				 * the old state represented by x. return -1 if no fact should be 
+				 * propagated.
+				 */
 				@Override
-				public int merge(IntSet x, int j) {					
-					return mergeStates(x, j);
+				public int merge(IntSet x, int j) {				
+					Pair<FieldReference, SingleLockState> jObj = domain.getMappedObject(j);
+					for (IntIterator it = x.intIterator(); it.hasNext(); ) {
+						int i = it.next();
+						Pair<FieldReference, SingleLockState> iObj = domain.getMappedObject(i);
+						FieldReference iField = iObj.fst;
+						//If the field is already in the mapping
+						if (iField.equals(jObj.fst)) {							
+							SingleLockState resState = jObj.snd.merge(iObj.snd);							
+							Pair<FieldReference, SingleLockState> pair = Pair.make(iField, resState);							
+							int ind = domain.add(pair);
+							//E.log(1, "Merge yields: " + ind + " :: " + resState.toString());
+							Assertions.productionAssertion(ind>=0, pair.toString());
+							return ind;
+						}
+					}
+					return j;
 				}
 			};
 		}
@@ -481,19 +614,14 @@ public class ContextSensitiveLocking {
 	/**
 	 * perform the tabulation analysis and return the {@link TabulationResult}
 	 */
-	public TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, SingleLockState> analyze() {
-
-		PartiallyBalancedTabulationSolver<BasicBlockInContext<IExplodedBasicBlock>, CGNode, SingleLockState> solver = PartiallyBalancedTabulationSolver
-				.createPartiallyBalancedTabulationSolver(new LockingProblem(),
-						null);
-
-		TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, SingleLockState> result = null;
-
+	public LockingResult analyze() {
+		LockingTabulationSolver solver = new LockingTabulationSolver(new LockingProblem(), null);
+		LockingResult result = null;
 		try {
 			result = solver.solve();
 		} catch (CancelException e) {
-			// this shouldn't happen
-			assert false;
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		return result;
 
@@ -503,7 +631,8 @@ public class ContextSensitiveLocking {
 		return supergraph;
 	}
 
-	public TabulationDomain<SingleLockState, BasicBlockInContext<IExplodedBasicBlock>> getDomain() {
+	public TabulationDomain<Pair<FieldReference, SingleLockState>,
+		BasicBlockInContext<IExplodedBasicBlock>> getDomain() {
 		return domain;
 	}
 

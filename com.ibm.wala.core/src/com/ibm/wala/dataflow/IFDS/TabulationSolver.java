@@ -271,8 +271,8 @@ public class TabulationSolver<T, P, F> {
         if (j != edge.d2) {
           // this means that we don't want to push the edge. instead,
           // we'll push the merged fact. a little tricky, but i think should
-          // work.
-          if (DEBUG_LEVEL > 0) {
+          // work.          
+          if (DEBUG_LEVEL > 0) { 
             System.err.println("propagating merged fact " + j);
           }
           propagate(edge.entry, edge.d1, edge.target, j);
@@ -340,8 +340,8 @@ public class TabulationSolver<T, P, F> {
       }
       IUnaryFlowFunction f = flowFunctionMap.getNormalFlowFunction(edge.target, m);
       IntSet D3 = computeFlow(edge.d2, f);
-      if (DEBUG_LEVEL > 0) {
-        System.err.println(" reached: " + D3);
+      if (DEBUG_LEVEL > 0) {        
+          System.err.println(" reached: " + D3);        
       }
       if (D3 != null) {
         D3.foreach(new IntSetAction() {
@@ -585,7 +585,7 @@ public class TabulationSolver<T, P, F> {
         f = flowFunctionMap.getCallNoneToReturnFlowFunction(edge.target, returnSite);
       }
       IntSet reached = computeFlow(edge.d2, f);
-      if (DEBUG_LEVEL > 0) {
+      if (DEBUG_LEVEL > 0) {      
         System.err.println("reached: " + reached);
       }
       if (reached != null) {
