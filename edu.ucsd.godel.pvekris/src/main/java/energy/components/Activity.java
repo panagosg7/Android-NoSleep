@@ -37,17 +37,7 @@ public class Activity extends Component {
     //callbackEdges.add(Pair.make("onRestart", "onStart"));
     //callbackEdges.add(Pair.make("onStop", "onRestart"));
     callbackEdges.add(Pair.make("onStop", "onDestroy"));      
-    
-    
-    /* Deprecating this - not very useful*/
-    /*
-    callbackExpectedState.add(Pair.make(
-        "onPause", 
-        Arrays.asList("lightgreen", "green","lightgrey")));
-    callbackExpectedState.add(Pair.make(
-        "onStop", 
-        Arrays.asList("lightgreen", "green","lightgrey")));
-    */
+        
   }
   
 

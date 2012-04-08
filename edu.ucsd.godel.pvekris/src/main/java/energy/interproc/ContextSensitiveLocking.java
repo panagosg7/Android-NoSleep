@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.dataflow.IFDS.ICFGSupergraph;
@@ -198,14 +199,14 @@ public class ContextSensitiveLocking {
 	 * @param bb
 	 * @return
 	 */
-	private Map<FieldReference, SingleLockState>
+	private Map<FieldReference, Set<SingleLockState>>
 		getCalledRunnable(BasicBlockInContext<IExplodedBasicBlock> bb) {
 		
 		RunnableThread calleeThread = icfg.getThreadInvocations(bb);
 		
 		if (calleeThread != null) {
 			Assertions.productionAssertion(calleeThread.isSolved);
-			Map<FieldReference, SingleLockState> threadExitState = calleeThread.getThreadExitState();
+			Map<FieldReference, Set<SingleLockState>> threadExitState = calleeThread.getThreadExitState();
 			
 			E.log(2, calleeThread.toString() + " :: " + threadExitState.toString() );
 			
@@ -345,10 +346,7 @@ public class ContextSensitiveLocking {
 					@Override
 					public IntSet getTargets(int d1) {
 						IntSet wakeLockTargets = getWakeLockTargets(d1, releasedField,
-								new SingleLockState(false, false, true, true));
-						if(wakeLockTargets.size() > 1) {
-							E.log(1, "QQQQQ");
-						}
+								new SingleLockState(false, false, true, true));						
 						return wakeLockTargets; 						
 					}
 				};
@@ -385,6 +383,8 @@ public class ContextSensitiveLocking {
 		}
 	
 		
+		
+		
 
 		@Override
 		public IUnaryFlowFunction getCallNoneToReturnFlowFunction(
@@ -396,7 +396,7 @@ public class ContextSensitiveLocking {
 			 * android, java, library code. Acquires and releases are not
 			 * handled here. 	
 			 */			
-			final Map<FieldReference, SingleLockState> threadExitState = getCalledRunnable(src);			
+			final Map<FieldReference, Set<SingleLockState>> threadExitState = getCalledRunnable(src);			
 
 			if (threadExitState != null) {
 				//This is a thread start point
@@ -405,12 +405,16 @@ public class ContextSensitiveLocking {
 					@Override
 					public IntSet getTargets(int d1) {
 						MutableSparseIntSet threadSet = MutableSparseIntSet.makeEmpty();
-						for(Entry<FieldReference, SingleLockState> e : threadExitState.entrySet()) {
-							Pair<FieldReference, SingleLockState> p = Pair.make(e.getKey(), e.getValue());
-							int ind = domain.add(p);
+						for(Entry<FieldReference, Set<SingleLockState>> e : threadExitState.entrySet()) {
+							Pair<FieldReference, Set<SingleLockState>> p = Pair.make(e.getKey(), e.getValue());							
+							//Will lose context sensitivity here, because we have to merge all 
+							//the thread's states to a single lock state
+							Pair<FieldReference, SingleLockState> q = 
+									Pair.make(p.fst, SingleLockState.mergeSingleLockStates(p.snd));
+							int ind = domain.add(q);
 							threadSet.add(ind);
-						}								//TODO : checck this				
-						return mergeStates(threadSet, d1);						
+						}
+						return mergeStates(threadSet, d1);
 			        }
 				};
 			}

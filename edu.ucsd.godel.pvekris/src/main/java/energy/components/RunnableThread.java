@@ -2,6 +2,7 @@ package energy.components;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
 
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
@@ -42,7 +43,7 @@ public class RunnableThread extends Component {
     return b.toString();
   }  
   
-  public Map<FieldReference,SingleLockState> getThreadExitState() {
+  public Map<FieldReference,Set<SingleLockState>> getThreadExitState() {
 	CGNode runNode = super.getCallBackByName("run").getNode();	
 	return super.getExitState(runNode);
   }

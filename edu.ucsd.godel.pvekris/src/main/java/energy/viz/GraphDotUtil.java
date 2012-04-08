@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Set;
 
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.collections.Iterator2Collection;
@@ -26,6 +27,7 @@ import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.viz.NodeDecorator;
 
 import energy.analysis.Opts;
+import energy.interproc.SingleLockState;
 
 /**
  * utilities for interfacing with DOT
@@ -360,6 +362,27 @@ public class GraphDotUtil {
   private static String getRankDir() throws WalaException {
     return null;
   }
+  
+  
+  
+  public static String concatStringsWSep(Set<SingleLockState> cols, String separator) {
+	    StringBuilder sb = new StringBuilder();	    	    
+	    if (cols.size() == 0) {	    
+	    	return "";
+	    }
+	    if (cols.size() == 1) {
+	    	return cols.iterator().next().getColor();
+	    }	    
+	    
+	    Iterator<SingleLockState> iterator = cols.iterator();
+	    sb.append(iterator.next().getColor());
+	    while(iterator.hasNext()) {
+	        sb.append(separator).append(iterator.next().getColor());	        
+	    }
+	    return sb.toString();                           
+	}
+  
+  
 
   /**
    * @param n
@@ -371,9 +394,14 @@ public class GraphDotUtil {
     StringBuffer result = new StringBuffer();
     
     if (d instanceof ColorNodeDecorator) {
-      result.append(" [color="+ ((ColorNodeDecorator) d).getFillColor(n)+", style=filled]\n");
-      //result.append(" [fillcolor=\"orange:yellow\"]\n");
-      result.append(" [fontcolor="+ ((ColorNodeDecorator) d).getFontColor(n)+"]\n");
+      //result.append(" [color="+ ((ColorNodeDecorator) d).getFillColor(n)+", style=filled]\n");
+    	Set<SingleLockState> cols = ((ColorNodeDecorator) d).getFillColors(n);    	
+		String concatCols = concatStringsWSep(cols, ":");      
+		if (concatCols.equals("")) {
+			concatCols = "grey";
+		}
+		result.append(" [style=filled, fillcolor=\"" + concatCols + "\"]\n");
+		//result.append(" [fontcolor="+ ((ColorNodeDecorator) d).getFontColor(n)+"]\n");
     }
     else {
       result.append(" [ ]\n");

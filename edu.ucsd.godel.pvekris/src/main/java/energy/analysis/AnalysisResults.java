@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.util.collections.Pair;
@@ -17,7 +18,7 @@ import energy.util.E;
 public class AnalysisResults {
 	
 	/* Ugly structure to keep interesting stuff */	
-	private HashSet<Pair<Component, Map<String, Map<FieldReference, SingleLockState>>>> resultStuff = null;
+	private HashSet<Pair<Component, Map<String, Map<FieldReference, Set<SingleLockState>>>>> resultStuff = null;
 	//The string is the component callback 
 	
 	
@@ -35,7 +36,7 @@ public class AnalysisResults {
 	 */
 	AnalysisResults() {
 				
-		resultStuff = new HashSet<Pair<Component,Map<String, Map<FieldReference, SingleLockState>>>>();
+		resultStuff = new HashSet<Pair<Component,Map<String, Map<FieldReference, Set<SingleLockState>>>>>();
 		callBackResultMap = new HashMap<Pair<String,String>, EnumMap<LockUsage,Integer>>();
 		
 	}
@@ -62,16 +63,14 @@ public class AnalysisResults {
 	private Map<Pair<String, String>, EnumMap<LockUsage, Integer>> callBackResultMap;
 	
 
-	public void registerExitLockState(Component component, 
-			Map<String, Map<FieldReference, SingleLockState>> map) {
-		
+	public void registerExitLockState(Component component, Map<String, Map<FieldReference, Set<SingleLockState>>> map) {		
 		resultStuff.add(Pair.make(component, map));
-		StringBuffer sb = new StringBuffer();			
-		for(Entry<String, Map<FieldReference, SingleLockState>> e : map.entrySet()) {
+		StringBuffer sb = new StringBuffer();
+		for(Entry<String, Map<FieldReference, Set<SingleLockState>>> e : map.entrySet()) {
 			//Check if this is an interesting callback 
 			if (e.getValue().size() > 0) {
 				sb.append(e.getKey() + "\n");
-				for (Entry<FieldReference, SingleLockState> entry : e.getValue().entrySet()) {
+				for (Entry<FieldReference, Set<SingleLockState>> entry : e.getValue().entrySet()) {
 					sb.append(entry.getKey() + " -> " + entry.getValue().toString());					
 				}
 			}
@@ -111,33 +110,32 @@ public class AnalysisResults {
 	
 	public void processResults() {
 
-		for (Pair<Component, Map<String, Map<FieldReference, SingleLockState>>> pair : resultStuff) {
+		for (Pair<Component, Map<String, Map<FieldReference, Set<SingleLockState>>>> pair : resultStuff) {
 			
 			Component component = pair.fst;
 			String componentName = component.getComponentName();
 			
-			Map<String, Map<FieldReference, SingleLockState>> callBackMap = pair.snd;
+			Map<String, Map<FieldReference, Set<SingleLockState>>> callBackMap = pair.snd;
 			
-			for(Entry<String, Map<FieldReference, SingleLockState>> e : callBackMap.entrySet()) {
+			for(Entry<String, Map<FieldReference, Set<SingleLockState>>> e : callBackMap.entrySet()) {
 				
 				String callBackName = e.getKey();				
 				Pair<String, String> compAndCB = Pair.make(component.toString(),callBackName);
 				Pair<String, String> abstCompAndCB = Pair.make(componentName,callBackName);
 				
 				//TODO: add a more complete representation
-				/*
-				 * Need a lock usage for every lock
-				 */
-				HashMap<FieldReference,LockUsage> lockUsages = new HashMap<FieldReference, AnalysisResults.LockUsage>();
-				for ( Entry<FieldReference, SingleLockState>  fs : e.getValue().entrySet()) {
+				HashMap<FieldReference,LockUsage> lockUsages = new HashMap<FieldReference, LockUsage>();
+				for ( Entry<FieldReference, Set<SingleLockState>>  fs : e.getValue().entrySet()) {
 					FieldReference field = fs.getKey();
-					SingleLockState sls = fs.getValue();
-					LockUsage lockUsage= getLockUsage(sls);
-					lockUsages.put(field, lockUsage);
-					
-
-					EnumMap<LockUsage, Integer> enumMap = callBackResultMap.get(abstCompAndCB);
-					
+					Set<SingleLockState> sls = fs.getValue();
+					/* Use the merged state here.
+					 * Ideally this shouldn't matter for callbacks, as there
+					 * should only be one state 
+					 */					
+					SingleLockState sl = SingleLockState.mergeSingleLockStates(sls);
+					LockUsage lockUsage = getLockUsage(sl);
+					lockUsages.put(field, lockUsage);					
+					EnumMap<LockUsage, Integer> enumMap = callBackResultMap.get(abstCompAndCB);					
 					if(lockUsage != LockUsage.EMPTY) {
 						E.log(1, compAndCB.toString() + " :: "  + lockUsage.toString());	
 					}				

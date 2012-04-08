@@ -54,10 +54,10 @@ public class LockingTabulationSolver  extends PartiallyBalancedTabulationSolver<
 			TabulationDomain<Pair<FieldReference, SingleLockState>, BasicBlockInContext<IExplodedBasicBlock>> dom =
 					this.getProblem().getDomain();	
 			for (IntIterator it = orig.intIterator(); it.hasNext(); ) {
-				int i = it.next();				
+				int i = it.next();
 				Pair<FieldReference, SingleLockState> iObj = dom.getMappedObject(i);
 				SingleLockState already = result.get(iObj.fst);
-				if (already != null) {					
+				if (already != null) {
 					result.put(iObj.fst, already.merge(iObj.snd));
 				}
 				else{

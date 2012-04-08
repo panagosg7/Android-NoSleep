@@ -1,5 +1,7 @@
 package energy.interproc;
 
+import java.util.Set;
+
 import com.ibm.wala.util.collections.Quartet;
 /**
  * State of a program point - very simple at the moment
@@ -8,8 +10,10 @@ import com.ibm.wala.util.collections.Quartet;
  */
 public class SingleLockState  {
 	
+	static SingleLockState UNDEFINED;
+	
+	
 	/** state */
-	private String color;	
     private boolean maybeAcquired ;
     private boolean mustbeAcquired;
     private boolean maybeReleased ;
@@ -19,13 +23,18 @@ public class SingleLockState  {
 	
 	
 	public enum LockStateColor {
-		MUSTBERELEASED("green"),
-		MAYBERELEASED("lightgreen"),
+		MUSTBERELEASED("blue"),
+		MAYBERELEASED("green"),
 		MUSTBEACQUIRED("red"),
-		MAYBEACQUIRED("lightpink"),
-		NOLOCKS("lightgrey");		
+		MAYBEACQUIRED("yellow"),
+		NOLOCKS("grey"),
+		UNDEFINED("black") ;		
 		
 		public String color;
+		
+		public String toString () {
+			return color;
+		}
 		
 		private LockStateColor(String c) { color = c; }
 	}
@@ -35,20 +44,15 @@ public class SingleLockState  {
 	    mustbeAcquired = b;
 	    maybeReleased = c;
 	    mustbeReleased = d;
-	    if (mustbeReleased) {
-	      color = "green";
+	    if (mustbeReleased) {	      
 	      lockStateColor = LockStateColor.MUSTBERELEASED;
-	    } else if (maybeReleased) {
-	      color = "lightgreen";
+	    } else if (maybeReleased) {	      
 	      lockStateColor = LockStateColor.MAYBERELEASED;
-	    } else if (mustbeAcquired) {
-	      color = "red";
+	    } else if (mustbeAcquired) {	      
 	      lockStateColor = LockStateColor.MUSTBEACQUIRED;
-	    } else if (maybeAcquired) {
-	      color = "lightpink";
+	    } else if (maybeAcquired) {	      
 	      lockStateColor = LockStateColor.MAYBEACQUIRED;
-	    } else {
-	      color = "lightgrey";
+	    } else {	      
 	      lockStateColor = LockStateColor.NOLOCKS;
 	    }	    
 	}
@@ -56,14 +60,6 @@ public class SingleLockState  {
 	public SingleLockState(Quartet<Boolean, Boolean, Boolean, Boolean> q) {
 		this(q.fst.booleanValue(),q.snd.booleanValue(),
 				q.thr.booleanValue(),q.frt.booleanValue());
-	}
-
-	public String getColor() {
-		return color;
-	}
-
-	public void setColor(String color) {
-		this.color = color;
 	}
 
 	@Override
@@ -110,7 +106,10 @@ public class SingleLockState  {
 	
 	/*XXX: should I return a new LockState every time?? */
 	public SingleLockState merge(SingleLockState l) {		
-	  return new SingleLockState(	maybeAcquired || l.isMaybeAcquired(), //may
+		if (l == null) {
+			return this;
+		}		
+		return new SingleLockState(	maybeAcquired || l.isMaybeAcquired(), //may
 			  		mustbeAcquired	&& l.isMustbeAcquired(), // must	  
 	  				maybeReleased 	|| l.isMaybeReleased(), // may
 	  				mustbeReleased	&& l.isMustbeReleased()); // must	  
@@ -137,6 +136,29 @@ public class SingleLockState  {
 		return lockStateColor;
 	}
 
+	public String getColor() {
+		return lockStateColor.toString();
+	}
+	
+	
+	/**
+	 * Merge a set of lock states. Should return UNDEFIINED if the set is empty
+	 * @param set
+	 * @return
+	 */
+	public static SingleLockState mergeSingleLockStates(Set<SingleLockState> set) {
+		SingleLockState result = null;
+		for(SingleLockState s : set)  {
+			if (result == null) {
+				result = s;
+			}
+			else {
+				result = result.merge(s);
+			}
+		}
+		return result;		
+	}
+	
 	
 }
 
