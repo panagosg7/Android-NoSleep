@@ -19,6 +19,9 @@ import java.util.List;
 
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.classLoader.IMethod;
+import com.ibm.wala.classLoader.ProgramCounter;
+import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSACFG.ExceptionHandlerBasicBlock;
@@ -628,4 +631,24 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
     return ir;
   }
 
+  
+  //Panagiotis Vekris
+  public BasicBlockInContext<IExplodedBasicBlock> getExplodedBasicBlock(CGNode n, ProgramCounter pc) {
+    SSAInstruction instr = ir.getPEI(pc);
+    ISSABasicBlock bb = ir.getBasicBlockForInstruction(instr);    
+    for (int i = bb.getFirstInstructionIndex(); i <= bb.getLastInstructionIndex(); i++) {
+      SSAInstruction currInstr = ir.getInstructions()[i];     //This should not crash !!!
+      if (instr.equals(currInstr)) {
+        ExplodedBasicBlock ebb = new ExplodedBasicBlock(i, bb);
+        return new BasicBlockInContext<IExplodedBasicBlock>(n, ebb);        
+      }      
+    }   
+    return null;
+    
+    
+    
+  }
+  
+  
+  
 }

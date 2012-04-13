@@ -77,10 +77,10 @@ import edu.ucsd.salud.mcmutton.ApkException;
 import edu.ucsd.salud.mcmutton.ApkInstance;
 import edu.ucsd.salud.mcmutton.RetargetException;
 import energy.analysis.AnalysisResults;
-import energy.analysis.ApplicationCallGraph;
+import energy.analysis.AppCallGraph;
 import energy.analysis.ApplicationClassHierarchy;
 import energy.analysis.ComponentManager;
-import energy.analysis.LockInvestigation;
+import energy.analysis.WakeLockManager;
 import energy.analysis.Opts;
 
 public class Wala {
@@ -616,7 +616,7 @@ public class Wala {
 		
 		
 		
-		ApplicationCallGraph 		cg = new ApplicationCallGraph(ch);		
+		AppCallGraph 		cg = new AppCallGraph(ch);		
 		
 		Set<String> result = new HashSet<String>();
 

@@ -144,19 +144,18 @@ public class VariableManager {
   }
   
   public ConditionVariable getInfoOfVariable (int v) {
-    return variableMap.get(v);
-    
+    return variableMap.get(v);   
   }
   
   
   /**
    * The variable that takes part in conditions
    */
-  public interface ConditionVariable {    
+  public interface ConditionVariable {
     public String toString ();
   }  
   
-  public static class FormalParameter implements ConditionVariable {
+  public class FormalParameter implements ConditionVariable {
     
     public int arg;
     public IMethod method;
@@ -174,7 +173,7 @@ public class VariableManager {
     
   }
   
-  public static class FunctionCallResult implements ConditionVariable {
+  public class FunctionCallResult implements ConditionVariable {
     public SSAInvokeInstruction invInstr;
     
     public FunctionCallResult(SSAInvokeInstruction ii) {
@@ -186,7 +185,7 @@ public class VariableManager {
     }    
   }
   
-  public static class StaticField implements ConditionVariable {
+  public class StaticField implements ConditionVariable {
     /*
      * Subsumes type reference
      */
@@ -195,14 +194,12 @@ public class VariableManager {
     public StaticField(FieldReference declaredField) {
       fieldRef = declaredField;
     }
-
     public String toString () {
       return fieldRef.toString();
-    }
-    
+    }    
   }
   
-  public static class Constant implements ConditionVariable  {
+  public class Constant implements ConditionVariable  {
     public Constant(ConstantValue cv) {
       constValue = cv;
     }

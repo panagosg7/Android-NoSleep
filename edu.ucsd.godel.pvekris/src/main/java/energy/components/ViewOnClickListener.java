@@ -3,7 +3,7 @@ package energy.components;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 
-import energy.analysis.ApplicationCallGraph;
+import energy.analysis.AppCallGraph;
 
 /**
  * TODO: This is not really a component
@@ -14,7 +14,7 @@ import energy.analysis.ApplicationCallGraph;
 
 public class ViewOnClickListener extends Component{
 
-  public ViewOnClickListener(ApplicationCallGraph originalCG, IClass declaringClass, CGNode root) {
+  public ViewOnClickListener(AppCallGraph originalCG, IClass declaringClass, CGNode root) {
     super(originalCG, declaringClass, root);
 
   }

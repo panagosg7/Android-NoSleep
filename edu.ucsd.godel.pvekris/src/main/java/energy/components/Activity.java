@@ -6,7 +6,7 @@ import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.util.collections.Pair;
 
-import energy.analysis.ApplicationCallGraph;
+import energy.analysis.AppCallGraph;
 
 public class Activity extends Component {
   
@@ -22,7 +22,7 @@ public class Activity extends Component {
  
   
   
-  public Activity(ApplicationCallGraph originalCG, IClass declaringClass, CGNode root) {
+  public Activity(AppCallGraph originalCG, IClass declaringClass, CGNode root) {
     super(originalCG, declaringClass, root);
   
     componentName = "Activity";

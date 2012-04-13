@@ -2,6 +2,7 @@ package energy.util;
 
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IMethod;
+import com.ibm.wala.classLoader.ProgramCounter;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSAInstruction;
@@ -17,14 +18,18 @@ public class SSAProgramPoint {
 	private SSAInstruction instruction;
 	
 	
-	
-	public SSAProgramPoint(CGNode n, SSAInvokeInstruction inv) {
+	public SSAProgramPoint(CGNode n, SSAInstruction instr) {
 		this.node = n;
-		CallSiteReference site = inv.getCallSite();		
+				
 		this.method = n.getMethod();
-		this.bb = n.getIR().getBasicBlockForInstruction(inv);		
-		this.indices = n.getIR().getCallInstructionIndices(site);
-		this.instruction = inv;				
+		this.bb = n.getIR().getBasicBlockForInstruction(instr);
+		
+		if (instr instanceof SSAInvokeInstruction) {
+			SSAInvokeInstruction inv = (SSAInvokeInstruction) instr;
+			CallSiteReference site = inv.getCallSite();
+			this.indices = n.getIR().getCallInstructionIndices(site);
+		}
+		this.instruction = instr;				
 	}
 
 	public boolean equals(Object o) {
@@ -77,5 +82,10 @@ public class SSAProgramPoint {
 	}
 	
 	
+	//TODO 
+	public ProgramCounter getPC() {
+		return null;
+		
+	}
 
 }

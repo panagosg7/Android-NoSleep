@@ -26,11 +26,12 @@ import com.ibm.wala.util.graph.Path;
 import com.ibm.wala.util.graph.dominators.Dominators;
 import com.ibm.wala.util.graph.impl.InvertedGraph;
 
-import energy.analysis.ApplicationCallGraph;
+import energy.analysis.AppCallGraph;
 import energy.analysis.Opts;
 import energy.conditions.CompoundCondition;
 import energy.conditions.ConditionManager;
 import energy.conditions.GeneralCondition;
+import energy.util.E;
 import energy.util.InvokeInfo;
  
 public class IntraProcAnalysis {
@@ -85,9 +86,6 @@ public class IntraProcAnalysis {
   /**
    * Basic info about whether the conditional in the branch was true or false
    * TODO: switch-case -> integer
-   * 
-   * @author progsys
-   * 
    */
   public enum BranchingInfo {
     TRUE_BRANCH, FALSE_BRANCH, IRRELEVANT;
@@ -102,9 +100,6 @@ public class IntraProcAnalysis {
   private static ConditionManager conditionManager;
   
 
-
-
-
   /**
    * Constructor method for the intra-procedural analysis class. This method
    * initializes structures and runs the analysis on a graph node.
@@ -114,7 +109,7 @@ public class IntraProcAnalysis {
    * @return 
    * @throws WalaException 
    */
-  public void run(ApplicationCallGraph cg, CGNode node) throws WalaException {
+  public void run(AppCallGraph cg, CGNode node) throws WalaException {
     
     System.out.println("===============================================" +
     		               "===============================================");
@@ -177,12 +172,12 @@ public class IntraProcAnalysis {
   
 
   /**
-   * Collect invocations to methods in the prunned called graph
+   * Collect invocations to methods in the pruned called graph
    * @param cg
    * @param node
    * @return
    */
-  private static HashSet<InvokeInfo> getInvokeSet(ApplicationCallGraph cg, CGNode node) {
+  private static HashSet<InvokeInfo> getInvokeSet(AppCallGraph cg, CGNode node) {
     IR currIR = node.getIR();
     // Collect potential call sites here
     HashSet<InvokeInfo> keepInvInfo = new HashSet<InvokeInfo>();
@@ -205,61 +200,32 @@ public class IntraProcAnalysis {
   }
 
 
-
   private static void gatherInvokeConditions() {
-
-    /*
-     * Iterate over invocation sites 
-     */
-    Iterator<InvokeInfo> itr = invokeSiteSet.iterator();    
-        
+    Iterator<InvokeInfo> itr = invokeSiteSet.iterator();
     while (itr.hasNext()) {
       InvokeInfo invokeInfo = itr.next();
-            
-      if(DEBUG_LEVEL > 0) {         
-        System.out.println();
-        System.out.println("[gatherInvokeConditions] Target:" + 
-          invokeInfo.toString());        
-      }
+      E.log(1, "Target:" + invokeInfo.toString());
 
-      /*
-       * Compute the original set of conditions that hold for this call site
-       */
+      /* Compute the original set of conditions that hold for this call site */
       Collection<Path> pathsToTarget = 
         checkAllPathsToTarget(invokeInfo);
       HashSet<CompoundCondition> originalConditions = 
         pathToConditionCollection(pathsToTarget);
       conditionManager.addOriginalConditions(invokeInfo, originalConditions);
-      
-      if(DEBUG_LEVEL > 0) {
-        System.out.println("[gatherInvokeConditions] Loaded original conditions");
-      }
-      
-      /*
-       * This is the set of blocks on which this invocation depends on
-       */
-      HashSet<Integer> conditionDependencies = 
-          conditionManager.getConditionDependencies(currCDG, invokeInfo);
-      if(DEBUG_LEVEL > 0) {        
-        System.out.println("[gatherInvokeConditions] Got condition dependencies");
-      }
-      
             
-      /*
-       * Filter the conditions based on dependency information
-       */
+      E.log(2, "Loaded original conditions");
+            
+      /* This is the set of blocks on which this invocation depends on */
+      HashSet<Integer> conditionDependencies = 
+          conditionManager.getConditionDependencies(currCDG, invokeInfo);              
+      E.log(2, "Got condition dependencies");            
+            
+      /* Filter the conditions based on dependency information */
       HashSet<CompoundCondition> filteredConditions = 
           conditionManager.filterConditionMap(originalConditions, conditionDependencies);
-      conditionManager.addFilteredConditions(invokeInfo, filteredConditions);
-      
-      if(DEBUG_LEVEL > 0) {
-        System.out.println("[gatherInvokeConditions] Done filtering conditions");
-      }
-      
-    }
-    
-
-    
+      conditionManager.addFilteredConditions(invokeInfo, filteredConditions);            
+      E.log(2, "Done filtering conditions");      
+    }    
   }
 
   private static void checkCallDomination(HashSet<InvokeInfo> invokeSiteSet) {

@@ -109,6 +109,7 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
   @SuppressWarnings("unchecked")
   public OrdinalSet<InstanceKey> getPointsToSet(PointerKey key) {
     if (pointsToMap.isImplicit(key)) {
+      System.out.println("GOING IMPLICIT");
       return computeImplicitPointsToSet(key);
     }
 

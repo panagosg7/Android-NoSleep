@@ -109,7 +109,7 @@ public class AnalysisResults {
 		
 	
 	public void processResults() {
-
+		System.out.println("\n");
 		for (Pair<Component, Map<String, Map<FieldReference, Set<SingleLockState>>>> pair : resultStuff) {
 			
 			Component component = pair.fst;

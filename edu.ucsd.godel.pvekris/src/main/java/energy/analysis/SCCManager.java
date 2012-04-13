@@ -23,7 +23,7 @@ import energy.util.Util;
 
 public class SCCManager {
   
-  private static ApplicationCallGraph cg = null;
+  private static AppCallGraph cg = null;
   private static SSCGraph sccGraph;  
 
   public static class SCC {
@@ -113,7 +113,7 @@ public class SCCManager {
     /*
      * Manager construction and initialization
      */
-    SCCNodeManager(ApplicationCallGraph cg) {
+    SCCNodeManager(AppCallGraph cg) {
       
       nodeToSCC   = new HashMap<CGNode, SCC>();
       sccSet      = new HashSet<SCC>();
@@ -328,7 +328,7 @@ public class SCCManager {
       return sccEdgeManager;
     }
     
-    public SSCGraph(ApplicationCallGraph cg) {
+    public SSCGraph(AppCallGraph cg) {
       sccNodeManager = new SCCNodeManager(cg);
       sccEdgeManager = new SCCEdgeManager();
     }
@@ -397,7 +397,7 @@ public class SCCManager {
   
   
   
-  public SCCManager(ApplicationCallGraph callGraph) throws WalaException {
+  public SCCManager(AppCallGraph callGraph) throws WalaException {
     cg = callGraph;
     build();
   }

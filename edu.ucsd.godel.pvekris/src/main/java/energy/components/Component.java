@@ -1,7 +1,6 @@
 package energy.components;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -44,10 +43,11 @@ import com.ibm.wala.util.intset.MutableMapping;
 import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.viz.NodeDecorator;
 
-import energy.analysis.ApplicationCallGraph;
+import energy.analysis.AppCallGraph;
 import energy.analysis.Opts;
-import energy.interproc.ContextInsensitiveLocking;
-import energy.interproc.ContextSensitiveLocking;
+import energy.analysis.SpecialConditions.SpecialCondition;
+import energy.interproc.CtxInsensLocking;
+import energy.interproc.CtxSensLocking;
 import energy.interproc.LockingTabulationSolver.LockingResult;
 import energy.interproc.SensibleCallGraph;
 import energy.interproc.SensibleExplodedInterproceduralCFG;
@@ -79,8 +79,7 @@ public abstract class Component extends NodeWithNumber {
 	  
 	  public CGNode getNode () {
 		  return node;
-	  }
-	  
+	  }	  
 	  
 	  CallBack(CGNode node) {
 		  this.node = node;
@@ -92,6 +91,15 @@ public abstract class Component extends NodeWithNumber {
 	  
   }
   
+  
+  
+  
+  /*******************************************************************************
+   * 
+   * 					Component CallGraph
+   * 
+   *******************************************************************************/
+
   
   
   /** These are the actual callbacks that get resolved */
@@ -108,7 +116,7 @@ public abstract class Component extends NodeWithNumber {
   
   protected CallGraph 				componentCallgraph;
 
-  protected ApplicationCallGraph	originalCallgraph;
+  protected AppCallGraph	originalCallgraph;
 
   /**
    * Contains a call graph regarding the callbacks for this component that makes
@@ -125,10 +133,8 @@ public abstract class Component extends NodeWithNumber {
   /* Deprecating this - not very useful*/
   //protected HashSet<Pair<String, List<String>>> callbackExpectedState;
 
-  public void registerCallback(String name, CGNode node) {
-    
-	  E.log(2, "Registering callback: " + name + " to " + this.toString());
-    
+  public void registerCallback(String name, CGNode node) {    
+	E.log(2, "Registering callback: " + name + " to " + this.toString());    
     if (callbacks == null) {
     	callbacks = new HashSet<Component.CallBack>();
     }
@@ -136,20 +142,17 @@ public abstract class Component extends NodeWithNumber {
     	callbackMap = new HashMap<String, Component.CallBack>();
     }
     
-    CallBack callBack = new CallBack(node);
-    
+    CallBack callBack = new CallBack(node);    
     callbacks.add(callBack);
-    callbackMap.put(node.getMethod().getName().toString(), callBack);
-    
+    callbackMap.put(node.getMethod().getName().toString(), callBack);    
   }
 
   
-  Component(ApplicationCallGraph cg, IClass declaringClass, CGNode root) {
+  Component(AppCallGraph cg, IClass declaringClass, CGNode root) {
 	  
     setKlass(declaringClass);
     originalCallgraph = cg;
     registerCallback(root.getMethod().getName().toString(), root);
-
     callbackNames         = new HashSet<String>();
     callbackEdges         = new HashSet<Pair<String, String>>();
     
@@ -157,26 +160,16 @@ public abstract class Component extends NodeWithNumber {
     // callbackExpectedState = new HashSet<Pair<String,List<String>>>();
   }
 
-  void createComponentCG() {
-	  
-    HashSet<CGNode> rootSet = new HashSet<CGNode>();
-    
-    E.log(2, "Creating callgraph: " + klass.getName().toString());
-    
-    HashSet<CGNode> set = new HashSet<CGNode>();
-    
-    for (CallBack cb : getCallbacks()) {
-    	
-      set.addAll(getDescendants(originalCallgraph, cb.getNode()));
-      
-      rootSet.add(cb.getNode());
-      
-    }
-    
-    componentCallgraph = PartialCallGraph.make(originalCallgraph, rootSet, set);
-    
-    E.log(2, "Partial CG #nodes: " + componentCallgraph.getNumberOfNodes());
-    
+  void createComponentCG() {	  
+    HashSet<CGNode> rootSet = new HashSet<CGNode>();    
+    E.log(2, "Creating callgraph: " + klass.getName().toString());    
+    HashSet<CGNode> set = new HashSet<CGNode>();    
+    for (CallBack cb : getCallbacks()) {    	
+      set.addAll(getDescendants(originalCallgraph, cb.getNode()));      
+      rootSet.add(cb.getNode());      
+    }    
+    componentCallgraph = PartialCallGraph.make(originalCallgraph, rootSet, set);    
+    E.log(2, "Partial CG #nodes: " + componentCallgraph.getNumberOfNodes());    
   }
 
   /**
@@ -196,9 +189,7 @@ public abstract class Component extends NodeWithNumber {
     OrdinalSet<CGNode> reachableSet = graphReachability.getReachableSet(node);
     return Util.iteratorToSet(reachableSet.iterator());
   }
-  
 
-  
   
   
   public String toString() {
@@ -247,6 +238,14 @@ public abstract class Component extends NodeWithNumber {
     return sensibleAuxCG;
   }
 
+
+/*******************************************************************************
+ * 
+ * 					Print CFGs (colored and non-colored)
+ * 
+ *******************************************************************************/
+
+  
   @SuppressWarnings("unused")
 private String getTargetColor(ISSABasicBlock ebb) {
     Iterator<SSAInstruction> iterator = ebb.iterator();
@@ -361,13 +360,10 @@ private String getTargetColor(ISSABasicBlock ebb) {
         else {
         	if (st.size() > 0) {
         		//TODO: just take one field only
-        		Set<SingleLockState> sls = st.values().iterator().next();
-        		
+        		Set<SingleLockState> sls = st.values().iterator().next();        		
         		for (SingleLockState s : sls ) {
         			s.getLockStateColor();
-        		}
-        		
-        		
+        		}       		        	
         	}
         	else {
         		return LockStateColor.NOLOCKS;
@@ -444,96 +440,6 @@ private String getTargetColor(ISSABasicBlock ebb) {
     }
   }
 
-  
-  
-  /*******************************************************************************
-   * 
-   * Solvers for the flow-sensitive context-insensitive and context-sensitive
-   * 
-   *******************************************************************************/
-
-	protected SensibleExplodedInterproceduralCFG icfg = null;
-  
-  public SensibleExplodedInterproceduralCFG getICFG() {
-	  if (icfg == null) {
-		icfg = createSensibleCG();
-	  }
-	  return icfg;
-  }
-  
-  protected BooleanSolver<BasicBlockInContext<IExplodedBasicBlock>> acquireMaySolver = null;
-  protected BooleanSolver<BasicBlockInContext<IExplodedBasicBlock>> releaseMaySolver = null;
-  protected BooleanSolver<BasicBlockInContext<IExplodedBasicBlock>> releaseMustSolver = null;
-
-  protected LockingResult csSolver;
-  private 	TabulationDomain<Pair<FieldReference,SingleLockState>, BasicBlockInContext<IExplodedBasicBlock>> csDomain;
-
-  public boolean isInteresting() {
-    return interesting;
-  }
-
-  public void setInteresting(boolean interesting) {
-    this.interesting = interesting;
-  }
-
-  /**
-   * Create a sensible exploded inter-procedural CFG analysis on it.
-   * 
-   * @param component
-   * @return
-   */
-  public SensibleExplodedInterproceduralCFG createSensibleCG() {
-	  
-    E.log(2, "Creating sensible CFG for " + this.toString());
-    
-    /* First create the auxiliary call graph (SensibleAuxCallGraph) This is just
-     * the graph that represents the logical relation of callbacks. */
-    SensibleCallGraph sensibleCG = new SensibleCallGraph(this);
-    
-    /* Test it */
-    //sensibleCG.outputToDot();
-    
-    /* Pack inter-procedural sensible edges */
-    HashSet<Pair<CGNode, CGNode>> packedEdges = sensibleCG.packEdges();
-    
-    return new SensibleExplodedInterproceduralCFG(getCallgraph(), originalCallgraph, packedEdges);
-    
-  }
-
-  /**
-   * Solve the _context-insensitive_ problem on the exploded inter-procedural
-   * CFG based on the component's sensible callgraph
-   */
-  public void solveCICFG() {
-	icfg = getICFG();
-	
-	ContextInsensitiveLocking lockingProblem = new ContextInsensitiveLocking(icfg);
-    acquireMaySolver = lockingProblem.analyze(true, true);
-    releaseMaySolver = lockingProblem.analyze(true, false);
-    releaseMustSolver = lockingProblem.analyze(false, false);
-  }
-
-  /**
-   * Solve the _context-sensitive_ problem on the exploded inter-procedural CFG
-   * based on the component's sensible callgraph
-   */
-  public void solveCSCFG() {
-	if (icfg == null) {
-	  icfg = createSensibleCG();
-	  icfg.printBBToThreadMap();
-	}
-    ContextSensitiveLocking lockingProblem = new ContextSensitiveLocking(icfg);
-    csSolver = lockingProblem.analyze();    
-    csDomain = lockingProblem.getDomain();
-    isSolved = true;    
-  }
-
-  
-  /** Set this true if we analyze it as part of a larger graph */
-  public boolean	isSolved		= false;
-  
-  
-  
   /**
    * Output the colored CFG for each node in the callgraph (Basically done
    * because dot can't render the complete interproc CFG.)
@@ -640,6 +546,98 @@ private String getTargetColor(ISSABasicBlock ebb) {
   }
   
   
+  
+  
+  /*******************************************************************************
+   * 
+   * Solvers for the flow-sensitive context-insensitive and context-sensitive
+   * 
+   *******************************************************************************/
+
+  protected SensibleExplodedInterproceduralCFG icfg = null;
+  
+  public SensibleExplodedInterproceduralCFG getICFG() {
+	  if (icfg == null) {
+		icfg = createSensibleCG();
+	  }
+	  return icfg;
+  }
+  
+  protected BooleanSolver<BasicBlockInContext<IExplodedBasicBlock>> acquireMaySolver = null;
+  protected BooleanSolver<BasicBlockInContext<IExplodedBasicBlock>> releaseMaySolver = null;
+  protected BooleanSolver<BasicBlockInContext<IExplodedBasicBlock>> releaseMustSolver = null;
+
+  protected LockingResult csSolver;
+  private 	TabulationDomain<Pair<FieldReference,SingleLockState>, BasicBlockInContext<IExplodedBasicBlock>> csDomain;
+
+  public boolean isInteresting() {
+    return interesting;
+  }
+
+  public void setInteresting(boolean interesting) {
+    this.interesting = interesting;
+  }
+
+  /**
+   * Create a sensible exploded inter-procedural CFG analysis on it.
+   * 
+   * @param component
+   * @return
+   */
+  public SensibleExplodedInterproceduralCFG createSensibleCG() {
+	  
+    E.log(2, "Creating sensible CFG for " + this.toString());
+    
+    /* First create the auxiliary call graph (SensibleAuxCallGraph) This is just
+     * the graph that represents the logical relation of callbacks. */
+    SensibleCallGraph sensibleCG = new SensibleCallGraph(this);
+    
+    /* Test it */
+    //sensibleCG.outputToDot();
+    
+    /* Pack inter-procedural sensible edges */
+    HashSet<Pair<CGNode, CGNode>> packedEdges = sensibleCG.packEdges();
+    
+    return new SensibleExplodedInterproceduralCFG(getCallgraph(), originalCallgraph, packedEdges);
+    
+  }
+
+  /**
+   * Solve the _context-insensitive_ problem on the exploded inter-procedural
+   * CFG based on the component's sensible callgraph
+   */
+  public void solveCICFG() {
+	icfg = getICFG();
+	
+	CtxInsensLocking lockingProblem = new CtxInsensLocking(icfg);
+    acquireMaySolver = lockingProblem.analyze(true, true);
+    releaseMaySolver = lockingProblem.analyze(true, false);
+    releaseMustSolver = lockingProblem.analyze(false, false);
+  }
+
+  /**
+   * Solve the _context-sensitive_ problem on the exploded inter-procedural CFG
+   * based on the component's sensible callgraph
+   */
+  public void solveCSCFG() {
+	if (icfg == null) {
+	  icfg = createSensibleCG();
+	  icfg.printBBToThreadMap();
+	}
+    CtxSensLocking lockingProblem = new CtxSensLocking(icfg);
+    csSolver = lockingProblem.analyze();    
+    csDomain = lockingProblem.getDomain();
+    isSolved = true;    
+  }
+
+  
+  /** Set this true if we analyze it as part of a larger graph */
+  public boolean	isSolved		= false;
+  
+  
+  
+
+  
   /**
    *  Super-ugly way to keep the colors for every method in the graph 
    */  
@@ -725,6 +723,14 @@ private String getTargetColor(ISSABasicBlock ebb) {
       e.printStackTrace();
     }
   }
+  
+  
+  
+  /*******************************************************************************
+   * 
+   * 			Auxiliary
+   * 
+   *******************************************************************************/
 
   
   /**
@@ -806,10 +812,13 @@ private String getTargetColor(ISSABasicBlock ebb) {
   
 
   public void setThreadInvocations(HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> compInv) {
-	  icfg.setThreadInvocations(compInv);
-	
+	  icfg.setThreadInvocations(compInv);	
   }
 
+  public void setSpecialConditions(HashMap<BasicBlockInContext<IExplodedBasicBlock>, SpecialCondition> compCond) {
+	  icfg.setSpecConditions(compCond);	
+  }
+  
 
   public boolean isThread() {	
 	return (this instanceof RunnableThread);
@@ -823,6 +832,6 @@ private String getTargetColor(ISSABasicBlock ebb) {
 	return componentName;
   }
 
- protected String componentName = null;
+ protected String componentName = null; 
   
 }

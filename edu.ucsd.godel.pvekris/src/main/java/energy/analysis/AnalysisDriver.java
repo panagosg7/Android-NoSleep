@@ -23,7 +23,7 @@ public class AnalysisDriver {
       String appJar = null;
       String exclusionFile = null;
       ApplicationClassHierarchy	ch = new ApplicationClassHierarchy(appJar, exclusionFile);		
-	  ApplicationCallGraph 		cg = new ApplicationCallGraph(ch);
+	  AppCallGraph 		cg = new AppCallGraph(ch);
 
 	  if (Opts.PROCESS_ANDROID_COMPONENTS) {
         ComponentManager componentManager = new ComponentManager(cg);

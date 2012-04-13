@@ -8,7 +8,7 @@ import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.types.FieldReference;
 
-import energy.analysis.ApplicationCallGraph;
+import energy.analysis.AppCallGraph;
 import energy.interproc.SingleLockState;
 
 /**
@@ -21,7 +21,7 @@ public class RunnableThread extends Component {
 
   static String elements[] = { "run" };
   
-  public RunnableThread(ApplicationCallGraph originalCG, IClass declaringClass, CGNode root) {
+  public RunnableThread(AppCallGraph originalCG, IClass declaringClass, CGNode root) {
     super(originalCG, declaringClass, root);
     
     callbackNames.addAll(Arrays.asList(elements));          

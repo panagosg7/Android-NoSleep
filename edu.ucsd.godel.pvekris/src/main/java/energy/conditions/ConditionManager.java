@@ -34,10 +34,7 @@ import energy.util.Util;
 
 /**
  * Condition Manager: gathers mapping: edge -> condition
- * 
- * @author progsys
- * @param <V>
- * 
+ * @author pvekris
  */
 public class ConditionManager {
 

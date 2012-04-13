@@ -31,6 +31,7 @@ import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.graph.traverse.BFSIterator;
 import com.ibm.wala.util.graph.traverse.DFSPathFinder;
 
+import energy.analysis.SpecialConditions.SpecialCondition;
 import energy.components.Activity;
 import energy.components.AdapterViewOnItemClickListener;
 import energy.components.Application;
@@ -62,7 +63,7 @@ public class ComponentManager {
 
   private static HashMap<TypeReference, Component> componentMap;
 
-  private static ApplicationCallGraph originalCG;
+  private static AppCallGraph originalCG;
 
   private GraphReachability<CGNode> graphReachability;
 
@@ -70,7 +71,7 @@ public class ComponentManager {
     return componentMap;
   }
 
-  public ComponentManager(ApplicationCallGraph cg) {
+  public ComponentManager(AppCallGraph cg) {
     originalCG = cg;
     componentMap = new HashMap<TypeReference, Component>();
   }
@@ -172,6 +173,7 @@ public class ComponentManager {
       }
     }
 
+    System.out.println();
     E.log(0, "############################################################");
     String fst = String.format("%-30s: %d", "Resolved classes", resolvedComponentCount);
     E.log(0, fst);
@@ -193,7 +195,7 @@ public class ComponentManager {
     E.log(0, fst);
     fst = String.format("%-30s: %d", "Resolved components", componentMap.size());
     E.log(0, fst);
-    E.log(0, "############################################################");
+    E.log(0, "############################################################\n");
 
   }
 
@@ -415,15 +417,8 @@ public class ComponentManager {
     
     /* Build the constraints graph 
      * (threads should be analyzed before their parents)*/
-    Collection<Component> components = componentMap.values();
-    
+    Collection<Component> components = componentMap.values();    
     Graph<Component> constraintGraph = constraintGraph(components);
-    
-    
-    //LockInvestigation lockInvestigation = new LockInvestigation(this);    
-    //lockInvestigation.traceLockCreation();
-    
-    
     BFSIterator<Component> bottomUpIterator = GraphBottomUp.bottomUpIterator(constraintGraph);
     
     /*
@@ -436,64 +431,70 @@ public class ComponentManager {
     while (bottomUpIterator.hasNext()) {
     	Component component = bottomUpIterator.next();
     	
+    	E.log(2, component.toString());
+    	
         /* assert that dependencies are met */
     	Collection<Component> compDep = component.getThreadDependencies();
     	
     	com.ibm.wala.util.Predicate<Component> p =
-    	  new com.ibm.wala.util.Predicate<Component>() {    		
-			@Override
-			public boolean test(Component c) {
-				return c.isSolved;
-			}
-		  };
-	  Assertions.productionAssertion(com.ibm.wala.util.collections.Util.forAll(compDep, p));
-	  
-	  
-      if (Opts.OUTPUT_COMPONENT_CALLGRAPH) {
-        component.outputNormalCallGraph();
-      }
-
-      if (Opts.ONLY_ANALYSE_LOCK_REACHING_CALLBACKS) { 
-          /* Use reachability results to see if we can actually get to a 
-           * wifi/wake lock call from here */
-          Predicate predicate = new Predicate() {      
-            @Override
-            public boolean evaluate(Object c) {
-              CGNode n = (CGNode) c;          
-              return (graphReachability.getReachableSet(n).size() > 0);    
-            }
-          };
-          boolean isInteresting =
-              CollectionUtils.exists(component.getCallbacks(), predicate);
-          component.setInteresting(isInteresting);   	  
-    	  if (!isInteresting) {
-    		  continue;
-    	  }    	 
-      }       
-      E.log(2, component.toString());
-      
-            
-      if (Opts.DO_CS_ANALYSIS) {
-    	component.solveCSCFG();
-      }
-      else {
-    	component.solveCICFG();      
-      }
-      
-      component.cacheStates();
-      
-      if(Opts.OUTPUT_COLOR_CFG_DOT) {
-        component.outputColoredCFGs();
-        //component.outputSolvedICFG();
-      }      
-            
-      /* Check the policy - defined for each type of component separately */
-      if (Opts.CHECK_LOCKING_POLICY) {
-    	result.registerExitLockState(component, component.getExitLockStates());               
-      }
-            
-    }    
-    return result;
+    			new com.ibm.wala.util.Predicate<Component>() {
+    		@Override
+    		public boolean test(Component c) {
+    			return c.isSolved;
+    			}
+    		};
+		Assertions.productionAssertion(com.ibm.wala.util.collections.Util.forAll(compDep, p));
+	
+		if (Opts.ENFORCE_SPECIAL_CONDITIONS) {
+		 /* gather special conditions */
+			gatherSpecialConditions(component);
+		}
+		  
+	      if (Opts.OUTPUT_COMPONENT_CALLGRAPH) {
+	        component.outputNormalCallGraph();
+	      }
+	
+	      if (Opts.ONLY_ANALYSE_LOCK_REACHING_CALLBACKS) { 
+	          /* Use reachability results to see if we can actually get to a 
+	           * wifi/wake lock call from here */
+	          Predicate predicate = new Predicate() {      
+	            @Override
+	            public boolean evaluate(Object c) {
+	              CGNode n = (CGNode) c;          
+	              return (graphReachability.getReachableSet(n).size() > 0);    
+	            }
+	          };
+	          boolean isInteresting =
+	              CollectionUtils.exists(component.getCallbacks(), predicate);
+	          component.setInteresting(isInteresting);   	  
+	    	  if (!isInteresting) {
+	    		  continue;
+	    	  }    	 
+	      }       
+	      E.log(2, component.toString());
+	      
+	            
+	      if (Opts.DO_CS_ANALYSIS) {
+	    	component.solveCSCFG();
+	      }
+	      else {
+	    	component.solveCICFG();      
+	      }
+	      
+	      component.cacheStates();
+	      
+	      if(Opts.OUTPUT_COLOR_CFG_DOT) {
+	        component.outputColoredCFGs();
+	        //component.outputSolvedICFG();
+	      }      
+	            
+	      /* Check the policy - defined for each type of component separately */
+	      if (Opts.CHECK_LOCKING_POLICY) {
+	    	result.registerExitLockState(component, component.getExitLockStates());               
+	      }
+	            
+	    }    
+	    return result;
     
   }
   
@@ -514,16 +515,29 @@ public class ComponentManager {
     return list;
   }
   
-  public ApplicationCallGraph getCG() {
+  public AppCallGraph getCG() {
 	  return originalCG;
   }
 
   
+  /****************************************************************************
+   * 
+   * 					SPECIAL CONDITIONS
+   * 
+   ****************************************************************************/
+  private SpecialConditions specialConditions = null;
+  
+  private HashMap<SSAProgramPoint,SpecialCondition> getGlobalSpecialConditions() {
+	if (specialConditions == null) {
+		specialConditions = new SpecialConditions(this);
+	}
+	return specialConditions.getSpecialConditions();
+  }
   
   
   /****************************************************************************
    * 
-   * 			THREAD INVOCATION STUFF
+   * 					THREAD INVOCATION STUFF
    * 
    ****************************************************************************/
   
@@ -535,11 +549,57 @@ public class ComponentManager {
 	}
 	return threadCreation.getThreadInvocations();
   }
+   
   
   private HashMap<Component, HashMap<BasicBlockInContext<IExplodedBasicBlock>, 
   	Component>> component2ThreadInvocations = null;
-		  
   
+  private HashMap<Component, HashMap<BasicBlockInContext<IExplodedBasicBlock>, 
+	SpecialCondition>> component2SpecConditions = null;
+
+  
+  /**
+   * This should gather the thread invocation that are specific to a
+   * particular component.
+   * @param c
+   * @return
+   */
+  public HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> getThreadInvocations(Component c) {	  	 	  
+	  if (component2ThreadInvocations == null) {		  
+		  component2ThreadInvocations = new HashMap<Component, 
+				  		HashMap<BasicBlockInContext<IExplodedBasicBlock>,Component>>();
+	  }	  
+	  HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> compInv = component2ThreadInvocations.get(c);
+	   
+	  if (compInv == null) {
+		  compInv = new HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component>();
+		  SensibleExplodedInterproceduralCFG icfg = c.getICFG();		  
+		  //Iterate over the thread invocations
+		  HashMap<SSAProgramPoint, Component> globalThrInv = getGlobalThreadInvocations();	  		  
+		  //Get all the instructions ** from the exploded ** graph
+		  for(Iterator<BasicBlockInContext<IExplodedBasicBlock>> it = icfg.iterator();
+				  it.hasNext(); ) {
+			
+			  BasicBlockInContext<IExplodedBasicBlock> bbic = it.next();			  
+			  IExplodedBasicBlock ebb = bbic.getDelegate();			  
+			  CGNode node = icfg.getCGNode(bbic);			  
+			  SSAInstruction instruction = ebb.getInstruction();
+			  if (instruction instanceof SSAInvokeInstruction) {				  
+				  SSAInvokeInstruction inv = (SSAInvokeInstruction) instruction;				  
+				  SSAProgramPoint ssapp = new SSAProgramPoint(node, inv);				  				  
+				  Component callee = globalThrInv.get(ssapp);
+				  if (callee != null) {
+					  compInv.put(bbic, callee);
+					  E.log(2, "Found: " + ebb.toString());
+				  }			
+			  }
+		  }		  
+		  c.setThreadInvocations(compInv);		  
+		  component2ThreadInvocations.put(c, compInv);
+	  }
+	  Assertions.productionAssertion(compInv != null);
+	  return compInv;
+  }
   
   
   /**
@@ -548,65 +608,43 @@ public class ComponentManager {
    * @param c
    * @return
    */
-  public HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> getThreadInvocations(Component c) {	  	 
-	  
-	  if (component2ThreadInvocations == null) {		  
-		  component2ThreadInvocations = new HashMap<Component, 
-				  		HashMap<BasicBlockInContext<IExplodedBasicBlock>,Component>>();
-	  }
-	  
-	  HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> compInv = component2ThreadInvocations.get(c);
+  public void gatherSpecialConditions(Component c) {	  	 	  
+	  if (component2SpecConditions == null) {		  
+		  component2SpecConditions = 
+				  new HashMap<Component, HashMap<BasicBlockInContext<IExplodedBasicBlock>,SpecialCondition>>();
+	  }	  
+	  HashMap<BasicBlockInContext<IExplodedBasicBlock>, SpecialCondition> compCond = component2SpecConditions.get(c);
 	   
-	  if (compInv == null) {
-		  compInv = new HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component>();
-
+	  if (compCond == null) {
+		  compCond = new HashMap<BasicBlockInContext<IExplodedBasicBlock>, SpecialCondition>();
 		  SensibleExplodedInterproceduralCFG icfg = c.getICFG();
-		  
 		  //Iterate over the thread invocations
-		  HashMap<SSAProgramPoint, Component> globalThrInv = getGlobalThreadInvocations();		  
-		  
-		  //Get all the instructions ** from the exploded ** graph
-		  for(Iterator<BasicBlockInContext<IExplodedBasicBlock>> it = icfg.iterator();
-				  it.hasNext(); ) {
-			
-			  BasicBlockInContext<IExplodedBasicBlock> bbic = it.next();
-			  
+		  HashMap<SSAProgramPoint, SpecialCondition> globalSpecCond = getGlobalSpecialConditions();	
+		  //E.log(1, "checking special cond: " + globalSpecCond);
+		  //Check all the instructions ** from the exploded ** graph
+		  for(Iterator<BasicBlockInContext<IExplodedBasicBlock>> it = icfg.iterator(); it.hasNext(); ) {			
+			  BasicBlockInContext<IExplodedBasicBlock> bbic = it.next();			  
 			  IExplodedBasicBlock ebb = bbic.getDelegate();
-			  
-			  CGNode node = icfg.getCGNode(bbic);
-			  
+			  CGNode node = icfg.getCGNode(bbic);			  
 			  SSAInstruction instruction = ebb.getInstruction();
-			  
-			  if (instruction instanceof SSAInvokeInstruction) {
-				  
-				  SSAInvokeInstruction inv = (SSAInvokeInstruction) instruction;
-				  
-				  SSAProgramPoint ssapp = new SSAProgramPoint(node, inv);
-				  				  
-				  Component callee = globalThrInv.get(ssapp);
-				  if (callee != null) {
-					  compInv.put(bbic, callee);
-					  E.log(2, "Found: " + ebb.toString());					  
+			  if((node!= null) && (instruction != null)) {
+				  SSAProgramPoint ssapp = new SSAProgramPoint(node, instruction);				  
+				  SpecialCondition cond = globalSpecCond.get(ssapp);
+				  if (cond != null) {
+					  compCond.put(bbic, cond);
+					  E.log(1, "Found: " + ebb.toString());
 				  }			
 			  }
-		  }
-		  
-		  c.setThreadInvocations(compInv);
-		  
-		  component2ThreadInvocations.put(c, compInv);	
-		  
-	  }
-	  Assertions.productionAssertion(compInv != null);
-	  return compInv;
+		  }		  
+		  c.setSpecialConditions(compCond);
+		  component2SpecConditions.put(c, compCond);
+	  }	  
   }
   
   
   
-  
   public Collection<Component> getThreadConstraints(Component c) {
-	HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> ti = 
-			getThreadInvocations(c);
-	
+	HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> ti = getThreadInvocations(c);
 	return ti.values();	  
   }
 

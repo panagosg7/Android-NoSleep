@@ -1,26 +1,30 @@
 package energy.interproc;
 
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import junit.framework.Assert;
-
 import com.ibm.wala.cfg.ControlFlowGraph;
+import com.ibm.wala.classLoader.ProgramCounter;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.ipa.cfg.ExplodedInterproceduralCFG;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAReturnInstruction;
+import com.ibm.wala.ssa.analysis.ExplodedControlFlowGraph;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
+import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
 
-import energy.analysis.ApplicationCallGraph;
+import energy.analysis.AppCallGraph;
+import energy.analysis.SpecialConditions.SpecialCondition;
 import energy.components.Component;
 import energy.components.RunnableThread;
 import energy.util.E;
@@ -37,7 +41,7 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
    */
   public SensibleExplodedInterproceduralCFG(
 		  CallGraph cg,									//The components CG 
-		  ApplicationCallGraph originalCallgraph,		//The whole application's CG 
+		  AppCallGraph originalCallgraph,		//The whole application's CG 
 		  HashSet<Pair<CGNode, CGNode>> packedEdges) {
 	  
     super(cg);
@@ -55,12 +59,23 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
     cacheCallbacks(cg,packedEdges);
   } 
   
-  private ApplicationCallGraph applicationCG;
-  
-  
+  private AppCallGraph applicationCG;
+    
   private Map<String,CGNode> callbacks;
   
-  private HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> bbToThreads = null;
+  
+  
+  /**
+   * Keep a map to all thread calls 
+   */
+  private HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> ebbToThreadComponent = null;
+  
+  /**
+   * Also, keep a map to any special conditions: null checks, isHeld()
+   */
+  private HashMap<BasicBlockInContext<IExplodedBasicBlock>, SpecialCondition> ebbToSpecConditions = null;
+  
+  
   
   
   /**
@@ -130,11 +145,11 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
  	}
 
  	public RunnableThread getThreadInvocations(BasicBlockInContext<IExplodedBasicBlock> bbic) {
- 		if (bbToThreads == null) {
+ 		if (ebbToThreadComponent == null) {
  			E.log(1, "Not initialized");
  		}
  		else { 		
-	 		Component component = bbToThreads.get(bbic);
+	 		Component component = ebbToThreadComponent.get(bbic);
 	 		if (component != null) {
 	 			Assertions.productionAssertion(component instanceof RunnableThread);
 	 			return (RunnableThread) component;
@@ -143,6 +158,58 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
  		return null;
  	}
  	
+ 	public SpecialCondition getSpecialConditions(BasicBlockInContext<IExplodedBasicBlock> bbic) {
+ 		if (ebbToSpecConditions == null) {
+ 			E.log(1, "Special conditions not resolved");
+ 		}
+ 		else { 		
+	 		return ebbToSpecConditions.get(bbic);	 		
+ 		}
+ 		return null;
+ 	}
+ 	
+ 	
+ 	
+ 	/**
+	 * Simple method that detects an exceptional edge
+	 * Src and Dst must belong to the same method.
+	 * Src node is the one throwing the exception, so 
+	 * we can search in its instructions and find the 
+	 * ones that throw a certain exception. 
+	 * @param src
+	 * @param dest
+	 * @return
+	 */
+	public boolean isExceptionalEdge(
+			BasicBlockInContext<IExplodedBasicBlock> src,
+			BasicBlockInContext<IExplodedBasicBlock> dest) {
+				
+		for(Iterator<SSAInstruction> it = src.iterator(); it.hasNext(); ) {
+			SSAInstruction i = it.next();
+			Collection<TypeReference> exceptionTypes = i.getExceptionTypes();
+			for(TypeReference et : exceptionTypes) {
+				//TODO: Create a set somewhere with all the exceptions to be ignored
+				
+				if(!et.equals(TypeReference.JavaLangNullPointerException)) {
+					//E.log(1, et.toString());	
+				}
+			}
+		}
+		
+		if (getCGNode(src).equals(getCGNode(dest))) {
+			ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> cfg = getCFG(src);
+			IExplodedBasicBlock d = src.getDelegate();
+			Collection<IExplodedBasicBlock> normalSuccessors = cfg.getNormalSuccessors(d);
+			int nsn = normalSuccessors.size();
+			int snc = cfg.getSuccNodeCount(d);
+			if (nsn != snc) {
+				IExplodedBasicBlock dst = dest.getDelegate();
+				return (!normalSuccessors.contains(dst));
+			}
+		}
+		return false;
+	} 	
+ 	
  	
  	
  	/**
@@ -150,25 +217,38 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
  	 * @param m
  	 */
  	public void setThreadInvocations(HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> m) { 		
- 		this.bbToThreads = m;
+ 		this.ebbToThreadComponent = m;
  	}
  	
+ 	public void setSpecConditions(HashMap<BasicBlockInContext<IExplodedBasicBlock>, SpecialCondition> m) {    
+    this.ebbToSpecConditions = m;
+ 	}
+  
+ 	
+ 	
  	public HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> getThreadInvocations() {
- 		return bbToThreads;
+ 		return ebbToThreadComponent;
  	}
  	
  	
  	public void printBBToThreadMap() {
  		E.log(1, "");
- 		for ( Entry<BasicBlockInContext<IExplodedBasicBlock>, Component> e : bbToThreads.entrySet()) {
+ 		for ( Entry<BasicBlockInContext<IExplodedBasicBlock>, Component> e : ebbToThreadComponent.entrySet()) {
  			System.out.println(e.getKey().toString() + " -> " + e.getValue());
  		} 		
  	}
 
-	public ApplicationCallGraph getApplicationCG() {
+	public AppCallGraph getApplicationCG() {
 		return applicationCG;
 	}
  	
+	public BasicBlockInContext<IExplodedBasicBlock> getExplodedBasicBlock(CGNode n, ProgramCounter pc) {
+		ExplodedControlFlowGraph cfg = (ExplodedControlFlowGraph) this.getCFG(n);
+		BasicBlockInContext<IExplodedBasicBlock> explodedBasicBlock = cfg.getExplodedBasicBlock(n, pc);
+		return explodedBasicBlock;
+	}
+	
+	
  	
 }
 

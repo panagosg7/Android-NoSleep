@@ -55,6 +55,7 @@ public abstract class AbstractPointerAnalysis implements PointerAnalysis {
   }
 
   public Collection<InstanceKey> getInstanceKeys() {
+    System.out.println("Abstract");
     return Collections.unmodifiableCollection(instanceKeys.getObjects());
   }
 

@@ -167,6 +167,14 @@ public class Opts {
 
 
 
+public static final boolean ENFORCE_SPECIAL_CONDITIONS = true;
+
+
+
+public static final boolean DATAFLOW_IGNORE_EXCEPTIONAL = true;
+
+
+
 
 
 

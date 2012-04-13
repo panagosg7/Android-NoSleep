@@ -8,7 +8,7 @@ import java.util.List;
 import energy.analysis.Opts;
 
 public class E {
-  private static final int MAX_METHOD_NAME = 30;  
+  private static final int MAX_METHOD_NAME = 50;  
   static int DEBUG_LEVEL = 1;   /* higher means more details */
 
   private static String LOG_FILE = "log.out";
@@ -42,8 +42,8 @@ public class E {
       if (methName.length() >= MAX_METHOD_NAME) {
         methName = methName.substring(0, MAX_METHOD_NAME - 3) + "...";
       }      
-      String out = String.format("[%30s] ", methName);
-      String spaces = String.format("%33s", "");
+      String out = String.format("[%" + MAX_METHOD_NAME + "s] ", methName);
+      String spaces = String.format("%" + (MAX_METHOD_NAME + 3) + "s", "");
       
       String strAndSpaces = str.replaceAll("\n", "\n" + spaces);
       
@@ -55,7 +55,9 @@ public class E {
   private static String getLastRealMethod(StackTraceElement[] clone) {
     int i;    
     for(i = 1; clone[i].getClassName () == E.class.getName(); i++);
-    return clone[i].getMethodName().toString();
+    String className = clone[i].getClassName().toString();
+    String cn = className.substring(className.lastIndexOf('.') + 1);
+    return cn + " $ "  + clone[i].getMethodName().toString();
   }
 
   /**

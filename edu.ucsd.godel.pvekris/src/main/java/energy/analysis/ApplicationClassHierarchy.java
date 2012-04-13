@@ -29,7 +29,7 @@ public class ApplicationClassHierarchy {
   private String appJar;
   private String exclusionFileName;
 	
-  private LockInvestigation lockFieldInfo = null;
+  private WakeLockManager lockFieldInfo = null;
   
 	
   public ApplicationClassHierarchy(String appJar, String exclusionFileName) throws IOException, ClassHierarchyException {
@@ -106,12 +106,11 @@ public ClassHierarchy getClassHierarchy() {
 }
 
 
-public LockInvestigation getLockFieldInfo() {
+public WakeLockManager getLockFieldInfo() {
 	if (lockFieldInfo == null) {
-		lockFieldInfo = new LockInvestigation(cha);
-		lockFieldInfo.traceLockFields();
+		lockFieldInfo = new WakeLockManager(cha);
+		lockFieldInfo.scanDefinitions();		
 	}
-	
 	return lockFieldInfo;
 }
   

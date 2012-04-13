@@ -21,7 +21,7 @@ import energy.util.SSAProgramPoint;
 
 public class ThreadInvestigation {
 	
-	private ApplicationCallGraph cg;
+	private AppCallGraph cg;
 	private ComponentManager cm; 
 	
 	public ThreadInvestigation(ComponentManager componentManager) {
@@ -40,34 +40,25 @@ public class ThreadInvestigation {
 	/**
 	 * Invoke this to fill up the ProgPoint to thread mapping
 	 */
-	private HashMap<SSAProgramPoint, Component> gatherThreadInvocations() {
-		
-		HashMap<SSAProgramPoint,Component> result = new HashMap<SSAProgramPoint, Component>();		
-		
+	private void prepare() {
+		siteToClass = new HashMap<SSAProgramPoint, Component>();
 		for (CGNode n : cg) {
 			iSet.clear();
-			
 			IR ir = n.getIR();
-			
 			/* Null for JNI methods */
 			if (ir == null) {
 				E.log(2, "Skipping: " + n.getMethod().toString());
 				continue;				
-			}
-			
+			}			
 			for (Iterator<NewSiteReference> it = ir.iterateNewSites(); //ir.iterateAllInstructions(); 
-					it.hasNext();) {
-				
-				SSANewInstruction newi = ir.getNew(it.next());			
-								
+					it.hasNext();) {				
+				SSANewInstruction newi = ir.getNew(it.next());
 				if (newi.getConcreteType().toString().equals("<Application,Ljava/lang/Thread>")) {					
 					iSet.add(newi);						
-				}
-				
-			}
+				}				
+			}			
 			/* After the search is done, do the defuse only if there are interesting results */
-			if (iSet.size() > 0) {
-				
+			if (iSet.size() > 0) {				
 				//System.out.println(ir);
 				DefUse du = new DefUse(ir);
 				for (SSANewInstruction i : iSet) {
@@ -112,30 +103,25 @@ public class ThreadInvestigation {
 					} //for uses
 					if ((pp!=null) && (targetComponent!= null)) {
 						E.log(2, "Adding: " + pp + " --> " + targetComponent);
-						result.put(pp, targetComponent);
+						siteToClass.put(pp, targetComponent);
 					}
 				}
 			}
-		}
-		return result;
+		}		
 	}
 	
 	public void printThreadPairs() {
 		for (Entry<SSAProgramPoint, Component> e : siteToClass.entrySet()) {
-			E.log(1, e.getKey().toString() + " -- > " + e.getValue().toString());			
-		}		
-	}	
-	
-
-	public HashMap<SSAProgramPoint,Component> getThreadInvocations() {
-				
-		if (siteToClass == null) {
-			siteToClass = gatherThreadInvocations();
+			E.log(1, e.getKey().toString() + " -- > " + e.getValue().toString());
 		}
-		
-		return siteToClass;
 	}
 	
-	
-	
+
+	public HashMap<SSAProgramPoint,Component> getThreadInvocations() {				
+		if (siteToClass == null) {
+			prepare();
+		}		
+		return siteToClass;
+	}
+			
 }

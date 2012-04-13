@@ -3,11 +3,11 @@ package energy.components;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 
-import energy.analysis.ApplicationCallGraph;
+import energy.analysis.AppCallGraph;
 
 public class CompoundButton extends Component{
 
-  public CompoundButton(ApplicationCallGraph originalCG, IClass declaringClass, CGNode root) {
+  public CompoundButton(AppCallGraph originalCG, IClass declaringClass, CGNode root) {
     super(originalCG, declaringClass, root);
 
   }

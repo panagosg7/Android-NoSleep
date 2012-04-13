@@ -161,7 +161,7 @@ public class BugHunt {
 		//theSet.add("Phonebook 2.0");		//conversion error
 		//theSet.add("ICQ");
 //		theSet.add("DISH");					//OK
-		//theSet.add("JuiceDefender");		//OK
+//		theSet.add("JuiceDefender");		//OK
 		//theSet.add("Twidroyd");			//conversion error
 		//theSet.add("WebSMS");				//conversion error
 //		theSet.add("3D Level");				//OK
@@ -192,8 +192,8 @@ public class BugHunt {
 //		theSet.add("imo");
 //		theSet.add("aLogcat");
 		
-//		theSet.add("Android Agenda Widget");
-		theSet.add("ServicesDemo");
+		theSet.add("Android Agenda Widget");
+//		theSet.add("ServicesDemo");			//toy example
 		
 		
 		
@@ -205,24 +205,17 @@ public class BugHunt {
 	
 	public static void runPatternAnalysis(ApkCollection collection, Set<String> theSet) 
 			throws ApkException, IOException, RetargetException, WalaException, CancelException {
-		acqrelDatabaseFile = new File("/home/pvekris/dev/apk_scratch/acqrel_status.json");
-		
-		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
-		
-		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));		
-		
+		acqrelDatabaseFile = new File("/home/pvekris/dev/apk_scratch/acqrel_status.json");		
+		FileInputStream is = new FileInputStream(acqrelDatabaseFile);		
+		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 		Map<Wala.UsageType, Integer> histogram = new HashMap<Wala.UsageType, Integer>();
 		
 		for (Object key: theSet) {
 						
-			String app_name = collection.cleanApkName((String)key);
-			
-			//System.out.println("\n\n\nLooking for: " + app_name);					
-			
-			String[] catsArray = acqrel_status.getString((String)key).split("[,]");
-			
-			ArrayList<String> cats = new ArrayList<String>(catsArray.length);
-			
+			String app_name = collection.cleanApkName((String)key);			
+			//System.out.println("\n\n\nLooking for: " + app_name);								
+			String[] catsArray = acqrel_status.getString((String)key).split("[,]");			
+			ArrayList<String> cats = new ArrayList<String>(catsArray.length);			
 			for (String cat: catsArray) cats.add(cat);
 			ApkApplication application = collection.getApplication(app_name);
 			ApkInstance apk = application.getPreferred();
