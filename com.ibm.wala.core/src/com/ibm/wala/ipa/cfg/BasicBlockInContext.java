@@ -152,6 +152,9 @@ public final class BasicBlockInContext<T extends ISSABasicBlock> extends NodeWit
     sb.append(this.getMethod().getName().toString());
     sb.append(", ");
     sb.append(this.getNumber());
+    
+    sb.append(", del: ");
+    sb.append(this.getDelegate().getNumber());
     sb.append(")");
     return sb.toString();       
   }

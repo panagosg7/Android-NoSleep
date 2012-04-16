@@ -632,7 +632,7 @@ public class ComponentManager {
 				  SpecialCondition cond = globalSpecCond.get(ssapp);
 				  if (cond != null) {
 					  compCond.put(bbic, cond);
-					  E.log(1, "Found: " + ebb.toString());
+					  //E.log(1, "Found: " + ebb.toString());
 				  }			
 			  }
 		  }		  

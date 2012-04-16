@@ -624,6 +624,7 @@ private String getTargetColor(ISSABasicBlock ebb) {
 	  icfg = createSensibleCG();
 	  icfg.printBBToThreadMap();
 	}
+	
     CtxSensLocking lockingProblem = new CtxSensLocking(icfg);
     csSolver = lockingProblem.analyze();    
     csDomain = lockingProblem.getDomain();

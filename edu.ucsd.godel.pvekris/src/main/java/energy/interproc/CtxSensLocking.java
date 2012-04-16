@@ -221,14 +221,16 @@ public class CtxSensLocking {
 			SpecialCondition specialCondition, 
 			BasicBlockInContext<IExplodedBasicBlock> dest) {
 		
+		//E.log(1, "checking: " + specialCondition.toString() + " with " + dest.getDelegate().getLastInstructionIndex());
+		
 		ISSABasicBlock trueSucc = specialCondition.getTrueSucc();
 		if (trueSucc != null) {
-			if (dest.getNumber() == trueSucc.getLastInstructionIndex()) {		//This may demand pi Nodes
+			if (dest.getDelegate().getLastInstructionIndex() == trueSucc.getLastInstructionIndex()) {
 				return Boolean.TRUE;
 			}
 		}
 		ISSABasicBlock falseSucc = specialCondition.getFalseSucc();
-		if (dest.getNumber() == falseSucc.getLastInstructionIndex()) {		//This may demand pi Nodes
+		if (dest.getDelegate().getLastInstructionIndex() == falseSucc.getLastInstructionIndex()) {
 			return Boolean.FALSE;
 		}		
 		return null;
@@ -254,6 +256,36 @@ public class CtxSensLocking {
 		}
 	}
 
+	
+	private void exception(BasicBlockInContext<IExplodedBasicBlock>  src,
+			BasicBlockInContext<IExplodedBasicBlock>  dest) {
+		if( dest.getNumber() == 199) {
+			//E.log(1, "### To end ("+ dest.getMethod().getName().toString() +"): " + dest.getFirstInstructionIndex() + " :: " + src.getNumber());
+			Collection<IExplodedBasicBlock> exceptionalSuccessors = 
+				icfg.getCFG(src).getExceptionalSuccessors(src.getDelegate());
+			boolean foundExc = false;
+			for (IExplodedBasicBlock  ep : exceptionalSuccessors) {
+				//E.log(1, "\tExc: " + ep.toString());
+				foundExc = true;
+			}
+			boolean foundNormal = false;
+			Collection<IExplodedBasicBlock> normalSuccessors = 
+					icfg.getCFG(src).getNormalSuccessors(src.getDelegate());
+			for (IExplodedBasicBlock  ep : normalSuccessors) {
+				//E.log(1, "\tNor: " + ep.toString());
+				foundNormal = true;
+			}
+			
+			if(!foundExc && !foundNormal) {
+				E.log(1, src.toShortString());
+			}
+			
+		}
+		
+	}
+	
+	
+	
 	private class LockingFunctions implements
 			IPartiallyBalancedFlowFunctions<BasicBlockInContext<IExplodedBasicBlock>> {
 
@@ -275,8 +307,11 @@ public class CtxSensLocking {
 			 * span across multiple procedures (if possible) cannot be
 			 * determined.
 			 */
+			
+			exception(src, dest);
+			
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) { 
-				E.log(PRINT_EXCEPTIONAL, "Killing [" + src.toShortString() + " -> " + dest.toShortString() +"]"); 
+				E.log(PRINT_EXCEPTIONAL, "EXCEPTIONAL Killing [" + src.toShortString() + " -> " + dest.toShortString() +"]"); 
 				return KillEverything.singleton(); 
 			}
 					
@@ -288,20 +323,23 @@ public class CtxSensLocking {
 						NullCondition nc = (NullCondition) specialCondition;
 						Boolean checkDestination = checkDestination(nc, dest);
 						if (checkDestination!= null) {
-							if (checkDestination) {
-								E.log(1, "NULL PATH: " + src.toShortString() + " -> " + dest.toShortString());
+							if (checkDestination.booleanValue()) {
+								E.log(1, "Killing NULL PATH: " + src.toShortString() + " -> " + dest.toShortString());
+								/*
 								return new IUnaryFlowFunction() {							
 									@Override
-									public IntSet getTargets(int d1) {
+									public IntSet getTargets(int d1) {										
 										Pair<FieldReference, SingleLockState> mappedObject = domain.getMappedObject(d1);
 										//Test the field we're trying to kill
 										if(mappedObject.fst.equals(specialCondition.getField())){
 											
 											return MutableSparseIntSet.makeEmpty();
 										}																							
-										return MutableSparseIntSet.singleton(d1);
+										return MutableSparseIntSet.singleton(d1);																			
 									}
 								}; 
+								*/
+								return KillEverything.singleton();
 							}
 							else {
 								E.log(1, "NOT NULL PATH: " + src.toShortString() + " -> " + dest.toShortString());
@@ -310,12 +348,18 @@ public class CtxSensLocking {
 					}
 					
 					//Look for isHeld() condition
-					else if (specialCondition instanceof IsHeldCondition) {						
+					else if (specialCondition instanceof IsHeldCondition) {
+						E.log(1, src.toShortString() + " -> " + dest.toShortString() + " : " + specialCondition.toString());
 						IsHeldCondition isc = (IsHeldCondition) specialCondition;
 						Boolean checkDestination = checkDestination(isc, dest);						
 						if (checkDestination!= null) {
-							if (checkDestination) {
-								E.log(1, "ISHELD FALSE PATH: " + src.toShortString() + " -> " + dest.toShortString());
+							if (checkDestination.booleanValue()) {
+								E.log(1, "ISHELD TRUE PATH: " + src.toShortString() + " -> " + dest.toShortString());
+							}
+							else {
+								E.log(1, "Killing ISHELD FALSE PATH: " + src.toShortString() + " -> " + dest.toShortString());
+								return KillEverything.singleton();
+								/*
 								return new IUnaryFlowFunction() {							
 									@Override
 									public IntSet getTargets(int d1) {
@@ -330,9 +374,7 @@ public class CtxSensLocking {
 										return MutableSparseIntSet.singleton(d1);
 									}
 								}; 
-							}
-							else {
-								E.log(1, "ISHELD TRUE PATH: " + src.toShortString() + " -> " + dest.toShortString());
+								*/
 							}
 						}
 					}
@@ -347,6 +389,13 @@ public class CtxSensLocking {
 				BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest,
 				BasicBlockInContext<IExplodedBasicBlock> ret) {
+			
+			exception(src, dest);
+			
+			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) { 
+				E.log(PRINT_EXCEPTIONAL, "EXCEPTIONAL Killing [" + src.toShortString() + " -> " + dest.toShortString() +"]"); 
+				return KillEverything.singleton(); 
+			}
 
 			FieldReference acquireField = acquire(src);				
 			FieldReference releaseField = release(src);			
@@ -367,9 +416,11 @@ public class CtxSensLocking {
 			 * BE CAREFUL : exceptional edges that span across multiple procedures 
 			 * are not determined.
 			 */
+			
+			exception(src, dest);			
+			
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(call, dest)) {
-				E.log(PRINT_EXCEPTIONAL, "Killing [" + src.toShortString() + " -> "
-						+ dest.toShortString() + "]");				
+				E.log(PRINT_EXCEPTIONAL, "EXCEPTIONAL Killing [" + src.toShortString() + " -> " + dest.toShortString() + "]");				
 				return KillEverything.singleton();							
 			}
 			FieldReference acquireField = acquire(call);
@@ -390,6 +441,7 @@ public class CtxSensLocking {
 				final BasicBlockInContext<IExplodedBasicBlock> src,
 				final BasicBlockInContext<IExplodedBasicBlock> dest) {					
 			
+			exception(src, dest);
 			/**
 			 * Exceptional edges should be treated as normal in cases where no
 			 * acquire/release is involved. BE CAREFUL : exceptional edges that
@@ -397,7 +449,7 @@ public class CtxSensLocking {
 			 */
 			final FieldReference acquiredField = acquire(src);			
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest) /*&& (acquiredField != null)*/) {			
-				E.log(PRINT_EXCEPTIONAL, "Killing [" + src.toShortString() + " -> " + dest.toShortString() + "]");				
+				E.log(PRINT_EXCEPTIONAL, "EXCEPTIONAL Killing [" + src.toShortString() + " -> " + dest.toShortString() + "]");				
 				return KillEverything.singleton();				
 			}
 			
@@ -479,9 +531,10 @@ public class CtxSensLocking {
 		public IUnaryFlowFunction getCallNoneToReturnFlowFunction(
 				final BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest) {
+			exception(src, dest);
 			
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {			
-				E.log(PRINT_EXCEPTIONAL, "Killing [" + src.toShortString() + " -> " + dest.toShortString() + "]");				
+				E.log(PRINT_EXCEPTIONAL, "EXCEPTIONAL Killing [" + src.toShortString() + " -> " + dest.toShortString() + "]");				
 				return KillEverything.singleton();
 			}
 			
@@ -529,8 +582,11 @@ public class CtxSensLocking {
 				BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest) {
 			
+			exception(src, dest);
+			
+			
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {			
-				E.log(PRINT_EXCEPTIONAL, "Killing [" + src.toShortString() + " -> " + dest.toShortString() + "]");				
+				E.log(PRINT_EXCEPTIONAL, "EXCEPTIONAL Killing [" + src.toShortString() + " -> " + dest.toShortString() + "]");				
 				return KillEverything.singleton();				
 			}
 			
