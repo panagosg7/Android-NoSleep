@@ -1,3 +1,5 @@
+#! /bin/bash
+
 source $(dirname $0)/_mcmutton.sh
 
 pushd $mcmutton_base > /dev/null

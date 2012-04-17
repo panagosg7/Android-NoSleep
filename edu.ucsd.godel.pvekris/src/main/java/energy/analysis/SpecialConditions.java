@@ -41,6 +41,7 @@ public class SpecialConditions {
 	
 	public class SpecialCondition {
 		FieldReference field = null;
+		protected ISSABasicBlock instrBlock;
 		protected ISSABasicBlock trueSucc;
 		protected ISSABasicBlock falseSucc;
 
@@ -55,34 +56,41 @@ public class SpecialConditions {
 			return field;
 		}
 		
-		SpecialCondition (FieldReference f, ISSABasicBlock trueSucc, ISSABasicBlock falseSucc) {
+		SpecialCondition (ISSABasicBlock bb, FieldReference f, ISSABasicBlock trueSucc, ISSABasicBlock falseSucc) {
+			this.instrBlock = bb;
 			this.field = f;		
 			this.trueSucc = trueSucc;
 			this.falseSucc = falseSucc;	
+		}
+		
+		public String toString() {
+			return ("[(" + instrBlock.getMethod().getName() + ", " + instrBlock.getNumber() + ")"  
+			+ " true: (" + trueSucc.getMethod().getName().toString()  + ", " + trueSucc.getLastInstructionIndex() + ")" 
+			+ " false: (" + falseSucc.getMethod().getName().toString() + ", " + falseSucc.getLastInstructionIndex() + ")]");
 		}
 	}
 	
 	public class NullCondition extends SpecialCondition {		
 
-		NullCondition(FieldReference f, ISSABasicBlock trueSucc, ISSABasicBlock falseSucc) {
-			super(f, trueSucc, falseSucc);
+		NullCondition(ISSABasicBlock bb, FieldReference f, ISSABasicBlock trueSucc, ISSABasicBlock falseSucc) {
+			super(bb, f, trueSucc, falseSucc);
 			
 		}		
 		
 		public String toString() {
-			return ("NC, true: " + trueSucc.toString() + " false: " + falseSucc.toString());
+			return ("NC : " + super.toString());
 		}
 		
 	}
 	
 	public class IsHeldCondition extends SpecialCondition {	
 
-		IsHeldCondition(FieldReference f, ISSABasicBlock trueSucc, ISSABasicBlock falseSucc) {			
-			super(f, trueSucc, falseSucc);					
+		IsHeldCondition(ISSABasicBlock bb, FieldReference f, ISSABasicBlock trueSucc, ISSABasicBlock falseSucc) {			
+			super(bb, f, trueSucc, falseSucc);					
 		}
 		
 		public String toString() {
-			return ("IS, true: " + trueSucc.toString() + " false: " + falseSucc.toString());
+			return ("IH : " + super.toString());
 		}
 	}
 	
@@ -90,12 +98,14 @@ public class SpecialConditions {
 		
 
 	public void prepare() {
-		DefUse du = null;			//TODO: cache this nicer
+		
 		ppToSpecCondition = new HashMap<SSAProgramPoint, SpecialCondition>();
 		for (CGNode n : cg) {
+			//WARNING: this needs to be done here!!!
+			DefUse du = null;			//TODO: cache this nicer
 			SSACFG cfg = n.getIR().getControlFlowGraph();
 			IR ir = n.getIR();			
-			//E.log(1, n.getMethod().getSignature());			
+			
 			// Clear the map from previous bindings
 			//edgeToBranchInfo = new HashMap<ConditionEdge, GeneralCondition>();			
 			
@@ -105,7 +115,6 @@ public class SpecialConditions {
 				SSAInstruction instr = iIter.next();
 				if (instr != null) {
 					try {	//TODO: Fix array out of bound
-						//E.log(1,instr.toString());
 						//TODO: refine check: check operator ...
 						if (instr instanceof SSAConditionalBranchInstruction) {
 							SSAConditionalBranchInstruction cinstr = (SSAConditionalBranchInstruction) instr;							
@@ -127,39 +136,39 @@ public class SpecialConditions {
 								FieldReference field1 = getFieldForNullCheck(ir, du, use1);
 								FieldReference field2 = getFieldForNullCheck(ir, du, use2);
 								
-								if ((use1 == 2) && (use2 == 3)) {
-									E.log(1, n.getMethod().getSignature().toString());
-									E.log(1, cinstr.toString() + ((field1==null)?"null":field1.toString()));
+								/*
+								SSAInstruction def = du.getDef(use1);
+								if (def instanceof SSAGetInstruction) {
+									SSAGetInstruction get = (SSAGetInstruction) def;			
+									FieldReference field = get.getDeclaredField();
 									
-									SSAInstruction def = du.getDef(use1);
-									if (def instanceof SSAGetInstruction) {
-										SSAGetInstruction get = (SSAGetInstruction) def;			
-										FieldReference field = get.getDeclaredField();
-										E.log(1, "Looking for: " + field.toString());
-										if (cg.getLockFieldInfo().isWakeLock(field)) {
-											E.log(1, "Found");
-										};			
-									}
-									
-								}
+									E.log(1, "f1: " + ((field1==null)?"null":field1.toString()));
+									E.log(1, "f2: " + ((field2==null)?"null":field2.toString()));
 										
+																			
+									//E.log(1, "Looking for: " + field.toString());
+									if (cg.getLockFieldInfo().isWakeLock(field)) {
+										E.log(1, "Found");
+									};			
+								}
+								*/
 								
 								
 								if ((field1 != null && ir.getSymbolTable().isNullConstant(use2)) ||
 									(field2 != null && ir.getSymbolTable().isNullConstant(use1))) {
 									
-									E.log(1, instr.toString());
+									//E.log(1, instr.toString());
 									SSAProgramPoint pp = new SSAProgramPoint(n,cinstr);
 									ISSABasicBlock trueSucc = succNodesArray.get(0);
 									ISSABasicBlock falseSucc = succNodesArray.get(1);									
 									if (field1 != null){
-										NullCondition c = new NullCondition(field1, trueSucc, falseSucc);
-										E.log(1, c.toString());										
+										NullCondition c = new NullCondition(pp.getBasicBlock(), field1, trueSucc, falseSucc);
+										//E.log(1, c.toString());										
 										ppToSpecCondition.put(pp, c);
 									}
 									else {
-										NullCondition c = new NullCondition(field2, trueSucc, falseSucc);
-										E.log(1, c.toString());
+										NullCondition c = new NullCondition(pp.getBasicBlock(), field2, trueSucc, falseSucc);
+										//E.log(1, c.toString());
 										ppToSpecCondition.put(pp, c);
 									}
 								}		
@@ -173,13 +182,14 @@ public class SpecialConditions {
 									SSAProgramPoint pp = new SSAProgramPoint(n,cinstr);
 									ISSABasicBlock trueSucc = succNodesArray.get(0);
 									ISSABasicBlock falseSucc = succNodesArray.get(1);
+									//E.log(1,instr.toString());
 									if (field1 != null){
-										IsHeldCondition c = new IsHeldCondition(field1, trueSucc, falseSucc);
+										IsHeldCondition c = new IsHeldCondition(pp.getBasicBlock(), field1, falseSucc, trueSucc);
 										ppToSpecCondition.put(pp,c);
 										E.log(1, c.toString());
 									}
 									else {
-										IsHeldCondition c = new IsHeldCondition(field2, trueSucc,falseSucc);
+										IsHeldCondition c = new IsHeldCondition(pp.getBasicBlock(), field2, falseSucc, trueSucc);
 										ppToSpecCondition.put(pp,c);										
 										E.log(1, c.toString());
 									}
@@ -211,9 +221,9 @@ public class SpecialConditions {
 		if (def instanceof SSAGetInstruction) {
 			SSAGetInstruction get = (SSAGetInstruction) def;			
 			FieldReference field = get.getDeclaredField();
-			if (cg.getLockFieldInfo().isWakeLock(field)) {
+			//if (cg.getLockFieldInfo().isWakeLock(field)) {
 				return field;				
-			};			
+			//};			
 		}
 		return null;
 	}

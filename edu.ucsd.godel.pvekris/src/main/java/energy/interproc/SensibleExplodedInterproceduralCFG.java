@@ -11,6 +11,7 @@ import java.util.Set;
 
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.classLoader.ProgramCounter;
+import com.ibm.wala.dataflow.IFDS.ICFGSupergraph;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
@@ -120,26 +121,6 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
   }
  
 
- protected boolean isReturn(BasicBlockInContext<IExplodedBasicBlock> B, 
-		 ControlFlowGraph<SSAInstruction,IExplodedBasicBlock> cfg) {
-	 
-	    SSAInstruction[] statements = cfg.getInstructions();
-	
-	    int lastIndex = B.getLastInstructionIndex();
-	    if (lastIndex >= 0) {	
-	      if (statements.length <= lastIndex) {
-	        System.err.println(statements.length);
-	        System.err.println(cfg);
-	        assert lastIndex < statements.length : "bad BB " + B + " and CFG for " + getCGNode(B);
-	      }
-	      SSAInstruction last = statements[lastIndex];
-	      return (last instanceof SSAReturnInstruction);
-	    } else {
-	      return false;
-	    }
-	
- 	}
-
  	public Map<String,CGNode> getCallbacks() {
  		return callbacks;
  	}
@@ -199,6 +180,9 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
 		if (getCGNode(src).equals(getCGNode(dest))) {
 			ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> cfg = getCFG(src);
 			IExplodedBasicBlock d = src.getDelegate();
+			
+			
+			
 			Collection<IExplodedBasicBlock> normalSuccessors = cfg.getNormalSuccessors(d);
 			int nsn = normalSuccessors.size();
 			int snc = cfg.getSuccNodeCount(d);
