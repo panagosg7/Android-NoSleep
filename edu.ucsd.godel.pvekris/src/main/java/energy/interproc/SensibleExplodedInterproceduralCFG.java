@@ -4,23 +4,19 @@ package energy.interproc;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.classLoader.ProgramCounter;
-import com.ibm.wala.dataflow.IFDS.ICFGSupergraph;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.ipa.cfg.ExplodedInterproceduralCFG;
 import com.ibm.wala.ssa.SSAInstruction;
-import com.ibm.wala.ssa.SSAReturnInstruction;
 import com.ibm.wala.ssa.analysis.ExplodedControlFlowGraph;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
-import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
 
@@ -156,7 +152,8 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
 	 * Src and Dst must belong to the same method.
 	 * Src node is the one throwing the exception, so 
 	 * we can search in its instructions and find the 
-	 * ones that throw a certain exception. 
+	 * ones that throw a certain exception.
+	 * TODO: Should the type of the exception matter? 
 	 * @param src
 	 * @param dest
 	 * @return
@@ -164,33 +161,56 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
 	public boolean isExceptionalEdge(
 			BasicBlockInContext<IExplodedBasicBlock> src,
 			BasicBlockInContext<IExplodedBasicBlock> dest) {
-				
+
+		
+		/*
 		for(Iterator<SSAInstruction> it = src.iterator(); it.hasNext(); ) {
 			SSAInstruction i = it.next();
 			Collection<TypeReference> exceptionTypes = i.getExceptionTypes();
 			for(TypeReference et : exceptionTypes) {
-				//TODO: Create a set somewhere with all the exceptions to be ignored
-				
 				if(!et.equals(TypeReference.JavaLangNullPointerException)) {
 					//E.log(1, et.toString());	
 				}
 			}
 		}
+		*/
+		/**
+		 * Edge from the exit of a method to the exit of an other one is
+		 * probably an exceptional one.
+		 */
+		if((!src.getMethod().equals(dest.getMethod())) && src.getDelegate().isExitBlock()
+				&& dest.getDelegate().isExitBlock()) {
+			return true;
+		}
 		
-		if (getCGNode(src).equals(getCGNode(dest))) {
-			ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> cfg = getCFG(src);
-			IExplodedBasicBlock d = src.getDelegate();
-			
-			
-			
-			Collection<IExplodedBasicBlock> normalSuccessors = cfg.getNormalSuccessors(d);
-			int nsn = normalSuccessors.size();
-			int snc = cfg.getSuccNodeCount(d);
-			if (nsn != snc) {
-				IExplodedBasicBlock dst = dest.getDelegate();
-				return (!normalSuccessors.contains(dst));
+		/**
+		 * Exceptional successors from method's CFG
+		 */
+		try {
+			Collection<IExplodedBasicBlock> exceptionalSuccessors = 
+					getCFG(src).getExceptionalSuccessors(src.getDelegate());
+			if (exceptionalSuccessors.contains(dest.getDelegate())) {
+				return true;
 			}
 		}
+		//Ugly: needed to suppress some exceptions
+		catch(IllegalArgumentException np) {
+			if (!src.getMethod().equals(dest.getMethod()) || (src.getNumber() != 0) || (dest.getNumber() != 1)) {
+				throw np;
+			}
+		}
+		
+		if (!getCGNode(src).equals(getCGNode(dest))) { 
+		/**
+		 * If the edge spans between two methods, make sure that:
+		 * the starting vertex is the exit of a method.
+		 */			
+			if(!src.getDelegate().equals(this.getCFG(src).exit())) {	//callee: any point - not the exit
+			//E.log(1, "Found INTER-exceptional edge: " + src.toShortString() + " -> " + dest.toShortString() + " exit: " + this.getCFG(src).exit().getNumber());	 
+				return true;
+			}				
+		}
+		
 		return false;
 	} 	
  	

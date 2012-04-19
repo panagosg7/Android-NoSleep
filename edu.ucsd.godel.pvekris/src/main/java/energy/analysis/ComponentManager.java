@@ -415,8 +415,14 @@ public class ComponentManager {
   public AnalysisResults processComponents() {
      
     
+	  /* 
+	   * Gather intent info 
+	   */
+	getGlobalIntents();
+	  
     /* Build the constraints graph 
-     * (threads should be analyzed before their parents)*/
+     * (threads should be analyzed before their parents)
+     */
     Collection<Component> components = componentMap.values();    
     Graph<Component> constraintGraph = constraintGraph(components);
     BFSIterator<Component> bottomUpIterator = GraphBottomUp.bottomUpIterator(constraintGraph);
@@ -533,6 +539,28 @@ public class ComponentManager {
 	}
 	return specialConditions.getSpecialConditions();
   }
+
+  
+  /****************************************************************************
+   * 
+   * 						INTENT STUFF
+   * 
+   ****************************************************************************/
+  
+  private IntentInvestigation intentCreation = null;
+
+  
+  //TODO: fix return statement
+  private void getGlobalIntents() {
+	if (intentCreation == null) {
+		intentCreation = new IntentInvestigation(this);
+	}
+	intentCreation.prepare();
+	
+	intentCreation.printIntents();
+	
+  }
+
   
   
   /****************************************************************************
@@ -542,14 +570,13 @@ public class ComponentManager {
    ****************************************************************************/
   
   private ThreadInvestigation threadCreation = null;
-  
+
   private HashMap<SSAProgramPoint,Component> getGlobalThreadInvocations() {
 	if (threadCreation == null) {
 		threadCreation = new ThreadInvestigation(this);
 	}
 	return threadCreation.getThreadInvocations();
   }
-   
   
   private HashMap<Component, HashMap<BasicBlockInContext<IExplodedBasicBlock>, 
   	Component>> component2ThreadInvocations = null;

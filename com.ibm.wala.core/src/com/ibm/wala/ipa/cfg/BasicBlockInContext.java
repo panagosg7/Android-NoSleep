@@ -145,16 +145,14 @@ public final class BasicBlockInContext<T extends ISSABasicBlock> extends NodeWit
     return delegate.toString();
   }
   
-  public String toShortString() {
-    
+  public String toShortString() {    
     StringBuffer sb = new StringBuffer();
     sb.append("(");
     sb.append(this.getMethod().getName().toString());
     sb.append(", ");
-    sb.append(this.getNumber());
-    
-    sb.append(", del: ");
-    sb.append(this.getDelegate().getNumber());
+    sb.append(this.getNumber());    
+    //sb.append(", delegate: ");
+    //sb.append(this.getDelegate().getNumber());
     sb.append(")");
     return sb.toString();       
   }

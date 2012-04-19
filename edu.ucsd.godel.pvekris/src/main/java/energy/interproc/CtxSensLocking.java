@@ -48,7 +48,7 @@ import energy.interproc.LockingTabulationSolver.LockingResult;
 import energy.util.E;
 
 public class CtxSensLocking {
-
+	
 	/**
 	 * the supergraph over which tabulation is performed
 	 */
@@ -157,6 +157,8 @@ public class CtxSensLocking {
 	 */
 	private DefUse currDU = null; 
 	private CGNode currNode = null;
+
+	
 	private DefUse getDU(CGNode node) {
 		if(node.equals(currNode)) {
 			return currDU;
@@ -256,11 +258,11 @@ public class CtxSensLocking {
 		}
 	}
 
-	
-	private void exception(BasicBlockInContext<IExplodedBasicBlock>  src,
+	/*
+	private void exception(String string, BasicBlockInContext<IExplodedBasicBlock>  src,
 			BasicBlockInContext<IExplodedBasicBlock>  dest) {
-		if( dest.getNumber() == 199) {
-			//E.log(1, "### To end ("+ dest.getMethod().getName().toString() +"): " + dest.getFirstInstructionIndex() + " :: " + src.getNumber());
+		
+		try {
 			Collection<IExplodedBasicBlock> exceptionalSuccessors = 
 				icfg.getCFG(src).getExceptionalSuccessors(src.getDelegate());
 			boolean foundExc = false;
@@ -276,21 +278,51 @@ public class CtxSensLocking {
 				foundNormal = true;
 			}
 			
-			if(!foundExc && !foundNormal) {
-				E.log(1, src.toShortString());
+			if(!foundExc && !foundNormal) {				
+				E.log(2, "Interproc("+string+"): " + src.toShortString() + " -> " + dest.toShortString());
 			}
-			
 		}
-		
+		catch(IllegalArgumentException np) {
+			if (!src.getMethod().equals(dest.getMethod()) || (src.getNumber() != 0) || (dest.getNumber() != 1)) {
+				throw np;
+			}
+			//E.log(1, "IAE: " + src.toShortString() + " -> " + dest.toShortString());
+		}
+		//}
 	}
+	*/
+	
+	private IntSet getWakeLockTargets(int d1, FieldReference field , SingleLockState st) {
+		
+		Pair<FieldReference, SingleLockState> fact = Pair.make(field, st);
+		int factNum = domain.getMappedIndex(fact);
+		Assertions.productionAssertion(factNum>=0, fact.toString());
+		MutableSparseIntSet result = MutableSparseIntSet.makeEmpty();						
+								
+		if (d1 != factNum) {
+			Pair<FieldReference, SingleLockState> old = domain.getMappedObject(d1);							
+			if (!(old.fst).equals(field)) {
+			//This is a completely different field we're operating on
+			//so put both states								
+				result.add(d1);
+				result.add(factNum);					
+			}
+			else {					
+				result.add(factNum);								
+			}							
+		}
+		else {										
+			result.add(d1);							
+		}						
+		//else they are exactly the same so don't do anything
+		return result;
+	}
+		
 	
 	
-	
-	private class LockingFunctions implements
-			IPartiallyBalancedFlowFunctions<BasicBlockInContext<IExplodedBasicBlock>> {
+	private class LockingFunctions implements IPartiallyBalancedFlowFunctions<BasicBlockInContext<IExplodedBasicBlock>> {
 
 		private static final int PRINT_EXCEPTIONAL = 2;
-		
 		private final TabDomain domain;
 
 		protected LockingFunctions(TabDomain domain) {
@@ -299,8 +331,8 @@ public class CtxSensLocking {
 
 		@Override
 		public IUnaryFlowFunction getNormalFlowFunction(
-				BasicBlockInContext<IExplodedBasicBlock> src,
-				BasicBlockInContext<IExplodedBasicBlock> dest) {
+				final BasicBlockInContext<IExplodedBasicBlock> src,
+				final BasicBlockInContext<IExplodedBasicBlock> dest) {
 			/**
 			 * Exceptional edges should be treated as normal in cases where no
 			 * acquire/release is involved. BE CAREFUL : exceptional edges that
@@ -308,13 +340,12 @@ public class CtxSensLocking {
 			 * determined.
 			 */
 			
-			exception(src, dest);
-			
-			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) { 
-				E.log(PRINT_EXCEPTIONAL, "EXCEPTIONAL Killing [" + src.toShortString() + " -> " + dest.toShortString() +"]"); 
+			//exception("normal", src, dest);
+
+			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {
 				return KillEverything.singleton(); 
 			}
-					
+			
 			if(Opts.ENFORCE_SPECIAL_CONDITIONS) {
 				//Check for special conditions				
 				final SpecialCondition specialCondition = getSpecialCondition(src);
@@ -324,7 +355,7 @@ public class CtxSensLocking {
 						Boolean checkDestination = checkDestination(nc, dest);
 						if (checkDestination!= null) {
 							if (checkDestination.booleanValue()) {
-								E.log(1, "Killing NULL PATH: " + src.toShortString() + " -> " + dest.toShortString());
+								E.log(2, "Killing NULL PATH: " + src.toShortString() + " -> " + dest.toShortString());
 								/*
 								return new IUnaryFlowFunction() {							
 									@Override
@@ -342,22 +373,22 @@ public class CtxSensLocking {
 								return KillEverything.singleton();
 							}
 							else {
-								E.log(1, "NOT NULL PATH: " + src.toShortString() + " -> " + dest.toShortString());
+								E.log(2, "NOT NULL PATH: " + src.toShortString() + " -> " + dest.toShortString());
 							}
 						}
 					}
 					
 					//Look for isHeld() condition
 					else if (specialCondition instanceof IsHeldCondition) {
-						E.log(1, src.toShortString() + " -> " + dest.toShortString() + " : " + specialCondition.toString());
+						E.log(2, src.toShortString() + " -> " + dest.toShortString() + " : " + specialCondition.toString());
 						IsHeldCondition isc = (IsHeldCondition) specialCondition;
 						Boolean checkDestination = checkDestination(isc, dest);						
 						if (checkDestination!= null) {
 							if (checkDestination.booleanValue()) {
-								E.log(1, "ISHELD TRUE PATH: " + src.toShortString() + " -> " + dest.toShortString());
+								E.log(2, "ISHELD TRUE PATH: " + src.toShortString() + " -> " + dest.toShortString());
 							}
 							else {
-								E.log(1, "Killing ISHELD FALSE PATH: " + src.toShortString() + " -> " + dest.toShortString());
+								E.log(2, "Killing ISHELD FALSE PATH: " + src.toShortString() + " -> " + dest.toShortString());
 								return KillEverything.singleton();
 								/*
 								return new IUnaryFlowFunction() {							
@@ -381,7 +412,6 @@ public class CtxSensLocking {
 				}
 			}
 			return IdentityFlowFunction.identity();	
-						
 		}
 
 		@Override
@@ -390,19 +420,14 @@ public class CtxSensLocking {
 				BasicBlockInContext<IExplodedBasicBlock> dest,
 				BasicBlockInContext<IExplodedBasicBlock> ret) {
 			
-			exception(src, dest);
-			
-			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) { 
-				E.log(PRINT_EXCEPTIONAL, "EXCEPTIONAL Killing [" + src.toShortString() + " -> " + dest.toShortString() +"]"); 
-				return KillEverything.singleton(); 
-			}
-
+			//exception("call", src, dest);			
+			//We DO NOT want to check for exceptional edges here
 			FieldReference acquireField = acquire(src);				
 			FieldReference releaseField = release(src);			
 			if ((acquireField != null) || (releaseField != null)) {				
 				return KillEverything.singleton();				
-			}			
-			
+			}
+
 			return IdentityFlowFunction.identity();
 		}
 
@@ -417,18 +442,19 @@ public class CtxSensLocking {
 			 * are not determined.
 			 */
 			
-			exception(src, dest);			
+			//exception("return" , src, dest);		
 			
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(call, dest)) {
 				E.log(PRINT_EXCEPTIONAL, "EXCEPTIONAL Killing [" + src.toShortString() + " -> " + dest.toShortString() + "]");				
 				return KillEverything.singleton();							
 			}
+			
 			FieldReference acquireField = acquire(call);
 			FieldReference releaseField = release(call);			
 			if ((acquireField != null) || (releaseField != null)) {				
 				return KillEverything.singleton();				
 			}			
-			return IdentityFlowFunction.identity();
+			return IdentityFlowFunction.identity();			
 			
 		}
 
@@ -441,20 +467,21 @@ public class CtxSensLocking {
 				final BasicBlockInContext<IExplodedBasicBlock> src,
 				final BasicBlockInContext<IExplodedBasicBlock> dest) {					
 			
-			exception(src, dest);
+			//exception("call-return", src, dest);
+			
+			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {			
+				E.log(PRINT_EXCEPTIONAL, "EXCEPTIONAL Killing [" + src.toShortString() + " -> " + dest.toShortString() + "]");				
+				return KillEverything.singleton();				
+			}
+
 			/**
 			 * Exceptional edges should be treated as normal in cases where no
 			 * acquire/release is involved. BE CAREFUL : exceptional edges that
 			 * span across multiple procedures are not determined.
 			 */
-			final FieldReference acquiredField = acquire(src);			
-			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest) /*&& (acquiredField != null)*/) {			
-				E.log(PRINT_EXCEPTIONAL, "EXCEPTIONAL Killing [" + src.toShortString() + " -> " + dest.toShortString() + "]");				
-				return KillEverything.singleton();				
-			}
-			
+			final FieldReference acquiredField = acquire(src);						
 			if (acquiredField != null) {
-				E.log(2, "Acq: " + acquiredField.toString());				
+				E.log(2, "Acq: " + acquiredField.toString());
 				return new IUnaryFlowFunction() {
 					@Override
 					public IntSet getTargets(int d1) {									
@@ -470,12 +497,6 @@ public class CtxSensLocking {
 			}
 
 			final FieldReference releasedField = release(src);
-			//XXX: release might throw an exception. We're still not propagating the info over there.
-			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest) /*&& (releasedField != null)*/) {			
-				E.log(PRINT_EXCEPTIONAL, "Killing [" + src.toShortString() + " -> " + dest.toShortString() + "]");				
-				return KillEverything.singleton();				
-			}
-			
 			if (releasedField != null) {
 				E.log(2, "Rel: " + releasedField.toString());				
 				return new IUnaryFlowFunction() {
@@ -497,46 +518,16 @@ public class CtxSensLocking {
 		
 		
 		
-		private IntSet getWakeLockTargets(int d1, FieldReference field , SingleLockState st) {
-			
-			Pair<FieldReference, SingleLockState> fact = Pair.make(field, st);
-			int factNum = domain.getMappedIndex(fact);
-			Assertions.productionAssertion(factNum>=0, fact.toString());
-			MutableSparseIntSet result = MutableSparseIntSet.makeEmpty();						
-									
-			if (d1 != factNum) {
-				Pair<FieldReference, SingleLockState> old = domain.getMappedObject(d1);							
-				if (!(old.fst).equals(field)) {
-				//This is a completely different field we're operating on
-				//so put both states								
-					result.add(d1);
-					result.add(factNum);					
-				}
-				else {					
-					result.add(factNum);								
-				}							
-			}
-			else {										
-				result.add(d1);							
-			}						
-			//else they are exactly the same so don't do anything
-			return result;
-		}
-	
-		
-		
-		
-
 		@Override
 		public IUnaryFlowFunction getCallNoneToReturnFlowFunction(
 				final BasicBlockInContext<IExplodedBasicBlock> src,
-				BasicBlockInContext<IExplodedBasicBlock> dest) {
-			exception(src, dest);
+				final BasicBlockInContext<IExplodedBasicBlock> dest) {
+			//exception("call-none-return", src, dest);
 			
-			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {			
-				E.log(PRINT_EXCEPTIONAL, "EXCEPTIONAL Killing [" + src.toShortString() + " -> " + dest.toShortString() + "]");				
+			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {
 				return KillEverything.singleton();
 			}
+
 			
 			/**
 			 * if we're missing callees, just keep what information we have.
@@ -582,18 +573,19 @@ public class CtxSensLocking {
 				BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest) {
 			
-			exception(src, dest);
-			
-			
+			//exception("unbal-return", src, dest);
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {			
-				E.log(PRINT_EXCEPTIONAL, "EXCEPTIONAL Killing [" + src.toShortString() + " -> " + dest.toShortString() + "]");				
+				E.log(PRINT_EXCEPTIONAL,  "EXCEPTIONAL Killing[" + src.toShortString() + " -> " + dest.toShortString() +"]");
 				return KillEverything.singleton();				
 			}
-			
 			return IdentityFlowFunction.identity();
 		}
 
 	}
+	//End of Locking Flow Functions
+	//******************************
+	
+	
 	
 	protected IntSet mergeStates(IntSet x, int j) {
 		IntIterator it = x.intIterator();
@@ -766,8 +758,8 @@ public class CtxSensLocking {
 		LockingResult result = null;
 		try {
 			result = solver.solve();
+		
 		} catch (CancelException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return result;
