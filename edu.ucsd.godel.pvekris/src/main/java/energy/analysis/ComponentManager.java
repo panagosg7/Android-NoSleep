@@ -103,6 +103,12 @@ public class ComponentManager {
   }
   
 
+  
+  /****************************************************************************
+   * 
+   * 						RESOLVE COMPONENTS
+   * 
+   ****************************************************************************/
   /**
    * 2. Resolve components based on the root methods of the call graph (Callbacks)
    */
@@ -406,9 +412,11 @@ public class ComponentManager {
   }
 
 
-
-  /****************************************************************************/
-  
+  /****************************************************************************
+   * 
+   * 						PROCESS COMPONENTS
+   * 
+   ****************************************************************************/  
   /**
    * 2. Process the components that have been resolved
    */
@@ -418,7 +426,7 @@ public class ComponentManager {
 	  /* 
 	   * Gather intent info 
 	   */
-	getGlobalIntents();
+	//getGlobalIntents();
 	  
     /* Build the constraints graph 
      * (threads should be analyzed before their parents)
@@ -557,7 +565,7 @@ public class ComponentManager {
 	}
 	intentCreation.prepare();
 	
-	intentCreation.printIntents();
+	//intentCreation.printIntents();
 	
   }
 

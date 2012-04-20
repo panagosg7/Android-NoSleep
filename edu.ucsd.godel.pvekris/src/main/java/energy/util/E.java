@@ -8,7 +8,7 @@ import java.util.List;
 import energy.analysis.Opts;
 
 public class E {
-  private static final int MAX_METHOD_NAME = 50;  
+  private static final int MAX_METHOD_NAME = 40;  
   static int DEBUG_LEVEL = 1;   /* higher means more details */
 
   private static String LOG_FILE = "log.out";

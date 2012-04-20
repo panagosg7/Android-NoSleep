@@ -116,35 +116,34 @@ public class CtxSensLocking {
 	private FieldReference acquire(BasicBlockInContext<IExplodedBasicBlock> bb) {
 		return lockingCall(bb, acquireSigs);
 	}
-	
 
 	private FieldReference release(BasicBlockInContext<IExplodedBasicBlock> bb) {
 		return lockingCall(bb, releaseSigs);
 	}
 	
-		
 	//TODO: cache results bb |-> field	
 	private FieldReference lockingCall(BasicBlockInContext<IExplodedBasicBlock> bb, 
 			Collection<String> acceptedSigs) {		
 		final IExplodedBasicBlock ebb = bb.getDelegate();		
-		//XXX: is this the only instruction in the basic block ?
-		SSAInstruction instruction = ebb.getInstruction();		
+		//In the exploded CFG there is this only one instruction in the basic block
+		SSAInstruction instruction = ebb.getInstruction();
 		if (instruction instanceof SSAInvokeInstruction) {
-			final SSAInvokeInstruction invInstr = (SSAInvokeInstruction) instruction;		
+			final SSAInvokeInstruction invInstr = (SSAInvokeInstruction) instruction;
 			String methSig = invInstr.getDeclaredTarget().getSignature().toString();
 			if (acceptedSigs.contains(methSig)) {								
 				int use = invInstr.getUse(0);				
 				CGNode node = bb.getNode();
 				DefUse du = getDU(node);					
 				SSAInstruction def = du.getDef(use);
-				if (def instanceof SSAGetInstruction) {				
+				//Lock is in a field
+				if (def instanceof SSAGetInstruction) {
 					SSAGetInstruction get = (SSAGetInstruction) def;					
 					FieldReference field = get.getDeclaredField();						
 					E.log(2, "Operating on field: " + field );				
 					return field;
 				}
 				else {
-					Assertions.UNREACHABLE("Could not get field");
+					Assertions.UNREACHABLE("Could not get field from instruction: " + def.toString());
 				}
 			}									
 		}

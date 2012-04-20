@@ -131,7 +131,7 @@ public class WakeLockManager {
 		}
 		
 		public String toString() {
-			return ("T:" + types.toString() + " RC:" + referenceCounted);
+			return ("T:" + ((types==null)?"NULL":types.toString()) + " RC:" + referenceCounted);
 		}		
 	}
 	
@@ -275,11 +275,6 @@ public class WakeLockManager {
 						lockType = resolveLockTypeFromVar(ir, du, inv.getUse(1));
 						//The WakeLock is being assigned to the Def part of the instruction
 						int lockNum = inv.getDef();
-						/*// TO GO AWAY ...
-						PointerKey pk = cg.getPointerAnalysis().getHeapModel().getPointerKeyForLocal(n, lockNum);								 
-						OrdinalSet<InstanceKey> pointsToSet = cg.getPointerAnalysis().getPointsToSet(pk);						
-						E.log(1, "PTSet[" + pk.toString() + "]: " + pointsToSet);
-						*/
 						//The use should be an instruction right next to the one creating the lock 
 						Iterator<SSAInstruction> uses = du.getUses(lockNum);						
 						//TODO: it does not have to be necessarily the next one ...
@@ -303,7 +298,7 @@ public class WakeLockManager {
 						}
 						else {
 						/**
-						 * This is the case of local variables used as WakeLocks, eg:
+						 * This is the case of LOCAL VARIABLES used as WakeLocks, eg:
 						 * try {
           					...
           					} catch (FileNotFoundException localObject1)
@@ -326,6 +321,7 @@ public class WakeLockManager {
 							SSAProgramPoint pp = new SSAProgramPoint(n, instr);
 							WakeLockInfo wli = variousWakeLocks.get(new LocalWakeLock(pp));
 							if(wli != null) {
+								E.log(1, "LockType: " + lockType.toString());
 								wli.setLockType(lockType);
 							}
 							else {

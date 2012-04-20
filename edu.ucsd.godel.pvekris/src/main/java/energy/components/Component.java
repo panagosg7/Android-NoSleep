@@ -669,9 +669,27 @@ private String getTargetColor(ISSABasicBlock ebb) {
 	    			sts.add(obj.snd);	    			
 	    		}
 	    		q.put(obj.fst, sts);
+	    		
+	    		/**
+		    	 * Keep some info about the states that are of interest to us
+		    	 */
+		    	if (obj.snd.isMustbeAcquired()) {
+		    	//This program point is kept to high power state by this specific field 
+		    		SSAInstruction instruction = bb.getDelegate().getInstruction();
+		    		if (instruction instanceof SSAInvokeInstruction) {
+		    			SSAInvokeInstruction inv = (SSAInvokeInstruction) instruction;
+		    			E.log(1, "HIGH POWER: " + inv.toString());
+		    		}
+		    	}
+	    		
 	    	}
 	    	stateHash.put(pair, q);
+	      
+	    	
+	      
 	      }
+	      
+	      
 	      else {
 	    	/* Context insensitive (TODO: needs fixing)*/
 	    	  SingleLockState singleLockState = new SingleLockState(Quartet.make(
