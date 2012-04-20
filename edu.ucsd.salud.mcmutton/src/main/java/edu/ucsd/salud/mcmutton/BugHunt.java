@@ -98,46 +98,7 @@ public class BugHunt {
 
 		dumpReachability(fb132.interestingCallSites(), "call_132.json");
 		dumpReachability(fb130.interestingCallSites(), "call_130.json");
-		
-//		Map<MethodReference, Set<MethodReference>> reach132 = fb132.interestingReachability();
-//		Map<MethodReference, Set<MethodReference>> reach130 = fb130.interestingReachability();
-		
-//		dumpReachability(reach132, "reach_132.json");
-//		dumpReachability(reach130, "reach_130.json");
-		
-//		for (MethodReference mr: reach132.keySet()) {
-//			if (!reach130.containsKey(mr)) {
-//				System.out.println("130 missing: " + mr + " :: " + reach132.get(mr));
-//			} else {
-//				Set<MethodReference> s132 = reach132.get(mr);
-//				Set<MethodReference> s130 = reach130.get(mr);
-//				
-//				Set<MethodReference> union = new HashSet<MethodReference>();
-//				union.addAll(s132);
-//				union.addAll(s130);
-//				
-//				StringBuilder sb = new StringBuilder();
-//				
-//				sb.append(mr);
-//				sb.append(" :: ");
-//				
-//				boolean difference = false;
-//				
-//				for (MethodReference smr: union) {
-//					boolean in132 = s132.contains(smr);
-//					boolean in130 = s130.contains(smr);
-//					
-//					if (in130 != in132) {
-//						if (in130) sb.append(" -" + mr.toString());
-//						else sb.append(" +" + mr.toString());
-//						difference = true;
-//					}
-//					
-//				}
-//				
-//				if (difference) System.out.println(sb.toString());
-//			}
-//		} 
+
 	}
 	
 
@@ -153,7 +114,7 @@ public class BugHunt {
 		/* The applications you specify here need to be in apk_collection */
 		
 //		theSet.add("AndTweet");
-		theSet.add("K-9 Mail");
+//		theSet.add("K-9 Mail");
 //		theSet.add("aFlashlight");			//conversion error
 //		theSet.add("AndroBOINC");
 //		theSet.add("FBReader");				//conversion error
@@ -192,7 +153,7 @@ public class BugHunt {
 //		theSet.add("aLogcat");
 		
 //		theSet.add("Android Agenda Widget");
-//		theSet.add("ServicesDemo");			//toy example
+		theSet.add("ServicesDemo");			//toy example
 		
 		
 		
@@ -227,7 +188,7 @@ public class BugHunt {
 				LOGGER.warning("Retarget failed: " + e.toString());
 			}
 			
-			if (apk.successfullyOptimized()) {
+			if (apk.ensureSuccessfullyOptimized()) {
 				try {
 					panosResult = apk.panosAnalyze();
 				} catch(Exception e) {

@@ -376,6 +376,10 @@ public class ApkInstance {
 		return mPreferredTranslation.optimizationSuccess();
 	}
 	
+	public boolean ensureSuccessfullyOptimized() throws IOException, RetargetException {
+	    return mPreferredTranslation.successfullyOptimized();
+	}
+	
 	public void requiresRetargetedJar() throws IOException, RetargetException {
 	    if (!mPreferredTranslation.hasRetargetedJar()) mPreferredTranslation.buildRetargetedJar();
 	}

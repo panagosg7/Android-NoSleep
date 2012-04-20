@@ -225,7 +225,7 @@ public class SensibleExplodedInterproceduralCFG extends ExplodedInterproceduralC
  	}
  	
  	public void setSpecConditions(HashMap<BasicBlockInContext<IExplodedBasicBlock>, SpecialCondition> m) {    
-    this.ebbToSpecConditions = m;
+ 		this.ebbToSpecConditions = m;
  	}
   
  	

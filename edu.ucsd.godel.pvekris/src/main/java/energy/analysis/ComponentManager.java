@@ -655,7 +655,7 @@ public class ComponentManager {
 		  SensibleExplodedInterproceduralCFG icfg = c.getICFG();
 		  //Iterate over the thread invocations
 		  HashMap<SSAProgramPoint, SpecialCondition> globalSpecCond = getGlobalSpecialConditions();	
-		  //E.log(1, "checking special cond: " + globalSpecCond);
+		  E.log(1, "checking special cond: " + globalSpecCond);
 		  //Check all the instructions ** from the exploded ** graph
 		  for(Iterator<BasicBlockInContext<IExplodedBasicBlock>> it = icfg.iterator(); it.hasNext(); ) {			
 			  BasicBlockInContext<IExplodedBasicBlock> bbic = it.next();			  
@@ -667,7 +667,7 @@ public class ComponentManager {
 				  SpecialCondition cond = globalSpecCond.get(ssapp);
 				  if (cond != null) {
 					  compCond.put(bbic, cond);
-					  //E.log(1, "Found: " + ebb.toString());
+					  E.log(1, "Found: " + ebb.toString());
 				  }			
 			  }
 		  }		  

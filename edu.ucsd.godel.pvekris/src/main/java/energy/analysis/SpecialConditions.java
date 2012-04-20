@@ -65,8 +65,8 @@ public class SpecialConditions {
 		
 		public String toString() {
 			return ("[(" + instrBlock.getMethod().getName() + ", " + instrBlock.getNumber() + ")"  
-			+ " true: (" + trueSucc.getMethod().getName().toString()  + ", " + trueSucc.getLastInstructionIndex() + ")" 
-			+ " false: (" + falseSucc.getMethod().getName().toString() + ", " + falseSucc.getLastInstructionIndex() + ")]");
+			+ " true: (" + trueSucc.getMethod().getName().toString()  + ", " + trueSucc.getNumber() + ")" 
+			+ " false: (" + falseSucc.getMethod().getName().toString() + ", " + falseSucc.getNumber() + ")]");
 		}
 	}
 	
@@ -136,24 +136,6 @@ public class SpecialConditions {
 								FieldReference field1 = getFieldForNullCheck(ir, du, use1);
 								FieldReference field2 = getFieldForNullCheck(ir, du, use2);
 								
-								/*
-								SSAInstruction def = du.getDef(use1);
-								if (def instanceof SSAGetInstruction) {
-									SSAGetInstruction get = (SSAGetInstruction) def;			
-									FieldReference field = get.getDeclaredField();
-									
-									E.log(1, "f1: " + ((field1==null)?"null":field1.toString()));
-									E.log(1, "f2: " + ((field2==null)?"null":field2.toString()));
-										
-																			
-									//E.log(1, "Looking for: " + field.toString());
-									if (cg.getLockFieldInfo().isWakeLock(field)) {
-										E.log(1, "Found");
-									};			
-								}
-								*/
-								
-								
 								if ((field1 != null && ir.getSymbolTable().isNullConstant(use2)) ||
 									(field2 != null && ir.getSymbolTable().isNullConstant(use1))) {
 									
@@ -163,12 +145,12 @@ public class SpecialConditions {
 									ISSABasicBlock falseSucc = succNodesArray.get(1);									
 									if (field1 != null){
 										NullCondition c = new NullCondition(pp.getBasicBlock(), field1, trueSucc, falseSucc);
-										//E.log(1, c.toString());										
+										E.log(1, c.toString());										
 										ppToSpecCondition.put(pp, c);
 									}
 									else {
 										NullCondition c = new NullCondition(pp.getBasicBlock(), field2, trueSucc, falseSucc);
-										//E.log(1, c.toString());
+										E.log(1, c.toString());
 										ppToSpecCondition.put(pp, c);
 									}
 								}		

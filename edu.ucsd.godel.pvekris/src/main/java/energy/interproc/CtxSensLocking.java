@@ -354,7 +354,7 @@ public class CtxSensLocking {
 						Boolean checkDestination = checkDestination(nc, dest);
 						if (checkDestination!= null) {
 							if (checkDestination.booleanValue()) {
-								E.log(2, "Killing NULL PATH: " + src.toShortString() + " -> " + dest.toShortString());
+								E.log(1, "Killing NULL PATH: " + src.toShortString() + " -> " + dest.toShortString());
 								/*
 								return new IUnaryFlowFunction() {							
 									@Override
@@ -372,7 +372,7 @@ public class CtxSensLocking {
 								return KillEverything.singleton();
 							}
 							else {
-								E.log(2, "NOT NULL PATH: " + src.toShortString() + " -> " + dest.toShortString());
+								E.log(1, "NOT NULL PATH: " + src.toShortString() + " -> " + dest.toShortString());
 							}
 						}
 					}
@@ -384,11 +384,12 @@ public class CtxSensLocking {
 						Boolean checkDestination = checkDestination(isc, dest);						
 						if (checkDestination!= null) {
 							if (checkDestination.booleanValue()) {
-								E.log(2, "ISHELD TRUE PATH: " + src.toShortString() + " -> " + dest.toShortString());
+								E.log(1, "ISHELD TRUE PATH: " + src.toShortString() + " -> " + dest.toShortString());
 							}
 							else {
-								E.log(2, "Killing ISHELD FALSE PATH: " + src.toShortString() + " -> " + dest.toShortString());
+								E.log(1, "Killing ISHELD FALSE PATH: " + src.toShortString() + " -> " + dest.toShortString());
 								return KillEverything.singleton();
+								//May have to do more fine grained changes to each WakeLock
 								/*
 								return new IUnaryFlowFunction() {							
 									@Override

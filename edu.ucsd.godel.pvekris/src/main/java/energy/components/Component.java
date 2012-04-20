@@ -670,17 +670,21 @@ private String getTargetColor(ISSABasicBlock ebb) {
 	    		}
 	    		q.put(obj.fst, sts);
 	    		
-	    		/**
-		    	 * Keep some info about the states that are of interest to us
-		    	 */
-		    	if (obj.snd.isMustbeAcquired()) {
-		    	//This program point is kept to high power state by this specific field 
-		    		SSAInstruction instruction = bb.getDelegate().getInstruction();
-		    		if (instruction instanceof SSAInvokeInstruction) {
-		    			SSAInvokeInstruction inv = (SSAInvokeInstruction) instruction;
-		    			E.log(1, "HIGH POWER: " + inv.toString());
-		    		}
-		    	}
+	    		
+	    		
+	    		if(Opts.PRINT_HIGH_STATE) {
+		    		/**
+			    	 * Keep some info about the states that are of interest to us
+			    	 */
+			    	if (obj.snd.isMustbeAcquired()) {
+			    	//This program point is kept to high power state by this specific field 
+			    		SSAInstruction instruction = bb.getDelegate().getInstruction();
+			    		if (instruction instanceof SSAInvokeInstruction) {
+			    			SSAInvokeInstruction inv = (SSAInvokeInstruction) instruction;
+			    			E.log(1, "HIGH POWER: " + inv.toString());
+			    		}
+			    	}
+	    		}
 	    		
 	    	}
 	    	stateHash.put(pair, q);
