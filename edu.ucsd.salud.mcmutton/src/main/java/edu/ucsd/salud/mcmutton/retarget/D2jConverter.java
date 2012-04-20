@@ -17,6 +17,7 @@ public class D2jConverter implements DexConverter {
 	public D2jConverter(ApkPaths paths) {
 		mPaths = paths;
 	}
+	
 	public void convert() throws IOException, RetargetException {
 		File target = this.getJarTarget();
 		File source = mPaths.apk;
@@ -39,7 +40,7 @@ public class D2jConverter implements DexConverter {
 		w.print(0);
 		w.close();
 		
-		System.err.println("whee");
+		ApkInstance.LOGGER.info("Conversion Successful!");
 	}
 
 	public File getTarget() {

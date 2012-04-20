@@ -14,7 +14,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import net.sf.json.JSONArray;
@@ -36,7 +35,6 @@ import com.ibm.wala.util.debug.UnimplementedError;
 
 import edu.ucsd.salud.mcmutton.ApkCollection.ApkApplication;
 import edu.ucsd.salud.mcmutton.apk.Wala;
-import energy.util.E;
 
 public class BugHunt {
 	
@@ -154,22 +152,23 @@ public class BugHunt {
 		
 		/* The applications you specify here need to be in apk_collection */
 		
-		//theSet.add("AndTweet");
-		//theSet.add("aFlashlight");		//conversion error
-		//theSet.add("AndroBOINC");
-		//theSet.add("FBReader");			//conversion error
-		//theSet.add("Phonebook 2.0");		//conversion error
-		//theSet.add("ICQ");
+//		theSet.add("AndTweet");
+		theSet.add("K-9 Mail");
+//		theSet.add("aFlashlight");			//conversion error
+//		theSet.add("AndroBOINC");
+//		theSet.add("FBReader");				//conversion error
+//		theSet.add("Phonebook 2.0");		//conversion error
+//		theSet.add("ICQ");					
 //		theSet.add("DISH");					//OK
 //		theSet.add("JuiceDefender");		//OK
-		//theSet.add("Twidroyd");			//conversion error
-		//theSet.add("WebSMS");				//conversion error
+//		theSet.add("Twidroyd");				//conversion error
+//		theSet.add("WebSMS");				//conversion error
 //		theSet.add("3D Level");				//OK
-		//theSet.add("ColorNote");			//OK		
-		//theSet.add("Call Control");		//conversion error
-		//theSet.add("Slice Slice");		//Runnable exception
-		//theSet.add("Geohash Droid");		//conversion error
-		//theSet.add("Google Voice");		//conversion error
+//		theSet.add("ColorNote");			//OK
+//		theSet.add("Call Control");			//conversion error
+//		theSet.add("Slice Slice");			//Runnable exception
+//		theSet.add("Geohash Droid");		//conversion error
+//		theSet.add("Google Voice");		
 //		theSet.add("AdvancedMapViewer");	//conversion error
 //		theSet.add("Farm Tower");
 //		theSet.add("Pikachu");				//OK
@@ -177,14 +176,14 @@ public class BugHunt {
 //		theSet.add("RMaps");				//OK
 //		theSet.add("Tangram");
 //		theSet.add("2 Player Reactor");		//has recursive threads
-		//theSet.add("TagReader");			//conversion error
+//		theSet.add("TagReader");			//conversion error
 //		theSet.add("ReChat");				//conversion error
-//		theSet.add("Foursquare");
-//		theSet.add("Brain Sooth");
+//		theSet.add("Foursquare");			//OK
+//		theSet.add("Brain Sooth");			//OK
 //		theSet.add("Maxthon");				//conversion error
-//		theSet.add("Craigslist");
+//		theSet.add("Craigslist");			//OK
 //		theSet.add("Alchemy");
-//		theSet.add("Strawberry Shortcake PhoneImage");
+//		theSet.add("Strawberry Shortcake PhoneImage");		//conversion error
 //		theSet.add("Farm Tower");
 		
 //		theSet.add("InstaFetch PRO");
@@ -192,7 +191,7 @@ public class BugHunt {
 //		theSet.add("imo");
 //		theSet.add("aLogcat");
 		
-		theSet.add("Android Agenda Widget");
+//		theSet.add("Android Agenda Widget");
 //		theSet.add("ServicesDemo");			//toy example
 		
 		
@@ -205,7 +204,6 @@ public class BugHunt {
 	
 	public static void runPatternAnalysis(ApkCollection collection, Set<String> theSet) 
 			throws ApkException, IOException, RetargetException, WalaException, CancelException {
-		acqrelDatabaseFile = new File("/home/pvekris/dev/apk_scratch/acqrel_status.json");		
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);		
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 		Map<Wala.UsageType, Integer> histogram = new HashMap<Wala.UsageType, Integer>();
@@ -406,10 +404,47 @@ public class BugHunt {
 	
 		for (Object key: acqrel_status.keySet()) {
 			String app_name = ApkCollection.cleanApkName((String)key);
+			System.out.println("\n" + app_name + "\n");			
 			ApkInstance apk = collection.getApplication(app_name).getPreferred();
 			apk.buildOptimizedJava();
+			System.out.println("-------------------------------------------------------------------------------");
 		}
 	}
+	
+	/**
+	 * Just do the optimization.
+	 * If the version we have is optimized do not try to optimize again.
+	 * @param collection
+	 * @throws ApkException
+	 * @throws IOException
+	 * @throws RetargetException
+	 * @throws WalaException
+	 * @throws CancelException
+	 */
+	public static void optimize(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
+		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
+		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
+	
+		for (Object key: acqrel_status.keySet()) {
+			String app_name = ApkCollection.cleanApkName((String)key);
+			System.out.println("\n" + app_name + "\n");			
+			ApkInstance apk = collection.getApplication(app_name).getPreferred();
+			if (apk.successfullyOptimized()) {
+				ApkInstance.LOGGER.info("Already optimized");
+			}
+			else {
+				try {
+					apk.buildOptimizedJava();
+				}
+				catch (RetargetException e) {
+					ApkInstance.LOGGER.warning("Optimization failed");
+				}
+			}
+			System.out.println("-------------------------------------------------------------------------------");
+		}
+	}
+	
+	
 	
 	public static void runPanos(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
 //		ApkInstance apk = collection.getApplication("DISH").getPreferred();
@@ -528,6 +563,7 @@ public class BugHunt {
 		options.addOption(new Option("P", "phantom-counts", false, "list phantom counts per app"));
 		options.addOption(new Option("e", "opt-exceptions", false, "list histogram of optimization exception types"));
 		options.addOption(new Option("f", "failed", false, "list failed conversions"));
+		options.addOption(new Option("r", "optimize", false, "optimize unoptimized versions"));
 		options.addOption(new Option("r", "reoptimize", false, "re-optimize failed conversions"));
 		options.addOption(new Option("s", "patterns", false, "perform patterns analysis and print results"));
 		options.addOption(new Option("S", "test-patterns", false, "perform pattern analysis on a small subset of apks"));
@@ -549,7 +585,7 @@ public class BugHunt {
 		
 		try {
 	    	ApkCollection collection = new ApkCollection();
-	    	
+			acqrelDatabaseFile = new File("/home/pvekris/dev/apk_scratch/acqrel_status.json");		
 	    	CommandLine line = parser.parse(options,  args);
 
 	    	if (line.hasOption("flush-phantoms")) {
@@ -562,6 +598,8 @@ public class BugHunt {
 	    			dumpExceptions(collection);
 	    		} else if (line.hasOption("failed")) {
 	    			dumpFailedConversions(collection);
+	    		} else if (line.hasOption("optimize")) {
+	    			optimize(collection);
 	    		} else if (line.hasOption("reoptimize")) {
 	    			reoptimize(collection);
 	    		} else if (line.hasOption("patterns")) {

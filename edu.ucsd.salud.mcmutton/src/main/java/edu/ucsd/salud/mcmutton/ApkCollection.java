@@ -231,9 +231,11 @@ public class ApkCollection {
 	
 	public ApkApplication getApplication(String name) {
 		File f = new File(mCollectionRoot + "/" + name);
-		
 		if (f.exists()) {
-			return new ApkApplication(f);
+			System.out.println("Creating: " + f.toString());
+			ApkApplication apkApplication = new ApkApplication(f);
+			System.out.println("Created: " + apkApplication.toString());
+			return apkApplication;
 		} else {			
 			return null;
 		}
@@ -274,12 +276,13 @@ public class ApkCollection {
 		
 		public ApkApplication(File path) {
 			mPath = path;
+			System.out.println("Setting: " + mPath );
 		}
 		
 		List<ApkVersion> listVersions() {
 			if (mVersions == null) {
 				ArrayList<ApkVersion> list = new ArrayList<ApkVersion>();
-				
+				System.out.println(mPath);
 				for (File sub: mPath.listFiles()) {
 					list.add(new ApkVersion(sub));
 				}
@@ -295,8 +298,9 @@ public class ApkCollection {
 			return mPath.getName();
 		}
 		
+		List<ApkVersion> vers = listVersions();
+		
 		public ApkInstance getPreferred() throws IOException {
-			List<ApkVersion> vers = listVersions();
 			if (vers.size() == 0) throw new FileNotFoundException("No versions for " + mPath);
 			return vers.get(vers.size()-1).getPreferred();
 		}

@@ -114,6 +114,9 @@ public class ApkInstance {
 		mDedTranslation = new Translation(new DedConverter(mPaths), new SootOptimize(mPaths, fetchAndroidVersion));
 		mDex2JarTranslation = new Translation(new D2jConverter(mPaths), new SootD2jOptimize(mPaths, fetchAndroidVersion));
 
+		/*
+		 * Try ded translation first and if it fails it then does d2j
+		 */
 		if (mDedTranslation.mOptimize.attempted() && !mDedTranslation.mOptimize.success()) {
 			mPreferredTranslation = mDex2JarTranslation;
 		} else {
@@ -369,7 +372,8 @@ public class ApkInstance {
 	}
 	
 	public boolean successfullyOptimized() throws IOException, RetargetException {
-	    return mPreferredTranslation.successfullyOptimized();
+	    //return mPreferredTranslation.successfullyOptimized();
+		return mPreferredTranslation.optimizationSuccess();
 	}
 	
 	public void requiresRetargetedJar() throws IOException, RetargetException {

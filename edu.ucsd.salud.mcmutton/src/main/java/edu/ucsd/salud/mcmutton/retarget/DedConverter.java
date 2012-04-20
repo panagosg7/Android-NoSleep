@@ -22,7 +22,7 @@ public class DedConverter implements DexConverter {
 		File target = mPaths.dedRetargeted;
 		File source = mPaths.apk;
 		
-		ApkInstance.LOGGER.info("Attempting to retarget to " + target);
+		ApkInstance.LOGGER.info("Attempting to ded retarget to " + target);
 		
 		target.mkdirs();
 				
