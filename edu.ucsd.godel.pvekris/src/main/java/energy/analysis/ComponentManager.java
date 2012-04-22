@@ -39,6 +39,7 @@ import energy.components.AsyncTask;
 import energy.components.BaseAdapter;
 import energy.components.BroadcastReceiver;
 import energy.components.Component;
+import energy.components.Component.CallBack;
 import energy.components.CompoundButton;
 import energy.components.ContentProvider;
 import energy.components.Handler;
@@ -49,8 +50,10 @@ import energy.components.PhoneStateListener;
 import energy.components.RunnableThread;
 import energy.components.SensorEventListener;
 import energy.components.Service;
+import energy.components.ServiceConnection;
 import energy.components.View;
 import energy.components.ViewOnClickListener;
+import energy.components.WebViewClient;
 import energy.interproc.SensibleExplodedInterproceduralCFG;
 import energy.util.E;
 import energy.util.GraphBottomUp;
@@ -271,6 +274,9 @@ public class ComponentManager {
         if (ancName.equals("Landroid/os/Handler")) {
             comp = new Handler(originalCG, klass, root);
         }
+        if (ancName.equals("Landroid/webkit/WebViewClient")) {
+            comp = new WebViewClient(originalCG, klass, root);
+        }
         if (ancName.equals("Landroid/telephony/PhoneStateListener")) {
             comp = new PhoneStateListener(originalCG, klass, root);
         }
@@ -342,30 +348,27 @@ public class ComponentManager {
         if (implName.equals("Ljava/lang/Runnable")) {
           comp = new RunnableThread(originalCG, klass, root);
         }
-        
         if (implName.equals("Landroid/widget/AdapterView$OnItemClickListener")) {
           comp = new AdapterViewOnItemClickListener(originalCG, klass, root);
         }
-        
         if (implName.equals("Landroid/view/View$OnClickListener")) {
         	comp = new ViewOnClickListener(originalCG, klass, root);
         }
-        
         if (implName.equals("Landroid/content/SharedPreferences$OnSharedPreferenceChangeListener")
             || implName.equals("Landroid/preference/Preference$OnPreferenceChangeListener")) {
         	comp = new OnSharedPreferenceChangeListener(originalCG, klass, root);
         }
-        
         if (implName.equals("Landroid/location/LocationListener")) {
         	comp = new LocationListener(originalCG, klass, root);
         }
-        
         if (implName.startsWith("Landroid/widget/CompoundButton")) {
         	comp = new CompoundButton(originalCG, klass, root);
         }
-        
         if (implName.startsWith("Landroid/hardware/SensorEventListener")) {
         	comp = new SensorEventListener(originalCG, klass, root);
+        }
+        if (implName.startsWith("Landroid/content/ServiceConnection")) {
+        	comp = new ServiceConnection(originalCG, klass, root);
         }
         
         if (comp != null) break;
@@ -445,8 +448,6 @@ public class ComponentManager {
     while (bottomUpIterator.hasNext()) {
     	Component component = bottomUpIterator.next();
     	
-    	E.log(2, component.toString());
-    	
         /* assert that dependencies are met */
     	Collection<Component> compDep = component.getThreadDependencies();
     	
@@ -485,7 +486,24 @@ public class ComponentManager {
 	    		  continue;
 	    	  }    	 
 	      }       
-	      E.log(2, component.toString());
+	      
+	      //DEBUG
+	      /*
+	      E.log(1, component.toString());
+	      if (component.toString().equals("Runnable thread: Lcom/imo/android/imoim/ImoService$ConnectionThread")) {
+	    	  HashSet<CallBack> callbacks = component.getCallbacks();
+	    	  for(CallBack cb : callbacks) {
+	    		  E.log(1, "\t" + cb.toString());
+	    	  }
+	    	  
+	    	  for (Iterator<CGNode> it = component.getCallgraph().iterator(); it.hasNext(); ) {
+	    		CGNode next = it.next();
+	    		E.log(1, "\tNode: " + next.getMethod().getSignature().toString());	    		  
+	    	  } 
+	    	  
+	      }
+	      */
+	      //DEBUG	      
 	      
 	            
 	      if (Opts.DO_CS_ANALYSIS) {
@@ -504,7 +522,8 @@ public class ComponentManager {
 	            
 	      /* Check the policy - defined for each type of component separately */
 	      if (Opts.CHECK_LOCKING_POLICY) {
-	    	result.registerExitLockState(component, component.getExitLockStates());               
+	    	result.createComponentSummary(component);
+	    	//result.registerExitLockState(component, component.getCallBackExitStates());               
 	      }
 	            
 	    }    
@@ -603,7 +622,7 @@ public class ComponentManager {
 	  if (component2ThreadInvocations == null) {		  
 		  component2ThreadInvocations = new HashMap<Component, 
 				  		HashMap<BasicBlockInContext<IExplodedBasicBlock>,Component>>();
-	  }	  
+	  }
 	  HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component> compInv = component2ThreadInvocations.get(c);
 	   
 	  if (compInv == null) {
@@ -655,7 +674,7 @@ public class ComponentManager {
 		  SensibleExplodedInterproceduralCFG icfg = c.getICFG();
 		  //Iterate over the thread invocations
 		  HashMap<SSAProgramPoint, SpecialCondition> globalSpecCond = getGlobalSpecialConditions();	
-		  E.log(1, "checking special cond: " + globalSpecCond);
+		  //E.log(1, "checking special cond: " + globalSpecCond);
 		  //Check all the instructions ** from the exploded ** graph
 		  for(Iterator<BasicBlockInContext<IExplodedBasicBlock>> it = icfg.iterator(); it.hasNext(); ) {			
 			  BasicBlockInContext<IExplodedBasicBlock> bbic = it.next();			  
@@ -667,7 +686,7 @@ public class ComponentManager {
 				  SpecialCondition cond = globalSpecCond.get(ssapp);
 				  if (cond != null) {
 					  compCond.put(bbic, cond);
-					  E.log(1, "Found: " + ebb.toString());
+					  E.log(2, "Found: " + ebb.toString());
 				  }			
 			  }
 		  }		  

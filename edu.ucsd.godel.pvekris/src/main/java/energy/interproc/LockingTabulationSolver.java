@@ -9,38 +9,38 @@ import com.ibm.wala.dataflow.IFDS.PathEdge;
 import com.ibm.wala.dataflow.IFDS.TabulationDomain;
 import com.ibm.wala.dataflow.IFDS.TabulationProblem;
 import com.ibm.wala.dataflow.IFDS.TabulationResult;
-import com.ibm.wala.dataflow.IFDS.TabulationSolver;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
-import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.MonitorUtil.IProgressMonitor;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 
+import energy.analysis.WakeLockManager.WakeLockInstance;
+
 public class LockingTabulationSolver  extends PartiallyBalancedTabulationSolver<
 	BasicBlockInContext<IExplodedBasicBlock>, 
-	CGNode, Pair<FieldReference, SingleLockState>> {
+	CGNode, Pair<WakeLockInstance, SingleLockState>> {
 
 	protected LockingTabulationSolver(
-			PartiallyBalancedTabulationProblem<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<FieldReference, SingleLockState>> p,
+			PartiallyBalancedTabulationProblem<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<WakeLockInstance, SingleLockState>> p,
 			IProgressMonitor monitor) {
 		super(p, monitor);
 	} 
 	
 	
 	public LockingResult solve() throws CancelException {
-		TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<FieldReference, SingleLockState>> result = super.solve();		
+		TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<WakeLockInstance, SingleLockState>> result = super.solve();		
 		return new LockingResult(result);
 	}
 	
 	public class LockingResult implements TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, 
-	CGNode, Pair<FieldReference, SingleLockState>> {
-		TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<FieldReference, SingleLockState>> result;
+	CGNode, Pair<WakeLockInstance, SingleLockState>> {
+		TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<WakeLockInstance, SingleLockState>> result;
 		
-		LockingResult(TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<FieldReference, SingleLockState>> r) {
+		LockingResult(TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<WakeLockInstance, SingleLockState>> r) {
 			this.result = r;
 		} 
 		
@@ -49,14 +49,14 @@ public class LockingTabulationSolver  extends PartiallyBalancedTabulationSolver<
 		 * @param n
 		 * @return
 		 */
-		public HashMap<FieldReference, SingleLockState> getMergedState(BasicBlockInContext<IExplodedBasicBlock> n) {
-			HashMap<FieldReference, SingleLockState> result = new  HashMap<FieldReference, SingleLockState>();						
+		public HashMap<WakeLockInstance, SingleLockState> getMergedState(BasicBlockInContext<IExplodedBasicBlock> n) {
+			HashMap<WakeLockInstance, SingleLockState> result = new  HashMap<WakeLockInstance, SingleLockState>();						
 			IntSet orig = getResult(n);			
-			TabulationDomain<Pair<FieldReference, SingleLockState>, BasicBlockInContext<IExplodedBasicBlock>> dom =
+			TabulationDomain<Pair<WakeLockInstance, SingleLockState>, BasicBlockInContext<IExplodedBasicBlock>> dom =
 					this.getProblem().getDomain();	
 			for (IntIterator it = orig.intIterator(); it.hasNext(); ) {
 				int i = it.next();
-				Pair<FieldReference, SingleLockState> iObj = dom.getMappedObject(i);
+				Pair<WakeLockInstance, SingleLockState> iObj = dom.getMappedObject(i);
 				SingleLockState already = result.get(iObj.fst);
 				if (already != null) {
 					result.put(iObj.fst, already.merge(iObj.snd));
@@ -74,7 +74,7 @@ public class LockingTabulationSolver  extends PartiallyBalancedTabulationSolver<
 		}
 
 		@Override
-		public TabulationProblem<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<FieldReference, SingleLockState>> getProblem() {
+		public TabulationProblem<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<WakeLockInstance, SingleLockState>> getProblem() {
 			return result.getProblem();
 		}
 

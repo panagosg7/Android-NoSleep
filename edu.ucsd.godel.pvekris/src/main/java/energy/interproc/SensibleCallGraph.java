@@ -37,8 +37,8 @@ public class SensibleCallGraph extends SparseNumberedGraph<SensibleCGNode> {
      * irrelevant of whether they are found in the 
      * actual call graph - they will be pruned later.
      */
-    for (String nodeStr : component.getCallbackNames()) {
-      addSensibleNode(nodeStr);
+    for (String str : component.getCallbackNames()) {
+      addSensibleNode(str);
     }
     for (Pair<String, String> edge : component.getCallbackEdges()) {
       String src = edge.fst;
@@ -84,26 +84,18 @@ public class SensibleCallGraph extends SparseNumberedGraph<SensibleCGNode> {
   
   
   public void addSensibleNode(String name) {    
-    
 	CallBack callback = component.getCallBackByName(name);
-	
 	if (callback != null) {
 		CGNode cbNode = callback.getNode();
-	
 		SensibleCGNode snode = new SensibleCGNode(name, cbNode);
 	    sensibleMap.put(name, snode);
 	    addNode(snode);
 	}
 	else {
-		
 		SensibleCGNode snode = new SensibleCGNode(name, null);
-		
 	    sensibleMap.put(name, snode);
-	    
 	    addNode(snode);
-		
 	}
-	
 	if (callback!=null) {
       E.log(2,"Initializing: " + name);
     }
@@ -111,7 +103,6 @@ public class SensibleCallGraph extends SparseNumberedGraph<SensibleCGNode> {
       /* add dummy node */
       E.log(3,"<null>");      
     }
-    	
 	return;
   }
   

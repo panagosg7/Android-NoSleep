@@ -25,7 +25,6 @@ import java.util.Properties;
 import java.util.Queue;
 import java.util.Set;
 
-import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.cfg.cdg.ControlDependenceGraph;
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
@@ -48,7 +47,6 @@ import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.ipa.callgraph.impl.Util;
 import com.ibm.wala.ipa.callgraph.propagation.LocalPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
-import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.cfg.ExceptionPrunedCFG;
 import com.ibm.wala.ipa.cfg.PrunedCFG;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
@@ -61,7 +59,6 @@ import com.ibm.wala.ssa.SSACFG;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSAOptions;
-import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
@@ -85,7 +82,6 @@ import com.ibm.wala.viz.DotUtil;
 import com.ibm.wala.viz.NodeDecorator;
 import com.ibm.wala.viz.PDFViewUtil;
 
-import energy.interproc.SensibleExplodedInterproceduralCFG;
 import energy.intraproc.IntraProcAnalysis;
 import energy.util.E;
 import energy.util.GraphBottomUp;
@@ -175,10 +171,6 @@ public class AppCallGraph implements CallGraph {
 			outputCallGraphToDot(g);
 
 		}
-
-		app_cha.getLockFieldInfo().setAppCallGraph(this);
-		app_cha.getLockFieldInfo().scanCreation();
-		app_cha.getLockFieldInfo().printAllWakeLocks();
 
 		outputCFGs();
 
@@ -1004,16 +996,14 @@ public class AppCallGraph implements CallGraph {
 		return targetCGNodeHash.contains(root);
 	}
 
-	public WakeLockManager getLockFieldInfo() {
-		return appCha.getLockFieldInfo();
+	WakeLockManager wlm = null;
+	
+	public WakeLockManager getWakeLockManager() {
+		if (wlm == null) {
+			wlm = new WakeLockManager(this);
+			wlm.scanDefinitions();		//This might be redundant
+			wlm.scanCreation();
+		}
+		return wlm;
 	}
-
-	public PointerAnalysis getPointerAnalysis() {
-		return pointerAnalysis;
-	}
-
-	public void setPointerAnalysis(PointerAnalysis pointerAnalysis) {
-		this.pointerAnalysis = pointerAnalysis;
-	}
-
 }

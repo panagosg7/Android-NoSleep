@@ -9,6 +9,7 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.types.FieldReference;
 
 import energy.analysis.AppCallGraph;
+import energy.analysis.WakeLockManager.WakeLockInstance;
 import energy.interproc.SingleLockState;
 
 /**
@@ -43,7 +44,7 @@ public class RunnableThread extends Component {
     return b.toString();
   }  
   
-  public Map<FieldReference,Set<SingleLockState>> getThreadExitState() {
+  public Map<WakeLockInstance,Set<SingleLockState>> getThreadExitState() {
 	CGNode runNode = super.getCallBackByName("run").getNode();	
 	return super.getExitState(runNode);
   }

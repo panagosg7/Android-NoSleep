@@ -39,12 +39,5 @@ public class Activity extends Component {
     callbackEdges.add(Pair.make("onStop", "onDestroy"));      
         
   }
-  
-
-  public String toString() {    
-    StringBuffer b = new StringBuffer();
-    b.append( componentName + ": ");
-    b.append(getKlass().getName().toString());
-    return b.toString();
-  }  
+    
 }

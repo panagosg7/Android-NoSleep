@@ -612,32 +612,16 @@ public class Wala {
 		energy.util.Util.printLabel(mPath.getAbsolutePath());		
 		
 		ApplicationClassHierarchy	ch = new ApplicationClassHierarchy(appJar, exclusionFile);		
-
-		
-		
-		
 		AppCallGraph 		cg = new AppCallGraph(ch);		
-		
 		Set<String> result = new HashSet<String>();
-
 		if (Opts.PROCESS_ANDROID_COMPONENTS) {
-			
 			ComponentManager componentManager = new ComponentManager(cg);
-			
 			componentManager.prepareReachability();
-			
 			componentManager.resolveComponents();
-			
 			AnalysisResults results = componentManager.processComponents();
-			
 			results.processResults();
-			
-			results.outputFinalResults();
-			
-			
-			
+			//results.outputFinalResults();
 		}
-		
 		return result;
 	}
 }

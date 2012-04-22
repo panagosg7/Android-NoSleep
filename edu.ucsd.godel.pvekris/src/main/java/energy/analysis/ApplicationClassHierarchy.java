@@ -29,9 +29,7 @@ public class ApplicationClassHierarchy {
   private String appJar;
   private String exclusionFileName;
 	
-  private WakeLockManager lockFieldInfo = null;
   
-	
   public ApplicationClassHierarchy(String appJar, String exclusionFileName) throws IOException, ClassHierarchyException {
 	  this.appJar = appJar;
 	  this.exclusionFileName = exclusionFileName;
@@ -93,25 +91,17 @@ public class ApplicationClassHierarchy {
   }
 
 
-public String getAppJar() {
-	return appJar;
-}
-
-public String getExclusionFileName() {
-	return exclusionFileName;
-}
-
-public ClassHierarchy getClassHierarchy() {
-	return cha;
-}
-
-
-public WakeLockManager getLockFieldInfo() {
-	if (lockFieldInfo == null) {
-		lockFieldInfo = new WakeLockManager(cha);
-		lockFieldInfo.scanDefinitions();		
+	public String getAppJar() {
+		return appJar;
 	}
-	return lockFieldInfo;
-}
-  
+	
+	public String getExclusionFileName() {
+		return exclusionFileName;
+	}
+	
+	public ClassHierarchy getClassHierarchy() {
+		return cha;
+	}
+	
+
 }

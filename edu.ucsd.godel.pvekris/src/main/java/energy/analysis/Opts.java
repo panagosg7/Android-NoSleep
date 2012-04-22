@@ -179,6 +179,10 @@ public static final boolean PRINT_HIGH_STATE = false;
 
 
 
+public static final boolean OUTPUT_ALL_NODE_INFO = false;
+
+
+
 
 
 

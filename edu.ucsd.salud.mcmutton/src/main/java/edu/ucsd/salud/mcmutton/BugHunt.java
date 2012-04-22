@@ -116,44 +116,49 @@ public class BugHunt {
 //		theSet.add("AndTweet");
 //		theSet.add("K-9 Mail");
 //		theSet.add("aFlashlight");			//conversion error
-//		theSet.add("AndroBOINC");
+//		theSet.add("Maxthon");				//conversion error
 //		theSet.add("FBReader");				//conversion error
 //		theSet.add("Phonebook 2.0");		//conversion error
-//		theSet.add("ICQ");					
-//		theSet.add("DISH");					//OK
-//		theSet.add("JuiceDefender");		//OK
 //		theSet.add("Twidroyd");				//conversion error
 //		theSet.add("WebSMS");				//conversion error
+//		theSet.add("Call Control");			//conversion error
+//		theSet.add("Geohash Droid");		//conversion error
+//		theSet.add("AdvancedMapViewer");	//conversion error
+//		theSet.add("TagReader");			//conversion error
+//		theSet.add("ReChat");				//conversion error
+//		theSet.add("Strawberry Shortcake PhoneImage");		//conversion error
+
+//		theSet.add("InstaFetch PRO");		//has recursive threads
+//		theSet.add("2 Player Reactor");		//has recursive threads
+//		theSet.add("Slice Slice");			//Runnable exception
+
+		
+//		theSet.add("DISH");					//OK
+//		theSet.add("JuiceDefender");		//OK
 //		theSet.add("3D Level");				//OK
 //		theSet.add("ColorNote");			//OK
-//		theSet.add("Call Control");			//conversion error
-//		theSet.add("Slice Slice");			//Runnable exception
-//		theSet.add("Geohash Droid");		//conversion error
-//		theSet.add("Google Voice");		
-//		theSet.add("AdvancedMapViewer");	//conversion error
-//		theSet.add("Farm Tower");
 //		theSet.add("Pikachu");				//OK
 //		theSet.add("Google Sky Map");		//OK
 //		theSet.add("RMaps");				//OK
-//		theSet.add("Tangram");
-//		theSet.add("2 Player Reactor");		//has recursive threads
-//		theSet.add("TagReader");			//conversion error
-//		theSet.add("ReChat");				//conversion error
 //		theSet.add("Foursquare");			//OK
 //		theSet.add("Brain Sooth");			//OK
-//		theSet.add("Maxthon");				//conversion error
 //		theSet.add("Craigslist");			//OK
+
+//		theSet.add("ICQ");					
 //		theSet.add("Alchemy");
-//		theSet.add("Strawberry Shortcake PhoneImage");		//conversion error
 //		theSet.add("Farm Tower");
+//		theSet.add("AndroBOINC");		
+//		theSet.add("Tangram");
+//		theSet.add("Google Voice");		
+//		theSet.add("Farm Tower");
+
+
+		//theSet.add("YouTube");
+		theSet.add("imo");
+		//theSet.add("aLogcat");
 		
-//		theSet.add("InstaFetch PRO");
-//		theSet.add("YouTube");
-//		theSet.add("imo");
-//		theSet.add("aLogcat");
-		
-//		theSet.add("Android Agenda Widget");
-		theSet.add("ServicesDemo");			//toy example
+		//theSet.add("Android Agenda Widget");
+//		theSet.add("ServicesDemo");			//toy example
 		
 		
 		

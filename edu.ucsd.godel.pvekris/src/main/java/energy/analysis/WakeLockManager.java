@@ -9,9 +9,6 @@ import java.util.Map.Entry;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IField;
 import com.ibm.wala.ipa.callgraph.CGNode;
-import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
-import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
-import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.shrikeBT.IBinaryOpInstruction.IOperator;
 import com.ibm.wala.shrikeBT.IBinaryOpInstruction.Operator;
 import com.ibm.wala.ssa.DefUse;
@@ -23,7 +20,6 @@ import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSAPutInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.TypeReference;
-import com.ibm.wala.util.intset.OrdinalSet;
 
 import energy.util.E;
 import energy.util.SSAProgramPoint;
@@ -32,8 +28,6 @@ public class WakeLockManager {
 	
 	private AppCallGraph cg;
 	private ComponentManager cm;
-	private ClassHierarchy ch; 
-	
 	
 	public interface WakeLockInstance {}
 	
@@ -136,16 +130,18 @@ public class WakeLockManager {
 	}
 	
 	
-	public WakeLockManager(ClassHierarchy classHierarchy) {
-		this.ch = classHierarchy;
+	public WakeLockManager(AppCallGraph appCallGraph) {
+		this.cg = appCallGraph;
 	}
 	
 	HashSet<FieldReference> powerManagers = null;
 	HashMap<WakeLockInstance, WakeLockInfo> variousWakeLocks = null;
+	private IR ir;
+	private DefUse du;
 	
 
 	public void scanDefinitions() {
-		for(IClass c : ch) {
+		for(IClass c : cg.getClassHierarchy()) {
 			for (IField f : c.getAllFields()) {
 				FieldReference reference = f.getReference();
 				TypeReference fieldType = reference.getFieldType();
@@ -159,20 +155,18 @@ public class WakeLockManager {
 				}
 				else if (fieldType.equals(TypeReference.ApplicationWakeLock)) {
 					E.log(1, reference.toString());
-					addWakeLock(reference);
+					addWakeLockField(reference);
 				}
 				else if (fieldType.equals(TypeReference.PrimordialWakeLock)) {
 					E.log(1, reference.toString());
-					addWakeLock(reference);
+					addWakeLockField(reference);
 				}				
-				
 			};
-			
 		}
 	}
 	
 
-	private void addWakeLock(FieldReference reference) {
+	private void addWakeLockField(FieldReference reference) {
 		if (variousWakeLocks == null) {
 			variousWakeLocks = new HashMap<WakeLockInstance, WakeLockInfo>();			
 		}
@@ -247,9 +241,11 @@ public class WakeLockManager {
 	
 
 	public void scanCreation() {		
-		for (CGNode n : cg) {			
-			IR ir = n.getIR();
-			DefUse du = null;			
+		for (CGNode n : cg) {
+			
+			//Need to update these here
+			ir = n.getIR();
+			du = null;			
 			/* Null for JNI methods */
 			if (ir == null) {
 				E.log(2, "Skipping: " + n.getMethod().toString());
@@ -261,8 +257,8 @@ public class WakeLockManager {
 				 * PowerManager.WakeLock wl = pm.newWakeLock(
 				 * 		  PowerManager.SCREEN_DIM_WAKE_LOCK | PowerManager.ON_AFTER_RELEASE, 
 				 * 		  TAG);
-				 */				
-				if (instr instanceof SSAInvokeInstruction) {					
+				 */
+				if (instr instanceof SSAInvokeInstruction) {
 					SSAInvokeInstruction inv = (SSAInvokeInstruction) instr;
 					if (inv.toString().contains("newWakeLock")) {
 
@@ -272,7 +268,7 @@ public class WakeLockManager {
 							du = new DefUse(ir);
 						}						
 						Collection<LockType> lockType = null;																		
-						lockType = resolveLockTypeFromVar(ir, du, inv.getUse(1));
+						lockType = resolveLockTypeFromVar(inv.getUse(1));
 						//The WakeLock is being assigned to the Def part of the instruction
 						int lockNum = inv.getDef();
 						//The use should be an instruction right next to the one creating the lock 
@@ -294,7 +290,7 @@ public class WakeLockManager {
 								//Wake locks are reference counted by default. 
 								variousWakeLocks.put(new FieldWakeLock(field),wli);
 							}
-							E.log(2, "Field: " + field + "\nINFO= " + wli.toString());
+							E.log(1, "Field: " + field + "\nINFO= " + wli.toString());
 						}
 						else {
 						/**
@@ -332,7 +328,7 @@ public class WakeLockManager {
 						}						
 					}	
 					//Check setReferenceCounted
-					else if (inv.toString().contains("setReferenceCounted")) {						
+					else if (inv.toString().contains("setReferenceCounted")) {
 						FieldReference field = getFieldFromVar(ir,du,inv.getUse(0));
 						int bit = inv.getUse(1);
 						boolean refCounted = ir.getSymbolTable().isTrue(bit);
@@ -362,16 +358,16 @@ public class WakeLockManager {
 									new WakeLockInfo(null, refCounted));
 							}
 						}
-						
 					}
 				}
 			}			
 		}		
 		
-		//Check to see if there are unresolved wakelocks
-		if (getAllUnresolvedWakeLocks().size() > 0) {
+		//Check to see if there are unresolved wakelocks - 
+		//probably not needed. There could be unused WL
+		/*if (getAllUnresolvedWakeLocks().size() > 0) {
 			E.log(1, "Could not resolve some WakeLocks.");
-		}
+		}*/
 		
 	}
 	
@@ -405,7 +401,7 @@ public class WakeLockManager {
 	}
 
 
-	private Collection<LockType> resolveLockTypeFromVar(IR ir, DefUse du, int use) {	
+	private Collection<LockType> resolveLockTypeFromVar(int use) {	
 		try {
 			int intValue = ir.getSymbolTable().getIntValue(use);
 			return  getLockType(intValue);
@@ -427,8 +423,8 @@ public class WakeLockManager {
 					int use0 = bin.getUse(0);
 					int use1 = bin.getUse(1);
 							
-					ret.addAll(resolveLockTypeFromVar(ir,du,use0));
-					ret.addAll(resolveLockTypeFromVar(ir,du,use1));
+					ret.addAll(resolveLockTypeFromVar(use0));
+					ret.addAll(resolveLockTypeFromVar(use1));
 									
 				}
 				else {

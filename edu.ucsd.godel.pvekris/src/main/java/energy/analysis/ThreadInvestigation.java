@@ -102,7 +102,7 @@ public class ThreadInvestigation {
 						}
 					} //for uses
 					if ((pp!=null) && (targetComponent!= null)) {
-						E.log(2, "Adding: " + pp + " --> " + targetComponent);
+						E.log(1, "Adding: " + pp + " --> " + targetComponent);
 						siteToClass.put(pp, targetComponent);
 					}
 				}

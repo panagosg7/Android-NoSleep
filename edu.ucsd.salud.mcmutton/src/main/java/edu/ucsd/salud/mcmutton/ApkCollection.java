@@ -274,13 +274,11 @@ public class ApkCollection {
 		
 		public ApkApplication(File path) {
 			mPath = path;
-			System.out.println("Setting: " + mPath );
 		}
 		
 		List<ApkVersion> listVersions() {
 			if (mVersions == null) {
 				ArrayList<ApkVersion> list = new ArrayList<ApkVersion>();
-				System.out.println(mPath);
 				for (File sub: mPath.listFiles()) {
 					list.add(new ApkVersion(sub));
 				}

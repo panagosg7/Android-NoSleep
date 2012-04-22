@@ -27,7 +27,6 @@ import com.ibm.wala.ssa.SSACFG;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
-import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.collections.Filter;
@@ -39,13 +38,13 @@ import com.ibm.wala.util.graph.GraphReachability;
 import com.ibm.wala.util.graph.impl.NodeWithNumber;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
-import com.ibm.wala.util.intset.MutableMapping;
 import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.viz.NodeDecorator;
 
 import energy.analysis.AppCallGraph;
 import energy.analysis.Opts;
 import energy.analysis.SpecialConditions.SpecialCondition;
+import energy.analysis.WakeLockManager.WakeLockInstance;
 import energy.interproc.CtxInsensLocking;
 import energy.interproc.CtxSensLocking;
 import energy.interproc.LockingTabulationSolver.LockingResult;
@@ -62,11 +61,8 @@ public abstract class Component extends NodeWithNumber {
   protected IClass klass;
   
   
-  
   /**
    * CallBack representation 
-   * @author pvekris
-   *
    */
 
   public class CallBack {
@@ -87,6 +83,21 @@ public abstract class Component extends NodeWithNumber {
 
       public String getName() {
 		return node.getMethod().getName().toString();
+      }
+      
+      public boolean equals(Object o) {
+    	  if (o instanceof CallBack) {
+    		  return this.node.equals(((CallBack) o).getNode());
+    	  }
+    	  return false;
+      }
+      
+      public int hashCode() {
+    	  return node.hashCode();
+      }
+      
+      public String toString() {
+    	  return ("CallBack: " + node.getMethod().getSignature().toString());
       }
 	  
   }
@@ -147,6 +158,9 @@ public abstract class Component extends NodeWithNumber {
     callbackMap.put(node.getMethod().getName().toString(), callBack);    
   }
 
+  public boolean isCallBack(CGNode n) {
+	  return callbacks.contains(new CallBack(n));	  
+  }
   
   Component(AppCallGraph cg, IClass declaringClass, CGNode root) {
 	  
@@ -194,7 +208,8 @@ public abstract class Component extends NodeWithNumber {
   
   public String toString() {
     StringBuffer b = new StringBuffer();
-    b.append(this.getClass().getName() + ": ");
+    String name = this.getClass().getName().toString();
+	b.append(name.substring(name.lastIndexOf('.') + 1) + ": ");
     b.append(getKlass().getName().toString());
     return b.toString();
   }
@@ -329,13 +344,13 @@ private String getTargetColor(ISSABasicBlock ebb) {
      * @return
      */
     private Set<SingleLockState> getColorsFromPP(Pair<IMethod, Integer> pp) {
-        Map<FieldReference, Set<SingleLockState>> st = stateHash.get(pp);
+        Map<WakeLockInstance, Set<SingleLockState>> st = stateHash.get(pp);
         Set<SingleLockState> result = new HashSet<SingleLockState>();
         if (st == null) {
           Assertions.UNREACHABLE();
         }
         else {          	
-        	for (Entry<FieldReference, Set<SingleLockState>> e : st.entrySet()) {
+        	for (Entry<WakeLockInstance, Set<SingleLockState>> e : st.entrySet()) {
         		//TODO: for the moments just append all possible states 
         		// - unsound as it refers to all fields         		
         		result.addAll(e.getValue());
@@ -353,7 +368,7 @@ private String getTargetColor(ISSABasicBlock ebb) {
      */
     private LockStateColor getColorFromPP(Pair<IMethod, Integer> pp) {
         E.log(2, pp.toString());        
-        Map<FieldReference, Set<SingleLockState>> st = stateHash.get(pp);
+        Map<WakeLockInstance, Set<SingleLockState>> st = stateHash.get(pp);
         if (st == null) {
           Assertions.UNREACHABLE();
         }
@@ -568,7 +583,7 @@ private String getTargetColor(ISSABasicBlock ebb) {
   protected BooleanSolver<BasicBlockInContext<IExplodedBasicBlock>> releaseMustSolver = null;
 
   protected LockingResult csSolver;
-  private 	TabulationDomain<Pair<FieldReference,SingleLockState>, BasicBlockInContext<IExplodedBasicBlock>> csDomain;
+  private 	TabulationDomain<Pair<WakeLockInstance,SingleLockState>, BasicBlockInContext<IExplodedBasicBlock>> csDomain;
 
   public boolean isInteresting() {
     return interesting;
@@ -642,10 +657,10 @@ private String getTargetColor(ISSABasicBlock ebb) {
   /**
    *  Super-ugly way to keep the colors for every method in the graph 
    */  
-  private HashMap<Pair<IMethod, Integer>, Map<FieldReference,Set<SingleLockState>>> stateHash;
+  private HashMap<Pair<IMethod, Integer>, Map<WakeLockInstance,Set<SingleLockState>>> stateHash;
 
   public void cacheStates() {	
-	  stateHash = new HashMap<Pair<IMethod, Integer>, Map<FieldReference,Set<SingleLockState>>>();
+	  stateHash = new HashMap<Pair<IMethod, Integer>, Map<WakeLockInstance,Set<SingleLockState>>>();
 	  Iterator<BasicBlockInContext<IExplodedBasicBlock>> iterator = icfg.iterator();
 	  while (iterator.hasNext()) {	      
 		  BasicBlockInContext<IExplodedBasicBlock> bb = iterator.next();	      
@@ -655,11 +670,11 @@ private String getTargetColor(ISSABasicBlock ebb) {
 	    	/* Context sensitive analysis */
 	    	//q = csSolver.getMergedState(bb);
 	    	IntSet set = csSolver.getResult(bb);	    	
-	    	HashMap<FieldReference, Set<SingleLockState>> q = 
-	    			new HashMap<FieldReference, Set<SingleLockState>>();
+	    	HashMap<WakeLockInstance, Set<SingleLockState>> q = 
+	    			new HashMap<WakeLockInstance, Set<SingleLockState>>();
 	    	for (IntIterator it = set.intIterator(); it.hasNext(); ) {
 	    		int i = it.next();
-	    		Pair<FieldReference, SingleLockState> obj = csDomain.getMappedObject(i);	    		
+	    		Pair<WakeLockInstance, SingleLockState> obj = csDomain.getMappedObject(i);	    		
 	    		Set<SingleLockState> sts = q.get(obj.fst);	    		
 	    		if (sts == null) {	//first time
 	    			sts = new HashSet<SingleLockState>();
@@ -669,8 +684,6 @@ private String getTargetColor(ISSABasicBlock ebb) {
 	    			sts.add(obj.snd);	    			
 	    		}
 	    		q.put(obj.fst, sts);
-	    		
-	    		
 	    		
 	    		if(Opts.PRINT_HIGH_STATE) {
 		    		/**
@@ -685,15 +698,10 @@ private String getTargetColor(ISSABasicBlock ebb) {
 			    		}
 			    	}
 	    		}
-	    		
 	    	}
 	    	stateHash.put(pair, q);
-	      
-	    	
-	      
 	      }
-	      
-	      
+
 	      else {
 	    	/* Context insensitive (TODO: needs fixing)*/
 	    	  SingleLockState singleLockState = new SingleLockState(Quartet.make(
@@ -709,21 +717,6 @@ private String getTargetColor(ISSABasicBlock ebb) {
   }
   
   
-  
-  private MutableMapping<Pair<FieldReference,SingleLockState>> mergeResult(IntSet x) {	  
-    IntIterator it = x.intIterator();
-    //Initial empty state
-    MutableMapping<Pair<FieldReference,SingleLockState>> map = MutableMapping.make();
-    
-    while (it.hasNext()) {
-      int i = it.next();
-      Pair<FieldReference, SingleLockState> mappedObject = csDomain.getMappedObject(i);      
-      map.add(mappedObject);      
-    }
-    return map;
-  }
-
-
   protected void outputSolvedICFG() {
     E.log(2, "#nodes: " + componentCallgraph.getNumberOfNodes());
     Properties p = WalaExamplesProperties.loadProperties();
@@ -761,7 +754,7 @@ private String getTargetColor(ISSABasicBlock ebb) {
    * @param cgNode
    * @return
    */
-  protected Map<FieldReference, Set<SingleLockState>> getExitState(CGNode cgNode) {
+  public Map<WakeLockInstance, Set<SingleLockState>> getExitState(CGNode cgNode) {
 	  BasicBlockInContext<IExplodedBasicBlock> exit = icfg.getExit(cgNode);
       Pair<IMethod, Integer> p = Pair.make(
           cgNode.getMethod(), exit.getNumber());
@@ -773,10 +766,10 @@ private String getTargetColor(ISSABasicBlock ebb) {
    * Apply the policies to the corresponding callbacks. This one checks that at
    * the end of the method, we have an expected state.
    */
-  public Map<String, Map<FieldReference, Set<SingleLockState>>> getExitLockStates() {
+  public Map<String, Map<WakeLockInstance, Set<SingleLockState>>> getCallBackExitStates() {
 	
-	Map<String, Map<FieldReference,Set<SingleLockState>>> result = 
-			new HashMap<String, Map<FieldReference,Set<SingleLockState>>>();
+	Map<String, Map<WakeLockInstance,Set<SingleLockState>>> result = 
+			new HashMap<String, Map<WakeLockInstance,Set<SingleLockState>>>();
 	
 	/* get the defined callbacks */
 	HashSet<CallBack> callbacks = getCallbacks();
@@ -790,6 +783,17 @@ private String getTargetColor(ISSABasicBlock ebb) {
     
   }
 
+  public Map<String, Map<WakeLockInstance, Set<SingleLockState>>> getAllExitStates() {
+		
+		Map<String, Map<WakeLockInstance,Set<SingleLockState>>> result = 
+				new HashMap<String, Map<WakeLockInstance,Set<SingleLockState>>>();			
+		
+		for (Iterator<CGNode> it = icfg.getCallGraph().iterator(); it.hasNext(); ) {
+	  		CGNode node = it.next();
+			result.put(node.getMethod().getName().toString(), getExitState(node));
+		}
+	    return result;
+	  }
   
   
   public void lookForExceptionalEdges() {

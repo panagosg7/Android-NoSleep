@@ -44,6 +44,8 @@ public class SpecialConditions {
 		protected ISSABasicBlock instrBlock;
 		protected ISSABasicBlock trueSucc;
 		protected ISSABasicBlock falseSucc;
+		private int trueInstrInd;
+		private int falseInstrInd;
 
 		public ISSABasicBlock getTrueSucc() {
 			return trueSucc;
@@ -60,13 +62,34 @@ public class SpecialConditions {
 			this.instrBlock = bb;
 			this.field = f;		
 			this.trueSucc = trueSucc;
-			this.falseSucc = falseSucc;	
+			if (trueSucc != null) {
+				this.trueInstrInd = trueSucc.getFirstInstructionIndex() + 1;		//this is very arbitrary 
+			}
+			else {
+				this.trueInstrInd = -1;
+			}
+			this.falseSucc = falseSucc;
+			if (falseSucc != null) {
+				this.falseInstrInd = falseSucc.getFirstInstructionIndex() + 1;
+			}
+			else {
+				this.falseInstrInd = -1;
+			}
+			
 		}
 		
 		public String toString() {
 			return ("[(" + instrBlock.getMethod().getName() + ", " + instrBlock.getNumber() + ")"  
-			+ " true: (" + trueSucc.getMethod().getName().toString()  + ", " + trueSucc.getNumber() + ")" 
-			+ " false: (" + falseSucc.getMethod().getName().toString() + ", " + falseSucc.getNumber() + ")]");
+			+ " true: (" + trueSucc.getMethod().getName().toString()  + ", " + trueSucc.getNumber() + ", " + trueInstrInd + ")" 
+			+ " false: (" + falseSucc.getMethod().getName().toString() + ", " + falseSucc.getNumber() + ", " + falseInstrInd + ")]");
+		}
+
+		public int getTrueInstrInd() {
+			return trueInstrInd;
+		}
+
+		public int getFalseInstrInd() {
+			return falseInstrInd;
 		}
 	}
 	
@@ -145,12 +168,12 @@ public class SpecialConditions {
 									ISSABasicBlock falseSucc = succNodesArray.get(1);									
 									if (field1 != null){
 										NullCondition c = new NullCondition(pp.getBasicBlock(), field1, trueSucc, falseSucc);
-										E.log(1, c.toString());										
+										E.log(2, c.toString());										
 										ppToSpecCondition.put(pp, c);
 									}
 									else {
 										NullCondition c = new NullCondition(pp.getBasicBlock(), field2, trueSucc, falseSucc);
-										E.log(1, c.toString());
+										E.log(2, c.toString());
 										ppToSpecCondition.put(pp, c);
 									}
 								}		
@@ -168,12 +191,12 @@ public class SpecialConditions {
 									if (field1 != null){
 										IsHeldCondition c = new IsHeldCondition(pp.getBasicBlock(), field1, falseSucc, trueSucc);
 										ppToSpecCondition.put(pp,c);
-										E.log(1, c.toString());
+										E.log(2, c.toString());
 									}
 									else {
 										IsHeldCondition c = new IsHeldCondition(pp.getBasicBlock(), field2, falseSucc, trueSucc);
 										ppToSpecCondition.put(pp,c);										
-										E.log(1, c.toString());
+										E.log(2, c.toString());
 									}
 								}
 							}
