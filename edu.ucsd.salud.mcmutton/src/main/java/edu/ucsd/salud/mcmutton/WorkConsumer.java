@@ -80,14 +80,14 @@ public class WorkConsumer implements Watcher {
 						obj.put("successfullyRetargeted", apk.successfullyRetargeted());
 						obj.put("retargetException", apk.getRetargetException());
 						
-						obj.put("successfullyOptimized", apk.successfullyOptimized());
+						obj.put("successfullyOptimized", apk.isSuccessfullyOptimized());
 						obj.put("optimizationException", apk.getOptException());
 						Set<String> phantoms = apk.getOptPhantoms();
 						JSONArray phantom_array = new JSONArray();
 						phantom_array.addAll(phantoms);
 						obj.put("optimizationPhantoms", phantom_array);
 						
-						if (apk.successfullyOptimized()) {
+						if (apk.isSuccessfullyOptimized()) {
 							JSONObject panos_result = new JSONObject();
 							try {
 								Set<String> colors = apk.panosAnalyze();

@@ -62,7 +62,7 @@ public class Translation {
 	}
 
 	public void buildOptimizedJar() throws IOException, RetargetException {
-	    requiresOptimized();
+//	    requiresOptimized();		//XXX: changed this for now (Apr 23 12:53 AM) - revert it to uncommented
 	    SystemUtil.buildJar(mOptimize.getJarTarget(), mOptimize.getTarget());
 	}
 

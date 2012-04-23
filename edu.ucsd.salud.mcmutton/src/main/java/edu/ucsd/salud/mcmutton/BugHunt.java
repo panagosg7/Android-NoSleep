@@ -177,7 +177,7 @@ public class BugHunt {
 		for (Object key: theSet) {
 						
 			String app_name = collection.cleanApkName((String)key);			
-			//System.out.println("\n\n\nLooking for: " + app_name);								
+//			System.out.println("\n\n\nLooking for: " + app_name);								
 			String[] catsArray = acqrel_status.getString((String)key).split("[,]");			
 			ArrayList<String> cats = new ArrayList<String>(catsArray.length);			
 			for (String cat: catsArray) cats.add(cat);
@@ -188,12 +188,12 @@ public class BugHunt {
 			boolean successfullyOptimized = false;
 			
 			try {
-				successfullyOptimized = apk.successfullyOptimized();
+				successfullyOptimized = apk.isSuccessfullyOptimized();
 			} catch (RetargetException e) {
 				LOGGER.warning("Retarget failed: " + e.toString());
 			}
 			
-			if (apk.ensureSuccessfullyOptimized()) {
+			if (apk.successfullyOptimized()) {
 				try {
 					panosResult = apk.panosAnalyze();
 				} catch(Exception e) {
@@ -353,7 +353,7 @@ public class BugHunt {
 			String app_name = ApkCollection.cleanApkName((String)key);
 			ApkInstance apk = collection.getApplication(app_name).getPreferred();
 			
-			if (!apk.successfullyOptimized()) {
+			if (!apk.isSuccessfullyOptimized()) {
 				System.out.println(apk.getDedTarget());
 				try {
 					apk.buildOptimizedJava();
@@ -380,12 +380,6 @@ public class BugHunt {
 	/**
 	 * Just do the optimization.
 	 * If the version we have is optimized do not try to optimize again.
-	 * @param collection
-	 * @throws ApkException
-	 * @throws IOException
-	 * @throws RetargetException
-	 * @throws WalaException
-	 * @throws CancelException
 	 */
 	public static void optimize(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
@@ -395,7 +389,7 @@ public class BugHunt {
 			String app_name = ApkCollection.cleanApkName((String)key);
 			System.out.println("\n" + app_name + "\n");			
 			ApkInstance apk = collection.getApplication(app_name).getPreferred();
-			if (apk.successfullyOptimized()) {
+			if (apk.isSuccessfullyOptimized()) {
 				ApkInstance.LOGGER.info("Already optimized");
 			}
 			else {
