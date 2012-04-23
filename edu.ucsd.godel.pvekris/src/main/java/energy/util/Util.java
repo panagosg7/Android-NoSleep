@@ -43,6 +43,17 @@ public class Util {
   }
 
 
+  public <T> Collection<T> flattenCollection(Collection<Collection<T>> s) {
+	  HashSet<T> result = new HashSet<T>();
+	  for (Collection<T> a : s) {
+		  for(T b : a) {
+			  result.add(b);
+		  }
+	  }
+	  return result;	  
+  }
+  
+  
   public static String getResultDirectory() {
     return resultDirectory;
   }
@@ -91,8 +102,9 @@ public class Util {
   }
 
   public static void printLabel(String arg) {
-	  
-    E.plog(1, "###############################################################################\n");       
+	System.out.println();
+	System.out.println();
+	E.plog(1, "###############################################################################\n");       
     
     System.out.println("\t\t" + arg.split(File.separatorChar+"")[5]);
     System.out.println("\t\t" + arg.split(File.separatorChar+"")[6]);
@@ -101,3 +113,4 @@ public class Util {
   }
   
 }
+

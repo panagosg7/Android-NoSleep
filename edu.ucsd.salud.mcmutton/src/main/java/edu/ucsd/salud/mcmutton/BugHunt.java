@@ -131,18 +131,18 @@ public class BugHunt {
 //		theSet.add("InstaFetch PRO");		//has recursive threads
 //		theSet.add("2 Player Reactor");		//has recursive threads
 //		theSet.add("Slice Slice");			//Runnable exception
-
+//		theSet.add("aLogcat");				//getter for wakelock
 		
-//		theSet.add("DISH");					//OK
-//		theSet.add("JuiceDefender");		//OK
-//		theSet.add("3D Level");				//OK
-//		theSet.add("ColorNote");			//OK
-//		theSet.add("Pikachu");				//OK
-//		theSet.add("Google Sky Map");		//OK
-//		theSet.add("RMaps");				//OK
-//		theSet.add("Foursquare");			//OK
-//		theSet.add("Brain Sooth");			//OK
-//		theSet.add("Craigslist");			//OK
+		theSet.add("DISH");					//OK
+		theSet.add("JuiceDefender");		//OK
+		theSet.add("3D Level");				//OK
+		theSet.add("ColorNote");			//OK
+		theSet.add("Pikachu");				//OK
+		theSet.add("Google Sky Map");		//OK
+		theSet.add("RMaps");				//OK
+		theSet.add("Foursquare");			//OK
+		theSet.add("Brain Sooth");			//OK
+		theSet.add("Craigslist");			//OK
 
 //		theSet.add("ICQ");					
 //		theSet.add("Alchemy");
@@ -153,11 +153,11 @@ public class BugHunt {
 //		theSet.add("Farm Tower");
 
 
-		//theSet.add("YouTube");
-		theSet.add("imo");
-		//theSet.add("aLogcat");
+//		theSet.add("YouTube");
+//		theSet.add("imo");
+
 		
-		//theSet.add("Android Agenda Widget");
+//		theSet.add("Android Agenda Widget");
 //		theSet.add("ServicesDemo");			//toy example
 		
 		

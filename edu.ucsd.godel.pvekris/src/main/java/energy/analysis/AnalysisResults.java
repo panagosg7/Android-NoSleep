@@ -1,6 +1,6 @@
 package energy.analysis;
 
-import java.util.EnumMap;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -85,15 +85,6 @@ public class AnalysisResults {
 		allStates = new HashSet<Pair<Component,ComponentSummary>>();
 	}
 	
-	int threadCount 	= 0; 
-	int activityCount 	= 0;
-			
-	int lockThreads 	= 0;
-	int nolockThreads 	= 0;
-	int unlockThreads 	= 0;
-	
-	int lockunlockThreads = 0;
-	
 	public enum LockUsage {
 		LOCKING,
 		UNLOCKING,	
@@ -148,22 +139,22 @@ public class AnalysisResults {
 	
 	public void processResults() {
 		System.out.println("\n");
+		HashMap<LockUsage, Set<Pair<Component, CGNode>>> usageMap = 
+				new HashMap<LockUsage, Set<Pair<Component, CGNode>>>();
+		HashMap<Component, Logger> componentMap = new HashMap<Component, Logger>();
 		for (Pair<Component, ComponentSummary> pair : allStates) {
 			Component component = pair.fst;
 			ComponentSummary cSummary = pair.snd;
+			ComponentPolicy policy = new ComponentPolicy(component);			
 			
 			StringBuffer sb = new StringBuffer();
 			boolean printComponent = false;
 			for(Entry<CGNode, CompoundLockState> e : cSummary.getAllExitStates().entrySet()) {
 				CGNode node = e.getKey();
-				
 				//Pair<String, String> abstCompAndCB = Pair.make(componentName,callBackName);
-				
 				HashMap<WakeLockInstance,LockUsage> lockUsages = new HashMap<WakeLockInstance, LockUsage>();
 				boolean printMethod = false;
-				
 				LockUsage lockUsage = LockUsage.EMPTY;
-				
 				CompoundLockState compLS = e.getValue();
 				Map<WakeLockInstance, Set<SingleLockState>> allLockStates = compLS.getAllLockStates();
 				for (Entry<WakeLockInstance, Set<SingleLockState>>  fs : allLockStates.entrySet()) {
@@ -186,56 +177,136 @@ public class AnalysisResults {
 				if (printMethod) {
 					if (Opts.OUTPUT_ALL_NODE_INFO || component.isCallBack(node)) {
 						printComponent = true;
+						
+						HashSet<SingleLockState> tempState = new HashSet<SingleLockState>();	
 						sb.append(node.getMethod().getSignature().toString() + "\n");
 						for ( Entry<WakeLockInstance, Set<SingleLockState>>  fs : compLS.getAllLockStates().entrySet()) {
-							sb.append("\t" + fs.getKey().toString() + "\n\t" + fs.getValue().toString() + "\n");
+							//Gather the info of every callback
+							WakeLockInstance key = fs.getKey();
+							Set<SingleLockState> value = fs.getValue();
+							tempState.add(SingleLockState.mergeSingleLockStates(value));
+							sb.append("\t" + key.toString() + "\n\t" + value.toString() + "\n");
 						}
 						
-						/*
-						Predicate<SingleLockState> p = new Predicate<SingleLockState>() {		
-							@Override
-							public boolean test(SingleLockState c) {
-								
+						SingleLockState mergedLS = SingleLockState.mergeSingleLockStates(tempState);
+						LockUsage lu = getLockUsage(mergedLS);
+						if (component.isCallBack(node)) {
+							
+							if (usageMap.containsKey(lu)) {
+								usageMap.get(lu).add(Pair.make(component,node));
+							} else {
+								HashSet<Pair<Component, CGNode>> set = 
+										new HashSet<Pair<Component,CGNode>>();
+								set.add(Pair.make(component,node));
+								usageMap.put(lu, set);
 							}
-						};
-						*/						
+							
+							//Add the fact to the policy module
+							policy.addFact(node, mergedLS);
+						}
 					}
 				}
 			}
 			if (printComponent) {
 				E.log(1, component.toString() + "\n" + sb.toString());
+				policy.solveFacts();
+				componentMap.put(component, policy.getLogger());
 			}
-			
-		}	
-	}
+		}	//endfor Component
 
-
-	private void updateEnumMap(EnumMap<LockUsage, Integer> enumMap, LockUsage lockUsage) {
-		if(enumMap == null) {
-			enumMap = new EnumMap<LockUsage, Integer>(LockUsage.class);			
+		System.out.println("==========================================");
+		for(LockUsage e : usageMap.keySet()) {
+			System.out.println(e.toString());
+			for (Pair<Component, CGNode> s : usageMap.get(e)) {
+				System.out.println("   " + s.toString());
+			}
 		}
-		Integer count = enumMap.get(lockUsage);
-		if (count == null) {
-			count = new Integer(1);
-			enumMap.put(lockUsage, count);
+		System.out.println("==========================================");
+
+		for(Component e : componentMap.keySet()) {
+			Logger logger = componentMap.get(e);
+			if (!logger.isEmpty()) {
+				System.out.println(e.toString());
+				logger.output();
+				System.out.println("\n");
+				
+			}
+		}
+	}
+	
+	
+	public class Logger extends ArrayList<String> {
+		private static final long serialVersionUID = 4402714524487791090L;
+		public void output() {
+			for(String s : this) {
+				System.out.println("   " + s);
+			}
+		}
+	}
+	
+	
+	public class ComponentPolicy {
+		private Component component; 
+		
+		public ComponentPolicy(Component component) {
+			this.component = component;
+			map = new HashMap<String, SingleLockState>();
+			logger = new Logger();
+		}
+		
+		private HashMap<String,SingleLockState> map;
+		
+		public void addFact(CGNode n, SingleLockState st) {
+			map.put(n.getMethod().getName().toString(), st);
+		}
+		
+		private boolean unlocking(SingleLockState state) {
+			if (state != null) {
+				LockUsage lu = getLockUsage(state);
+				return (lu.equals(LockUsage.UNLOCKING) || lu.equals(LockUsage.FULL_UNLOCKING));
+			} 
+			return false;		
 		} 
-		else {
-			enumMap.put(lockUsage, count + 1);
+		
+		private boolean locking(SingleLockState onCreateState) {
+			if (onCreateState != null) {
+				return (getLockUsage(onCreateState).equals(LockUsage.LOCKING));
+			} 
+			return false;
+		} 
+		
+		private Logger logger;
+		
+		private void logNote(String s) {
+			logger.add(s);
 		}
-	}
-
-	/*
-	public void outputFinalResults() {
-		for (Entry<Pair<String, String>, EnumMap<LockUsage, Integer>> e : callBackResultMap.entrySet()) {
-			Pair<String, String> key = e.getKey();
-			E.log(1, key.toString());
-			EnumMap<LockUsage, Integer> usages = e.getValue();
-			for (Entry<LockUsage, Integer> u : usages.entrySet()) {
-				LockUsage usage = u.getKey();
-				Integer count = u.getValue();
-				E.log(1, "--> " + usage.toString() + " :: " + count.toString());
+		
+		public Logger getLogger() {
+			return logger;
+		}
+		
+		
+		public void solveFacts() {
+			if (component.getComponentName().equals("Activity")) {
+				
+				SingleLockState onCreateState = map.get("onCreate");
+				if (locking(onCreateState)) {
+						logNote("POSSIBLE BUG: Locking @ onCreate");
+					}
+				
+				SingleLockState onStartState = map.get("onStart");
+				if (locking(onStartState)) {
+					logNote("POSSIBLE BUG: Locking @ onStart");
+				}
+				
+				SingleLockState onPauseState = map.get("onPause");
+				SingleLockState onResumeState = map.get("onResume");
+				
+				if (locking(onResumeState) && (! unlocking(onPauseState))) {
+					logNote("POSSIBLE BUG(onPause - onResume)");
+				}
 			}
 		}
-	}
-	*/
+	} 
+
 }

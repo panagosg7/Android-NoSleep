@@ -146,7 +146,8 @@ public class CtxSensLocking {
 				else {
 					//TODO : include the rest of the cases
 					
-					Assertions.UNREACHABLE("Could not get field from instruction: " + def.toString());
+					Assertions.UNREACHABLE("Could not get field from instruction: " + def.toString() +
+							" (" + node.getMethod().getSignature().toString() + ")");
 				}
 			}									
 		}
