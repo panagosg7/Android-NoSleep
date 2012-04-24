@@ -108,7 +108,7 @@ public class AppCallGraph implements CallGraph {
 	private static Hashtable<String, CGNode> targetCGNodeHash;
 	private static ArrayList<String> targetMethods = null;
 
-	private ApplicationClassHierarchy appCha = null;
+	private AppClassHierarchy appCha = null;
 	private PointerAnalysis pointerAnalysis;
 
 	// /////////////////////////////////////////////////////////
@@ -155,7 +155,7 @@ public class AppCallGraph implements CallGraph {
 		return result.toString();
 	}
 
-	public AppCallGraph(ApplicationClassHierarchy app_cha)
+	public AppCallGraph(AppClassHierarchy app_cha)
 			throws IllegalArgumentException, WalaException, CancelException,
 			IOException {
 		String appJar = app_cha.getAppJar();
@@ -696,7 +696,7 @@ public class AppCallGraph implements CallGraph {
 		/* Filter that filters non-target methods */
 		CollectionFilter<CGNode> targetFilter = new CollectionFilter<CGNode>(
 				targetCGNodeHash.values());
-		BFSIterator<CGNode> bottomUpIterator = GraphBottomUp.bottomUpIterator(
+		Iterator<CGNode> bottomUpIterator = GraphBottomUp.bottomUpIterator(
 				this, targetFilter);
 		while (bottomUpIterator.hasNext()
 				&& (methodCount < 0 || methodCount-- > 0)) {

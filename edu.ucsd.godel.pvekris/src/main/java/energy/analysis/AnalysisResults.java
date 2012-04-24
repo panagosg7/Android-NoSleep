@@ -105,8 +105,10 @@ public class AnalysisResults {
 		for(Iterator<CGNode> it = component.getCallgraph().iterator(); it.hasNext(); ) {
 			CGNode next = it.next();
 			Map<WakeLockInstance, Set<SingleLockState>> exitState = component.getExitState(next);
-			CompoundLockState compoundLockState = new CompoundLockState(exitState);
-			componentSummary.registerNodeState(next, compoundLockState);
+			if (exitState != null) {
+				CompoundLockState compoundLockState = new CompoundLockState(exitState);
+				componentSummary.registerNodeState(next, compoundLockState);
+			}			
 		}
 		allStates.add(Pair.make(component,componentSummary));
 	}
@@ -138,7 +140,7 @@ public class AnalysisResults {
 		
 	
 	public void processResults() {
-		System.out.println("\n");
+		System.out.println("\n==========================================");
 		HashMap<LockUsage, Set<Pair<Component, CGNode>>> usageMap = 
 				new HashMap<LockUsage, Set<Pair<Component, CGNode>>>();
 		HashMap<Component, Logger> componentMap = new HashMap<Component, Logger>();
@@ -179,7 +181,7 @@ public class AnalysisResults {
 						printComponent = true;
 						
 						HashSet<SingleLockState> tempState = new HashSet<SingleLockState>();	
-						sb.append(node.getMethod().getSignature().toString() + "\n");
+						sb.append("    " + node.getMethod().getSignature().toString() + "\n");
 						for ( Entry<WakeLockInstance, Set<SingleLockState>>  fs : compLS.getAllLockStates().entrySet()) {
 							//Gather the info of every callback
 							WakeLockInstance key = fs.getKey();
@@ -208,7 +210,7 @@ public class AnalysisResults {
 				}
 			}
 			if (printComponent) {
-				E.log(1, component.toString() + "\n" + sb.toString());
+				System.out.println(component.toString() + "\n" + sb.toString());
 				policy.solveFacts();
 				componentMap.put(component, policy.getLogger());
 			}
@@ -234,16 +236,14 @@ public class AnalysisResults {
 		}
 	}
 	
-	
 	public class Logger extends ArrayList<String> {
 		private static final long serialVersionUID = 4402714524487791090L;
 		public void output() {
 			for(String s : this) {
-				System.out.println("   " + s);
+				System.out.println("    " + s);
 			}
 		}
 	}
-	
 	
 	public class ComponentPolicy {
 		private Component component; 
@@ -261,12 +261,22 @@ public class AnalysisResults {
 		}
 		
 		private boolean unlocking(SingleLockState state) {
-			if (state != null) {
-				LockUsage lu = getLockUsage(state);
-				return (lu.equals(LockUsage.UNLOCKING) || lu.equals(LockUsage.FULL_UNLOCKING));
-			} 
-			return false;		
+			return (strongUnlocking(state) || weakUnlocking(state));		
 		} 
+		
+		private boolean strongUnlocking(SingleLockState state) {
+			if (state != null) {
+				return (getLockUsage(state).equals(LockUsage.FULL_UNLOCKING));
+			} 
+			return false;
+		}
+		
+		private boolean weakUnlocking(SingleLockState state) {
+			if (state != null) {
+				return (getLockUsage(state).equals(LockUsage.UNLOCKING));
+			} 
+			return false;
+		}
 		
 		private boolean locking(SingleLockState onCreateState) {
 			if (onCreateState != null) {
@@ -277,6 +287,7 @@ public class AnalysisResults {
 		
 		private Logger logger;
 		
+		
 		private void logNote(String s) {
 			logger.add(s);
 		}
@@ -286,14 +297,33 @@ public class AnalysisResults {
 		}
 		
 		
+		private SingleLockState getServiceOnStart() {
+			SingleLockState onStart = map.get("onStart");			//deprecated version
+			SingleLockState onStartCommand = map.get("onStartCommand");	
+			if (onStartCommand == null) {
+				return onStart;				
+			}
+			else {
+				return onStartCommand;
+			}
+		}
+		
+		/**
+		 * 
+		 * TODO: make sure the same lock is locked and unlocked...
+		 * 
+		 */
 		public void solveFacts() {
-			if (component.getComponentName().equals("Activity")) {
-				
+			E.log(1, "Looking for: " + component.getComponentType());
+			
+			/*
+			 * Policies for Activity
+			 */
+			if (component.getComponentType().equals("Activity")) {
 				SingleLockState onCreateState = map.get("onCreate");
 				if (locking(onCreateState)) {
 						logNote("POSSIBLE BUG: Locking @ onCreate");
-					}
-				
+				}
 				SingleLockState onStartState = map.get("onStart");
 				if (locking(onStartState)) {
 					logNote("POSSIBLE BUG: Locking @ onStart");
@@ -306,7 +336,44 @@ public class AnalysisResults {
 					logNote("POSSIBLE BUG(onPause - onResume)");
 				}
 			}
+			/*
+			 * Policies for Service
+			 */
+			if (component.getComponentType().equals("Service")) {
+				SingleLockState onStartState = getServiceOnStart();
+				SingleLockState onDestroyState = map.get("onDestroy");		//FIX THIS
+				if (locking(onStartState) && (!unlocking(onDestroyState))) {
+					logNote("STRONG BUG: " + component.toString() + "Locking @ onDestroy");
+				}
+				if (weakUnlocking(onDestroyState)) {
+					logNote("WEAK BUG: " + component.toString() + "Weak UnLocking @ onDestroy");
+				}
+			}
+			
+			/*
+			 * Policies for Thread
+			 */
+			if (component.getComponentType().equals("RunnableThread")) {
+				SingleLockState runState = map.get("run");
+				if (locking(runState)) {
+					logNote("WEAK BUG: " + component.toString() + "Locking @ run");
+				}				
+			}
+			
+			/*
+			 * Policies for BroadcastReceivers
+			 */
+			if (component.getComponentType().equals("BroadcastReceiver")) {
+				SingleLockState onReceiveState = map.get("onReceive");
+				if (locking(onReceiveState)) {
+					logNote("WEAK BUG: " + component.toString() + "Locking @ onReceive");
+				}				
+			}
+
 		}
+		
 	} 
 
 }
+
+	

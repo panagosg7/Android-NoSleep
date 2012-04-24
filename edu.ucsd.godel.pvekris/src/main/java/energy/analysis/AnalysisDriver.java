@@ -22,7 +22,7 @@ public class AnalysisDriver {
 //XXX: This will obviously fail...
       String appJar = null;
       String exclusionFile = null;
-      ApplicationClassHierarchy	ch = new ApplicationClassHierarchy(appJar, exclusionFile);		
+      AppClassHierarchy	ch = new AppClassHierarchy(appJar, exclusionFile);		
 	  AppCallGraph 		cg = new AppCallGraph(ch);
 
 	  if (Opts.PROCESS_ANDROID_COMPONENTS) {

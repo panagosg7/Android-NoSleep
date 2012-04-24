@@ -25,7 +25,7 @@ public class Activity extends Component {
   public Activity(AppCallGraph originalCG, IClass declaringClass, CGNode root) {
     super(originalCG, declaringClass, root);
   
-    componentName = "Activity";
+    componentType = "Activity";
     
     callbackNames.addAll(Arrays.asList(elements));
     callbackEdges.add(Pair.make("onCreate", "onStart"));

@@ -23,14 +23,14 @@ import com.ibm.wala.viz.DotUtil;
 
 import energy.util.Util;
 
-public class ApplicationClassHierarchy {
+public class AppClassHierarchy {
 
   private static ClassHierarchy cha;
   private String appJar;
   private String exclusionFileName;
 	
   
-  public ApplicationClassHierarchy(String appJar, String exclusionFileName) throws IOException, ClassHierarchyException {
+  public AppClassHierarchy(String appJar, String exclusionFileName) throws IOException, ClassHierarchyException {
 	  this.appJar = appJar;
 	  this.exclusionFileName = exclusionFileName;
 	  File exclusionFile        = FileProvider.getFile(exclusionFileName);

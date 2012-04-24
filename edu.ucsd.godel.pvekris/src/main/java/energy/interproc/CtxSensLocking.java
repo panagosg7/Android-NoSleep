@@ -42,10 +42,12 @@ import energy.analysis.SpecialConditions.IsHeldCondition;
 import energy.analysis.SpecialConditions.NullCondition;
 import energy.analysis.SpecialConditions.SpecialCondition;
 import energy.analysis.WakeLockManager;
+import energy.analysis.WakeLockManager.LocalWakeLock;
 import energy.analysis.WakeLockManager.WakeLockInstance;
 import energy.components.RunnableThread;
 import energy.interproc.LockingTabulationSolver.LockingResult;
 import energy.util.E;
+import energy.util.SSAProgramPoint;
 
 public class CtxSensLocking {
 	
@@ -121,7 +123,7 @@ public class CtxSensLocking {
 		return lockingCall(bb, releaseSigs);
 	}
 	
-	//TODO: cache results bb |-> field	
+	//TODO: cache results bb -> field	
 	private WakeLockInstance lockingCall(BasicBlockInContext<IExplodedBasicBlock> bb, 
 			Collection<String> acceptedSigs) {		
 		final IExplodedBasicBlock ebb = bb.getDelegate();		
@@ -136,20 +138,24 @@ public class CtxSensLocking {
 				DefUse du = getDU(node);					
 				SSAInstruction def = du.getDef(use);
 				//Lock is in a field
+				WakeLockManager wakeLockManager = icfg.getApplicationCG().getWakeLockManager();
 				if (def instanceof SSAGetInstruction) {
 					SSAGetInstruction get = (SSAGetInstruction) def;
-					WakeLockManager wakeLockManager = icfg.getApplicationCG().getWakeLockManager();
+					
 					WakeLockInstance wli = wakeLockManager.new FieldWakeLock(get.getDeclaredField());
 					E.log(2, "Operating on: " + wli);				
 					return wli;
 				}
-				else {
-					//TODO : include the rest of the cases
-					
-					Assertions.UNREACHABLE("Could not get field from instruction: " + def.toString() +
-							" (" + node.getMethod().getSignature().toString() + ")");
+				//TODO : include the rest of the cases
+				else if (def instanceof SSAInvokeInstruction) {
+					SSAInvokeInstruction inv = (SSAInvokeInstruction) def;
+					SSAProgramPoint pp = new SSAProgramPoint(icfg.getCGNode(bb), inv);				
+					WakeLockInstance wli = wakeLockManager.new LocalWakeLock(pp);
+					return wli;
+					//Assertions.UNREACHABLE("Could not get field from instruction: " + def.toString() +
+					//	" (" + node.getMethod().getSignature().toString() + ")");
 				}
-			}									
+			}
 		}
 		return null;
 	}	
@@ -465,7 +471,7 @@ public class CtxSensLocking {
 
 			if (threadExitState != null) {
 				//This is a thread start point
-				E.log(1, "Call to: " + threadExitState.toString());
+				E.log(2, "Call to: " + threadExitState.toString());
 				return new IUnaryFlowFunction() {
 					@Override
 					public IntSet getTargets(int d1) {
@@ -541,7 +547,7 @@ public class CtxSensLocking {
 			result.add(j);
 		}		
 		sb.append(" -> " + n.toString());		
-		E.log(1, sb.toString());		
+		E.log(2, sb.toString());		
 		return result;
 	}
 	
@@ -569,12 +575,12 @@ public class CtxSensLocking {
 					HashSetFactory.make();
 
 			for (BasicBlockInContext<IExplodedBasicBlock> bb : supergraph) {
-				WakeLockInstance acquiredField = acquire(bb);
-				if (acquiredField != null) {
-					E.log(2, bb.toShortString() + ":: adding acquire fact: " + acquiredField.toString());
+				WakeLockInstance acquiredWL = acquire(bb);
+				if (acquiredWL != null) {
+					E.log(1, bb.toShortString() + ":: adding acquire fact: " + acquiredWL.toString());
 					
 					SingleLockState sls = new SingleLockState(true, true, false, false);					
-					Pair<WakeLockInstance, SingleLockState> fact = Pair.make(acquiredField, sls);					
+					Pair<WakeLockInstance, SingleLockState> fact = Pair.make(acquiredWL, sls);					
 					int factNum = domain.add(fact);
 					
 					final CGNode cgNode = bb.getNode();
@@ -585,12 +591,12 @@ public class CtxSensLocking {
 							factNum));
 				}
 				
-				WakeLockInstance releasedField = release(bb);
-				if (releasedField != null)  {					
-					E.log(2, bb.toShortString() + ":: adding release fact: " + releasedField.toString());
+				WakeLockInstance releasedWL = release(bb);
+				if (releasedWL != null)  {					
+					E.log(1, bb.toShortString() + ":: adding release fact: " + releasedWL.toString());
 					
 					SingleLockState sls = new SingleLockState(false, false, true, true);					
-					Pair<WakeLockInstance, SingleLockState> fact = Pair.make(releasedField, sls);
+					Pair<WakeLockInstance, SingleLockState> fact = Pair.make(releasedWL, sls);
 					int factNum = domain.add(fact);
 					
 					final CGNode cgNode = bb.getNode();

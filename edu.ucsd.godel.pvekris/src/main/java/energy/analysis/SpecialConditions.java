@@ -126,8 +126,15 @@ public class SpecialConditions {
 		for (CGNode n : cg) {
 			//WARNING: this needs to be done here!!!
 			DefUse du = null;			//TODO: cache this nicer
-			SSACFG cfg = n.getIR().getControlFlowGraph();
-			IR ir = n.getIR();			
+			IR ir = n.getIR();
+		
+			/* Null for JNI methods */
+			if (ir == null) {
+				E.log(2, "Skipping: " + n.getMethod().toString());
+				continue;				
+			}	
+			
+			SSACFG cfg = ir.getControlFlowGraph();
 			
 			// Clear the map from previous bindings
 			//edgeToBranchInfo = new HashMap<ConditionEdge, GeneralCondition>();			

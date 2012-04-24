@@ -111,7 +111,7 @@ public class BugHunt {
 	public static void runTestPatternAnalysis(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		Set<String> theSet = new HashSet<String>();
 		
-		/* The applications you specify here need to be in apk_collection */
+		/* The applications you specify here need to be in apk_collection !!! */
 		
 //		theSet.add("AndTweet");
 //		theSet.add("K-9 Mail");
@@ -133,16 +133,20 @@ public class BugHunt {
 //		theSet.add("Slice Slice");			//Runnable exception
 //		theSet.add("aLogcat");				//getter for wakelock
 		
-		theSet.add("DISH");					//OK
-		theSet.add("JuiceDefender");		//OK
-		theSet.add("3D Level");				//OK
+		
+//		theSet.add("InstaFetch PRO");		//has recursive threads
+//		theSet.add("DISH");					//OK
+//		theSet.add("JuiceDefender");		//OK
+//		theSet.add("3D Level");				//OK
 		theSet.add("ColorNote");			//OK
-		theSet.add("Pikachu");				//OK
-		theSet.add("Google Sky Map");		//OK
-		theSet.add("RMaps");				//OK
-		theSet.add("Foursquare");			//OK
-		theSet.add("Brain Sooth");			//OK
-		theSet.add("Craigslist");			//OK
+//		theSet.add("Pikachu");				//OK
+//		theSet.add("Google Sky Map");		//OK
+//		theSet.add("RMaps");				//OK
+//		theSet.add("Foursquare");			//OK
+//		theSet.add("Brain Sooth");			//OK
+//		theSet.add("Craigslist");			//OK
+//		theSet.add("AllBinary Arcade One");	//OK
+//		theSet.add("Soccer Livescores");	//OK
 
 //		theSet.add("ICQ");					
 //		theSet.add("Alchemy");
@@ -177,7 +181,7 @@ public class BugHunt {
 		for (Object key: theSet) {
 						
 			String app_name = collection.cleanApkName((String)key);			
-			//System.out.println("\n\n\nLooking for: " + app_name);								
+			System.out.println("\n\nAnalyzing: " + app_name + "\n\n");								
 			String[] catsArray = acqrel_status.getString((String)key).split("[,]");			
 			ArrayList<String> cats = new ArrayList<String>(catsArray.length);			
 			for (String cat: catsArray) cats.add(cat);
@@ -202,9 +206,8 @@ public class BugHunt {
 					usageType = Wala.UsageType.FAILURE;
 				}
 				catch (UnimplementedError e) {
-					
-					LOGGER.warning(e.getMessage());
 					e.printStackTrace();
+					LOGGER.warning(e.getMessage());
 				}								
 			
 			} else {
@@ -413,9 +416,6 @@ public class BugHunt {
 	
 	
 	public static void runPanos(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
-//		ApkInstance apk = collection.getApplication("DISH").getPreferred();
-//		ApkInstance apk = collection.getApplication(ApkCollection.cleanApkName("Robo Defense FREE")).getPreferred();
-//		System.out.println(apk.panosAnalyze());
 		
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));

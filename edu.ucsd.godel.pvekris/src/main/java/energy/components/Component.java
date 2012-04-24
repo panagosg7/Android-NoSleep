@@ -170,8 +170,10 @@ public abstract class Component extends NodeWithNumber {
     callbackNames         = new HashSet<String>();
     callbackEdges         = new HashSet<Pair<String, String>>();
     
-    /* Depracate */
-    // callbackExpectedState = new HashSet<Pair<String,List<String>>>();
+    String name = this.getClass().getName().toString();
+	componentType = name.substring(name.lastIndexOf('.') + 1);
+    
+    
   }
 
   void createComponentCG() {	  
@@ -752,9 +754,13 @@ private String getTargetColor(ISSABasicBlock ebb) {
   /**
    * Get the state at the exit of a cg node
    * @param cgNode
-   * @return
+   * @return May return null (eg. JNI)
    */
   public Map<WakeLockInstance, Set<SingleLockState>> getExitState(CGNode cgNode) {
+	  //This will create problems (JNI)
+	  if (icfg.getCFG(cgNode) == null) {
+		  return null;
+	  }
 	  BasicBlockInContext<IExplodedBasicBlock> exit = icfg.getExit(cgNode);
       Pair<IMethod, Integer> p = Pair.make(
           cgNode.getMethod(), exit.getNumber());
@@ -855,10 +861,10 @@ private String getTargetColor(ISSABasicBlock ebb) {
 		return (this instanceof Activity);
   }
 
-  public String getComponentName() {
-	return componentName;
+  public String getComponentType() {
+	return componentType;
   }
 
- protected String componentName = null; 
+ protected String componentType = null; 
   
 }

@@ -125,7 +125,7 @@ public class WakeLockManager {
 		}
 		
 		public String toString() {
-			return ("T:" + ((types==null)?"NULL":types.toString()) + " RC:" + referenceCounted);
+			return ("Type:" + ((types==null)?"NULL":types.toString()) + " RefCounted:" + referenceCounted);
 		}		
 	}
 	
@@ -245,12 +245,13 @@ public class WakeLockManager {
 			
 			//Need to update these here
 			ir = n.getIR();
-			du = null;			
+			du = null;
 			/* Null for JNI methods */
 			if (ir == null) {
 				E.log(2, "Skipping: " + n.getMethod().toString());
 				continue;				
 			}			
+			//E.log(1, "Scanning: " + n.getMethod().getSignature().toString());
 			for (SSAInstruction instr : ir.getInstructions()) {							
 				/* PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
 				 * 
@@ -266,7 +267,7 @@ public class WakeLockManager {
 						E.log(2,inv.toString());						  
 						if (du == null) {
 							du = new DefUse(ir);
-						}						
+						}
 						Collection<LockType> lockType = null;																		
 						lockType = resolveLockTypeFromVar(inv.getUse(1));
 						//The WakeLock is being assigned to the Def part of the instruction
@@ -303,21 +304,21 @@ public class WakeLockManager {
 					          localObject1 = ((PowerManager)paramActivity.getSystemService("power")).newWakeLock(536870913, str2);
 					          ((PowerManager.WakeLock)localObject1).setReferenceCounted(false);
 					          ((PowerManager.WakeLock)localObject1).acquire(15000L);
-					          Intent localIntent = new android/content/Intent;
-					          localIntent.<init>("android.intent.action.VIEW");
 					          ...
 					          SystemClock.sleep(5000L);
 					          ((PowerManager.WakeLock)localObject1).release();
 					        } 
 						 */
+							if (du == null) {
+								du = new DefUse(ir);
+							}
 							SSAInstruction def = du.getDef(lockNum);
-							E.log(1, "Local WakeLock Variable: " + def.toString());
+							E.log(2, "Local WakeLock Variable: " + def.toString());
 							//Use the program point of the newWakeLock() to specify this
 							
 							SSAProgramPoint pp = new SSAProgramPoint(n, instr);
 							WakeLockInfo wli = variousWakeLocks.get(new LocalWakeLock(pp));
 							if(wli != null) {
-								E.log(1, "LockType: " + lockType.toString());
 								wli.setLockType(lockType);
 							}
 							else {
@@ -325,11 +326,17 @@ public class WakeLockManager {
 								wli = new WakeLockInfo(lockType, true);
 								variousWakeLocks.put(new LocalWakeLock(pp),	wli);
 							}							
+							E.log(1, "Local: " + pp.toString() + "\nINFO= " + wli.toString());
 						}						
 					}	
 					//Check setReferenceCounted
 					else if (inv.toString().contains("setReferenceCounted")) {
-						FieldReference field = getFieldFromVar(ir,du,inv.getUse(0));
+						if (du == null) {
+							du = new DefUse(ir);
+						}						
+						E.log(2, n.getMethod().getSignature().toString());
+						E.log(2, inv.toString());
+						FieldReference field = getFieldFromVar(inv.getUse(0));
 						int bit = inv.getUse(1);
 						boolean refCounted = ir.getSymbolTable().isTrue(bit);
 						//Is it a field?
@@ -372,7 +379,7 @@ public class WakeLockManager {
 	}
 	
 	
-	private FieldReference getFieldFromVar(IR ir, DefUse du, int use) {							
+	private FieldReference getFieldFromVar(int use) {							
 		SSAInstruction def = du.getDef(use);				
 		if (def instanceof SSAGetInstruction) {
 			SSAGetInstruction get = (SSAGetInstruction) def;
@@ -384,7 +391,7 @@ public class WakeLockManager {
 	}
 
 
-	private Boolean getReferenceCounted(IR ir, DefUse du, int lockNum) {
+	private Boolean getReferenceCounted(int lockNum) {
 		Iterator<SSAInstruction> uses = du.getUses(lockNum);
 		while(uses.hasNext()) {
 			SSAInstruction instr = uses.next();
@@ -410,7 +417,7 @@ public class WakeLockManager {
 		/*
 		 * The 1st parameter of newWakeLock was not a constant int, 
 		 * so we'll have to check what it is ...
-		 */	
+		 */
 			SSAInstruction def = du.getDef(use);
 			HashSet<LockType> ret = new HashSet<LockType>();
 			

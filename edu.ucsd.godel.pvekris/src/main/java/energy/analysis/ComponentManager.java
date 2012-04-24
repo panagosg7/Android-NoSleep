@@ -1,5 +1,6 @@
 package energy.analysis;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -7,19 +8,23 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Properties;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Predicate;
 
 import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.examples.properties.WalaExamplesProperties;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
+import com.ibm.wala.properties.WalaProperties;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
+import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.collections.CollectionFilter;
 import com.ibm.wala.util.collections.Filter;
 import com.ibm.wala.util.debug.Assertions;
@@ -30,6 +35,7 @@ import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.graph.traverse.BFSIterator;
 import com.ibm.wala.util.graph.traverse.DFSPathFinder;
+import com.ibm.wala.util.intset.IBinaryNaturalRelation;
 
 import energy.analysis.SpecialConditions.SpecialCondition;
 import energy.components.Activity;
@@ -58,6 +64,7 @@ import energy.interproc.SensibleExplodedInterproceduralCFG;
 import energy.util.E;
 import energy.util.GraphBottomUp;
 import energy.util.SSAProgramPoint;
+import energy.viz.GraphDotUtil;
 
 @SuppressWarnings("deprecation")
 public class ComponentManager {
@@ -183,28 +190,30 @@ public class ComponentManager {
     }
 
     System.out.println();
-    E.log(0, "############################################################");
+    System.out.println( "==========================================");
     String fst = String.format("%-30s: %d", "Resolved classes", resolvedComponentCount);
-    E.log(0, fst);
+    System.out.println(fst);
     fst = String.format("%-30s: %d", "Resolved implementors", resolvedImplementorCount);
-    E.log(0, fst);
+    System.out.println(fst);
     fst = String.format("%-30s: %d", "Resolved constructors", resolvedConstructors);
-    E.log(0, fst);
+    System.out.println(fst);
     fst = String.format("%-30s: %d (%.2f %%)", "Unresolved callbacks", unresolvedCallBacks,        
         100 * ((double) unresolvedCallBacks / (double) totalCallBacks));
-    E.log(0, fst);
+    System.out.println(fst);
     fst = String.format("%-30s: %d (%.2f %%)", "Interesting Unresolved cbs", unresolvedInterestingCallBacks, 
         100 * ((double) unresolvedInterestingCallBacks / (double) totalCallBacks));
-    E.log(0, fst);
-    E.log(0, "------------------------------------------------------------");
+    System.out.println(fst);
+    System.out.println("------------------------------------------");
+    
     E.log(2, "Unresolved");
     E.log(2, unresolvedSB);
-    E.log(2, "------------------------------------------------------------");
+    E.log(2, "----------------------------------------------------");
+    
     fst = String.format("%-30s: %d", "Total callbacks", totalCallBacks);
-    E.log(0, fst);
+    System.out.println(fst);
     fst = String.format("%-30s: %d", "Resolved components", componentMap.size());
-    E.log(0, fst);
-    E.log(0, "############################################################\n");
+    System.out.println(fst);
+    System.out.println("==========================================\n");
 
   }
 
@@ -436,7 +445,7 @@ public class ComponentManager {
      */
     Collection<Component> components = componentMap.values();    
     Graph<Component> constraintGraph = constraintGraph(components);
-    BFSIterator<Component> bottomUpIterator = GraphBottomUp.bottomUpIterator(constraintGraph);
+    Iterator<Component> bottomUpIterator = GraphBottomUp.bottomUpIterator(constraintGraph);
     
     /*
      * Results about all Components
@@ -447,7 +456,7 @@ public class ComponentManager {
     /* And analyze the components based on this graph in bottom up order */
     while (bottomUpIterator.hasNext()) {
     	Component component = bottomUpIterator.next();
-    	
+    	//E.log(1, component.toString());
         /* assert that dependencies are met */
     	Collection<Component> compDep = component.getThreadDependencies();
     	
@@ -464,32 +473,32 @@ public class ComponentManager {
 		 /* gather special conditions */
 			gatherSpecialConditions(component);
 		}
-		  
-	      if (Opts.OUTPUT_COMPONENT_CALLGRAPH) {
-	        component.outputNormalCallGraph();
-	      }
-	
-	      if (Opts.ONLY_ANALYSE_LOCK_REACHING_CALLBACKS) { 
-	          /* Use reachability results to see if we can actually get to a 
-	           * wifi/wake lock call from here */
-	          Predicate predicate = new Predicate() {      
-	            @Override
+	  
+		if (Opts.OUTPUT_COMPONENT_CALLGRAPH) {
+			component.outputNormalCallGraph();
+		}
+
+		if (Opts.ONLY_ANALYSE_LOCK_REACHING_CALLBACKS) { 
+	        /* Use reachability results to see if we can actually get to a 
+	         * wifi/wake lock call from here */
+	        Predicate predicate = new Predicate() {      
+	        	@Override
 	            public boolean evaluate(Object c) {
 	              CGNode n = (CGNode) c;          
 	              return (graphReachability.getReachableSet(n).size() > 0);    
 	            }
-	          };
-	          boolean isInteresting =
-	              CollectionUtils.exists(component.getCallbacks(), predicate);
-	          component.setInteresting(isInteresting);   	  
-	    	  if (!isInteresting) {
-	    		  continue;
-	    	  }    	 
-	      }       
-	      
-	      //DEBUG
+	        };
+	        boolean isInteresting =
+	            CollectionUtils.exists(component.getCallbacks(), predicate);
+	        component.setInteresting(isInteresting);   	  
+	    	if (!isInteresting) {
+	    		continue;
+	    	}    	 
+		}       
+      
+	    //DEBUG
 	      /*
-	      E.log(1, component.toString());
+	      
 	      if (component.toString().equals("Runnable thread: Lcom/imo/android/imoim/ImoService$ConnectionThread")) {
 	    	  HashSet<CallBack> callbacks = component.getCallbacks();
 	    	  for(CallBack cb : callbacks) {
@@ -503,31 +512,29 @@ public class ComponentManager {
 	    	  
 	      }
 	      */
-	      //DEBUG	      
-	      
+		//DEBUG	      
 	            
-	      if (Opts.DO_CS_ANALYSIS) {
+	    if (Opts.DO_CS_ANALYSIS) {
 	    	component.solveCSCFG();
-	      }
-	      else {
+	    }
+	    else {
 	    	component.solveCICFG();      
-	      }
+	    }
 	      
-	      component.cacheStates();
-	      
-	      if(Opts.OUTPUT_COLOR_CFG_DOT) {
-	        component.outputColoredCFGs();
+	    component.cacheStates();
+	     
+	    if(Opts.OUTPUT_COLOR_CFG_DOT) {
+	    	component.outputColoredCFGs();
 	        //component.outputSolvedICFG();
-	      }      
+	    }      
 	            
-	      /* Check the policy - defined for each type of component separately */
-	      if (Opts.CHECK_LOCKING_POLICY) {
+	    /* Check the policy - defined for each type of component separately */
+	    if (Opts.CHECK_LOCKING_POLICY) {
 	    	result.createComponentSummary(component);
 	    	//result.registerExitLockState(component, component.getCallBackExitStates());               
-	      }
-	            
-	    }    
-	    return result;
+	    }
+    }    
+	return result;
     
   }
   
@@ -724,28 +731,50 @@ public class ComponentManager {
 		  
 		  for (Component dst : threadDependencies) {
 			  if ((src != null) && (dst != null)) {
-				E.log(1, src + " --> " + dst);
+				E.log(2, src + " --> " + dst);
 				g.addEdge(src,dst);
 			}
 		  }
 	  }
 	
-	/* For now assert that there are no cycles in the component 
-	 * constraint graph. */
-	com.ibm.wala.util.Predicate<Component> p = 
-			new com.ibm.wala.util.Predicate<Component>() {		
-		@Override
-		public boolean test(Component c) {
-			return Acyclic.isAcyclic(g, c);				
-		}
-	};
-	Assertions.productionAssertion(com.ibm.wala.util.collections.Util.forAll(cc, p), 
-			"Cannot handle circular dependencies in thread calls.");
-	/* TODO: not sure how to deal with circular dependencies */ 
-	//System.out.println("\n\nComponent dependence graph\n");
-	//System.out.println(g.toString());
-	return g;
-  }
+	  /* Assert that there are no cycles in the component constraint graph. */
+	  com.ibm.wala.util.Predicate<Component> p = 
+				new com.ibm.wala.util.Predicate<Component>() {		
+			@Override
+			public boolean test(Component c) {
+				return Acyclic.isAcyclic(g, c);
+			}
+	  };
+
+	  E.log(1, "Thread dependence graph has " + GraphUtil.countEdges(g) + " edge(s).");
 	  
+	  boolean acyclic = com.ibm.wala.util.collections.Util.forAll(cc, p);
+	  dumpConstraintGraph(g);	  
+	  if (!acyclic) {
+		  
+		  Assertions.productionAssertion(acyclic, 
+		    "Cannot handle circular dependencies in thread calls. Dumping thread dependency graph");  
+	  }
+			
+	  /* TODO: circular dependencies are just dropped */ 
+	  return g;
+  }
+
+  private void dumpConstraintGraph(SparseNumberedGraph<Component> g) {
+	try {
+		Properties p = null;
+		p = WalaExamplesProperties.loadProperties();
+		p.putAll(WalaProperties.loadProperties());
+		String dotFile = energy.util.Util.getResultDirectory()
+				+ File.separatorChar + "thread_dependencies.dot";
+		String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
+		E.log(1, "Dumping thread graph");
+		GraphDotUtil.dotify(g, null, dotFile, null, dotExe);
+		return;
+	} catch (WalaException e) {
+		e.printStackTrace();
+		return;
+	}
+}	  
 
 }

@@ -48,14 +48,14 @@ public class SSAProgramPoint {
 		return (node.hashCode() * 7329) + (instruction.hashCode() * 9223);		
 	}
 	
-	
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
+		sb.append("[");
 		sb.append(method.getDeclaringClass().getName().toString());
 		sb.append(".");
 		sb.append(method.getName().toString());
-		sb.append(" || ");
-		sb.append("(BB:" + bb.getNumber()+")");
+		sb.append(", ");
+		sb.append("(bb) " + bb.getNumber()+"]");
 		return sb.toString();
 	}
 	

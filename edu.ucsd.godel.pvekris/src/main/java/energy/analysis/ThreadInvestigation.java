@@ -79,12 +79,19 @@ public class ThreadInvestigation {
 									
 									if (def instanceof SSANewInstruction) {
 										SSANewInstruction inv1 = (SSANewInstruction) def;
+										
 										Assertions.productionAssertion(targetComponent == null);	//this should be done only once																										
 										targetComponent = cm.getComponent(inv1.getConcreteType());
-										if (targetComponent == null) {
+										/*
+										 * This could be null because: 
+										 *  - The class was not resolved
+										 */
+										
+										if (targetComponent != null) {
 											Assertions.productionAssertion(targetComponent instanceof RunnableThread, 
-													"Cannot handle circular dependencies in thread calls.");
+													"A Thread should be called here.");
 										}
+										
 
 									}
 								} catch (Exception e) {
@@ -102,7 +109,7 @@ public class ThreadInvestigation {
 						}
 					} //for uses
 					if ((pp!=null) && (targetComponent!= null)) {
-						E.log(1, "Adding: " + pp + " --> " + targetComponent);
+						E.log(2, "Adding: " + pp + " --> " + targetComponent);
 						siteToClass.put(pp, targetComponent);
 					}
 				}

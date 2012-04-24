@@ -78,7 +78,7 @@ import edu.ucsd.salud.mcmutton.ApkInstance;
 import edu.ucsd.salud.mcmutton.RetargetException;
 import energy.analysis.AnalysisResults;
 import energy.analysis.AppCallGraph;
-import energy.analysis.ApplicationClassHierarchy;
+import energy.analysis.AppClassHierarchy;
 import energy.analysis.ComponentManager;
 import energy.analysis.WakeLockManager;
 import energy.analysis.Opts;
@@ -611,7 +611,7 @@ public class Wala {
 		energy.util.Util.setResultDirectory(mPath.getAbsolutePath());
 		energy.util.Util.printLabel(mPath.getAbsolutePath());		
 		
-		ApplicationClassHierarchy	ch = new ApplicationClassHierarchy(appJar, exclusionFile);		
+		AppClassHierarchy	ch = new AppClassHierarchy(appJar, exclusionFile);		
 		AppCallGraph 		cg = new AppCallGraph(ch);		
 		Set<String> result = new HashSet<String>();
 		if (Opts.PROCESS_ANDROID_COMPONENTS) {
