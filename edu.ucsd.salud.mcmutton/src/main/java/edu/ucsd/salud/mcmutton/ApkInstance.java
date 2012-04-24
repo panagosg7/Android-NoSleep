@@ -371,12 +371,11 @@ public class ApkInstance {
 		return mPreferredTranslation.retargetSuccess();
 	}
 	
-	public boolean successfullyOptimized() throws IOException, RetargetException {
-	    //return mPreferredTranslation.successfullyOptimized();
+	public boolean isSuccessfullyOptimized() throws IOException, RetargetException {
 		return mPreferredTranslation.optimizationSuccess();
 	}
 	
-	public boolean ensureSuccessfullyOptimized() throws IOException, RetargetException {
+	public boolean successfullyOptimized() throws IOException, RetargetException {
 	    return mPreferredTranslation.successfullyOptimized();
 	}
 	
