@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -138,7 +139,8 @@ public class BugHunt {
 //		theSet.add("DISH");					//OK
 //		theSet.add("JuiceDefender");		//OK
 //		theSet.add("3D Level");				//OK
-		theSet.add("ColorNote");			//OK
+//		theSet.add("ColorNote");			//OK
+		theSet.add("Adobe AIR");				//OK
 //		theSet.add("Pikachu");				//OK
 //		theSet.add("Google Sky Map");		//OK
 //		theSet.add("RMaps");				//OK
@@ -159,8 +161,6 @@ public class BugHunt {
 
 //		theSet.add("YouTube");
 //		theSet.add("imo");
-
-		
 //		theSet.add("Android Agenda Widget");
 //		theSet.add("ServicesDemo");			//toy example
 		
@@ -178,8 +178,11 @@ public class BugHunt {
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 		Map<Wala.UsageType, Integer> histogram = new HashMap<Wala.UsageType, Integer>();
 		
+		int limit = 50;
+		
+		HashMap<ApkInstance, ArrayList<String>> result = new HashMap<ApkInstance, ArrayList<String>>();
+		
 		for (Object key: theSet) {
-						
 			String app_name = collection.cleanApkName((String)key);			
 			String[] catsArray = acqrel_status.getString((String)key).split("[,]");			
 			ArrayList<String> cats = new ArrayList<String>(catsArray.length);			
@@ -187,48 +190,63 @@ public class BugHunt {
 			ApkApplication application = collection.getApplication(app_name);
 			ApkInstance apk = application.getPreferred();
 			Wala.UsageType usageType = Wala.UsageType.UNKNOWN;			
-			Set<String> panosResult = null;			
-			boolean successfullyOptimized = false;
-			
-			try {
-				successfullyOptimized = apk.isSuccessfullyOptimized();
-			} catch (RetargetException e) {
-				LOGGER.warning("Retarget failed: " + e.toString());
-			}
-			
+						
 			if (apk.successfullyOptimized()) {
 				try {
-					panosResult = apk.panosAnalyze();
+					result.put(apk, apk.panosAnalyze());
 				} catch(Exception e) {
 					//Any exception should be notified
 					e.printStackTrace();
 					usageType = Wala.UsageType.FAILURE;
+					ArrayList<String> res = new ArrayList<String>();
+					res.add("FAILURE: Analysis failed.");
+					result.put(apk, res);
 				}
 				catch (UnimplementedError e) {
 					e.printStackTrace();
 					LOGGER.warning(e.getMessage());
+					ArrayList<String> res = new ArrayList<String>();
+					res.add("UNIMPLEMENTED: " + e.getMessage());
+					result.put(apk, res);
+					usageType = Wala.UsageType.UNIMPLEMENTED_FAILURE;
 				}								
 			
 			} else {
-				LOGGER.warning("Failed to optimize: " + key.toString());
+				LOGGER.warning("\nOptimization failed.\n");
+				ArrayList<String> res = new ArrayList<String>();
+				res.add("FAILURE: Optimization failed.");
+				result.put(apk, res);
 				usageType = Wala.UsageType.CONVERSION_FAILURE;
-				//panosResult = usageType;
 			}
-			
-
-			/*
-			System.out.println(key + ":" + StringUtils.join(cats, ", ") + " -- " + 
-					apk.successfullyOptimized() + " -- " + usageType + "==" + panosUsageType);
-			System.out.println();
-			*/
-			//assert usageType == panosUsageType;
 
 			if (histogram.containsKey(usageType)) {
 				histogram.put(usageType, histogram.get(usageType) + 1);
 			} else {
 				histogram.put(usageType, 1);
 			}
+			
+			if (--limit < 1) break;
 		
+		}
+		
+		System.out.println();
+		System.out.println();
+
+		for (Entry<ApkInstance, ArrayList<String>> e : result.entrySet()) {
+			ApkInstance apk = e.getKey();
+			String res = String.format("%30s - %15s :: ", apk.getName(), apk.getVersion());
+			int length = res.length();
+			System.out.print(res);
+			ArrayList<String> value = e.getValue();
+			if (value.size() > 0) {
+				System.out.println(value.get(0));
+				for (int i = 1 ; i < value.size(); i++ ) {
+					System.out.println(String.format("%" + length + "s", " ") + value.get(i));					
+				}
+			}
+			else {
+				System.out.println();
+			}
 		}
 		
 		Map<Wala.BugLikely, Integer> likelihood = new HashMap<Wala.BugLikely, Integer>();
@@ -375,7 +393,7 @@ public class BugHunt {
 			System.out.println("\n" + app_name + "\n");			
 			ApkInstance apk = collection.getApplication(app_name).getPreferred();
 			apk.buildOptimizedJava();
-			System.out.println("-------------------------------------------------------------------------------");
+			System.out.println("------------------------------------------");
 		}
 	}
 	
@@ -402,45 +420,10 @@ public class BugHunt {
 					ApkInstance.LOGGER.warning("Optimization failed");
 				}
 			}
-			System.out.println("-------------------------------------------------------------------------------");
+			System.out.println("------------------------------------------");
 		}
 	}
 	
-	
-	
-	public static void runPanos(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
-		
-		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
-		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
-	
-		Map<String, Integer> colorCount = new HashMap<String, Integer>();
-		
-		for (Object key: acqrel_status.keySet()) {
-			try {
-				String app_name = ApkCollection.cleanApkName((String)key);
-				ApkInstance apk = collection.getApplication(app_name).getPreferred();
-				Set<String> colors = apk.panosAnalyze();
-				
-				for (String color: colors) {
-					if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
-					else colorCount.put(color, colorCount.get(color) + 1);
-				}
-				System.out.println(app_name + ": " + colors);
-			} catch (Exception e) {
-				System.out.println("explode!");
-				String color = "failed";
-				if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
-				else colorCount.put(color, colorCount.get(color) + 1);
-			} catch (Error e) {
-				System.out.println("more explode!");
-				String color = "failed";
-				if (!colorCount.containsKey(color)) colorCount.put(color,  new Integer(1));
-				else colorCount.put(color, colorCount.get(color) + 1);
-			}
-		}
-		
-		System.out.println(colorCount);	
-	}
 	
 	public static void readWorkConsumerResults(ApkCollection collection) {
 		File resultsPath = new File(ApkInstance.sScratchPath + File.separator + "results");
@@ -578,9 +561,7 @@ public class BugHunt {
 	    				System.err.println("must specify collection name");
 	    				return;
 	    			}
-	    			collection.integrateApks(basePath, collectionName);
-	    		} else if (line.hasOption("panos")) {
-	    			runPanos(collection);
+	    			collection.integrateApks(basePath, collectionName);	    		
 	    		} else if (line.hasOption("read-consumer")) {
 	    			readWorkConsumerResults(collection);
 	    		} else {

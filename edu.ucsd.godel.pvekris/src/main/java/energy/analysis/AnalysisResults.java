@@ -16,7 +16,6 @@ import energy.components.Component;
 import energy.components.Component.CallBack;
 import energy.interproc.CompoundLockState;
 import energy.interproc.SingleLockState;
-import energy.util.E;
 
 public class AnalysisResults {
 	
@@ -95,6 +94,48 @@ public class AnalysisResults {
 		FULL_UNLOCKING;
 	}
 	
+	
+	
+	public enum ResultType {
+		UNRESOLVED_INTERESTING_CALLBACKS,		
+		LOCKING_ON_CREATE,
+		START_DESTROY,
+		SERVICE_DESTROY,
+		THREAD_RUN,
+		HANDLE_MESSAGE,
+		BROADCAST_RECEIVER_ONRECEIVE, 
+		LOCKING_ON_START,
+		LOCKING_ON_RESTART, 
+		STRONG_PAUSE_RESUME, 
+		WEAK_PAUSE_RESUME, 
+		WEAK_SERVICE_DESTROY, 
+		STRONG_SERVICE_DESTROY, DID_NOT_PROCESS;
+	}
+	
+	public class Result { 
+		
+		private ResultType resultType;
+		private String message; 
+		
+		public ResultType getResultType() {
+			return resultType;
+		}
+		
+		public String getMessage() {
+			return message;
+		}
+		
+		public Result(ResultType rt, String msg) {
+			message = msg;
+			resultType = rt;
+		}
+		
+		public String toString() {
+			return (resultType.name() + " " + message);
+		}
+	}
+		
+	
 
 	/**
 	 * Invoke this after the component has been analyzed
@@ -139,7 +180,8 @@ public class AnalysisResults {
 	}
 		
 	
-	public void processResults() {
+	public ArrayList<Result> processResults() {
+		ArrayList<Result> result = new ArrayList<Result>();
 		System.out.println("\n==========================================");
 		HashMap<LockUsage, Set<Pair<Component, CGNode>>> usageMap = 
 				new HashMap<LockUsage, Set<Pair<Component, CGNode>>>();
@@ -216,32 +258,45 @@ public class AnalysisResults {
 			}
 		}	//endfor Component
 
-		System.out.println("==========================================");
+		System.out.println("==========================================\n");
 		for(LockUsage e : usageMap.keySet()) {
 			System.out.println(e.toString());
 			for (Pair<Component, CGNode> s : usageMap.get(e)) {
 				System.out.println("   " + s.toString());
 			}
 		}
-		System.out.println("==========================================");
+		System.out.println("==========================================\n");
 
 		for(Component e : componentMap.keySet()) {
 			Logger logger = componentMap.get(e);
 			if (!logger.isEmpty()) {
 				System.out.println(e.toString());
-				logger.output();
+				System.out.println(logger.toString());
 				System.out.println("\n");
-				
 			}
+			result = logger.getStringList();
 		}
+		return result;
 	}
 	
-	public class Logger extends ArrayList<String> {
+	public class Logger extends ArrayList<Result> {
 		private static final long serialVersionUID = 4402714524487791090L;
 		public void output() {
-			for(String s : this) {
-				System.out.println("    " + s);
+			for(Result r : this) {
+				System.out.println("    " + r.getResultType().toString());
 			}
+		}
+		
+		public ArrayList<Result> getStringList() {
+			return this;
+		}
+		
+		public String toString() {
+			StringBuffer result = new StringBuffer();
+			for(Result r : this) {
+				result.append(r.toString() + "\n");
+			}
+			return result.toString();					
 		}
 	}
 	
@@ -268,14 +323,14 @@ public class AnalysisResults {
 			if (state != null) {
 				return (getLockUsage(state).equals(LockUsage.FULL_UNLOCKING));
 			} 
-			return false;
+			return true;		//reverse logic
 		}
 		
 		private boolean weakUnlocking(SingleLockState state) {
 			if (state != null) {
 				return (getLockUsage(state).equals(LockUsage.UNLOCKING));
 			} 
-			return false;
+			return true;		//reverse logic
 		}
 		
 		private boolean locking(SingleLockState onCreateState) {
@@ -288,8 +343,8 @@ public class AnalysisResults {
 		private Logger logger;
 		
 		
-		private void logNote(String s) {
-			logger.add(s);
+		private void logNote(Result result) {
+			logger.add(result);
 		}
 		
 		public Logger getLogger() {
@@ -314,26 +369,32 @@ public class AnalysisResults {
 		 * 
 		 */
 		public void solveFacts() {
-			E.log(1, "Looking for: " + component.getComponentType());
-			
 			/*
 			 * Policies for Activity
 			 */
 			if (component.getComponentType().equals("Activity")) {
 				SingleLockState onCreateState = map.get("onCreate");
 				if (locking(onCreateState)) {
-						logNote("POSSIBLE BUG: Locking @ onCreate");
+					logNote(new Result(ResultType.LOCKING_ON_CREATE, component.toString()));
 				}
 				SingleLockState onStartState = map.get("onStart");
 				if (locking(onStartState)) {
-					logNote("POSSIBLE BUG: Locking @ onStart");
+					logNote(new Result(ResultType.LOCKING_ON_START, component.toString()));
+				}
+				
+				SingleLockState onRestartState = map.get("onRestart");
+				if (locking(onRestartState)) {
+					logNote(new Result(ResultType.LOCKING_ON_RESTART, component.toString()));
 				}
 				
 				SingleLockState onPauseState = map.get("onPause");
-				SingleLockState onResumeState = map.get("onResume");
 				
-				if (locking(onResumeState) && (! unlocking(onPauseState))) {
-					logNote("POSSIBLE BUG(onPause - onResume)");
+				if (!unlocking(onPauseState)) {
+					logNote(new Result(ResultType.STRONG_PAUSE_RESUME, component.toString()));
+				}
+				
+				if (weakUnlocking(onPauseState) && (!strongUnlocking(onPauseState))) {
+					logNote(new Result(ResultType.WEAK_PAUSE_RESUME, component.toString()));
 				}
 			}
 			/*
@@ -343,10 +404,10 @@ public class AnalysisResults {
 				SingleLockState onStartState = getServiceOnStart();
 				SingleLockState onDestroyState = map.get("onDestroy");		//FIX THIS
 				if (locking(onStartState) && (!unlocking(onDestroyState))) {
-					logNote("STRONG BUG: " + component.toString() + "Locking @ onDestroy");
+					logNote(new Result(ResultType.STRONG_SERVICE_DESTROY, component.toString()));
 				}
 				if (weakUnlocking(onDestroyState)) {
-					logNote("WEAK BUG: " + component.toString() + "Weak UnLocking @ onDestroy");
+					logNote(new Result(ResultType.WEAK_SERVICE_DESTROY, component.toString()));
 				}
 			}
 			
@@ -356,17 +417,28 @@ public class AnalysisResults {
 			if (component.getComponentType().equals("RunnableThread")) {
 				SingleLockState runState = map.get("run");
 				if (locking(runState)) {
-					logNote("WEAK BUG: " + component.toString() + "Locking @ run");
+					logNote(new Result(ResultType.THREAD_RUN, component.toString()));
 				}				
 			}
-			
+
+			/*
+			 * Policies for Handler
+			 */
+			if (component.getComponentType().equals("Handler")) {
+				SingleLockState handleState = map.get("handleMessage");
+				if (unlocking(handleState) && (!strongUnlocking(handleState))) {
+					logNote(new Result(ResultType.WEAK_SERVICE_DESTROY, component.toString()));
+				}
+			}
+		
+		
 			/*
 			 * Policies for BroadcastReceivers
 			 */
 			if (component.getComponentType().equals("BroadcastReceiver")) {
 				SingleLockState onReceiveState = map.get("onReceive");
 				if (locking(onReceiveState)) {
-					logNote("WEAK BUG: " + component.toString() + "Locking @ onReceive");
+					logNote(new Result(ResultType.BROADCAST_RECEIVER_ONRECEIVE, component.toString()));					
 				}				
 			}
 

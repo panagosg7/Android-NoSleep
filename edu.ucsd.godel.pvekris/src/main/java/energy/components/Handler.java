@@ -12,13 +12,4 @@ public class Handler extends Component{
 
   }
 
-  public String toString() {
-    
-    StringBuffer b = new StringBuffer();
-    b.append("Handler: ");
-    b.append(getKlass().getName().toString());
-
-    return b.toString();
-  }
-  
 }

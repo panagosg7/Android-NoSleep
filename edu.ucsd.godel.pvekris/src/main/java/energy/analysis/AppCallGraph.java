@@ -46,7 +46,6 @@ import com.ibm.wala.ipa.callgraph.impl.ExplicitCallGraph;
 import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.ipa.callgraph.impl.Util;
 import com.ibm.wala.ipa.callgraph.propagation.LocalPointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ipa.cfg.ExceptionPrunedCFG;
 import com.ibm.wala.ipa.cfg.PrunedCFG;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
@@ -73,7 +72,6 @@ import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.InferGraphRoots;
 import com.ibm.wala.util.graph.impl.InvertedGraph;
-import com.ibm.wala.util.graph.traverse.BFSIterator;
 import com.ibm.wala.util.graph.traverse.BoundedBFSIterator;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.io.FileProvider;
@@ -109,7 +107,6 @@ public class AppCallGraph implements CallGraph {
 	private static ArrayList<String> targetMethods = null;
 
 	private AppClassHierarchy appCha = null;
-	private PointerAnalysis pointerAnalysis;
 
 	// /////////////////////////////////////////////////////////
 

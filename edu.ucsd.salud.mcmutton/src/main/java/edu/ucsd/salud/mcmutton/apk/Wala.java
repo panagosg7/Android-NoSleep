@@ -77,10 +77,11 @@ import edu.ucsd.salud.mcmutton.ApkException;
 import edu.ucsd.salud.mcmutton.ApkInstance;
 import edu.ucsd.salud.mcmutton.RetargetException;
 import energy.analysis.AnalysisResults;
+import energy.analysis.AnalysisResults.Result;
+import energy.analysis.AnalysisResults.ResultType;
 import energy.analysis.AppCallGraph;
 import energy.analysis.AppClassHierarchy;
 import energy.analysis.ComponentManager;
-import energy.analysis.WakeLockManager;
 import energy.analysis.Opts;
 
 public class Wala {
@@ -527,6 +528,7 @@ public class Wala {
 		ONLY_TIMED_ACQUIRE(BugLikely.UNLIKELY), ONLY_MULTIMEDIA(BugLikely.MAYBE), 
 		ONLY_ACQUIRE(BugLikely.DEFINITELY),
 		UNKNOWN(BugLikely.UNDETERMINED), 
+		UNIMPLEMENTED_FAILURE(BugLikely.UNDETERMINED),
 		CONVERSION_FAILURE(BugLikely.UNDETERMINED), FAILURE(BugLikely.UNDETERMINED);
 		
 		public BugLikely bugLikely;
@@ -600,7 +602,7 @@ public class Wala {
 		}
 	}
 
-	public Set<String> panosAnalyze() throws IOException, WalaException, CancelException, ApkException {
+	public ArrayList<Result> panosAnalyze() throws IOException, WalaException, CancelException, ApkException {
 		
 		String appJar = mPath.getAbsolutePath();
 
@@ -613,15 +615,17 @@ public class Wala {
 		
 		AppClassHierarchy	ch = new AppClassHierarchy(appJar, exclusionFile);		
 		AppCallGraph 		cg = new AppCallGraph(ch);		
-		Set<String> result = new HashSet<String>();
+		
 		if (Opts.PROCESS_ANDROID_COMPONENTS) {
 			ComponentManager componentManager = new ComponentManager(cg);
 			componentManager.prepareReachability();
 			componentManager.resolveComponents();
 			AnalysisResults results = componentManager.processComponents();
-			results.processResults();
-			//results.outputFinalResults();
+			return results.processResults();
 		}
+		ArrayList<Result> result = new ArrayList<AnalysisResults.Result>();
+		result.add(new Result(ResultType.DID_NOT_PROCESS, ""));
+		
 		return result;
 	}
 }

@@ -103,12 +103,11 @@ public class Util {
 
   public static void printLabel(String arg) {
 	System.out.println();
-	System.out.println();
-	E.plog(1, "==========================================\n");       
-    
-    System.out.println("\t" + arg.split(File.separatorChar+"")[5]);
-    System.out.println("\t" + arg.split(File.separatorChar+"")[6]);
-    System.out.println("\n==========================================\n");
+		
+	System.out.println("==========================================\n");      
+	System.out.println("\t" + arg.split(File.separatorChar+"")[5]);
+	System.out.println("\t" + arg.split(File.separatorChar+"")[6]);
+	System.out.println("\n==========================================\n");
     
   }
   

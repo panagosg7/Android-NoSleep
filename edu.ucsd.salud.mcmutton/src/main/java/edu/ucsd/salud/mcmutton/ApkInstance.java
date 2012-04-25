@@ -347,7 +347,7 @@ public class ApkInstance {
 		return interestingCallSites().keySet();
 	}
 	
-	public Set<String> panosAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException {		
+	public ArrayList<String> panosAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException {		
 		return this.getWala().panosAnalyze();			//run my stuff		
 	}
  
@@ -371,10 +371,22 @@ public class ApkInstance {
 		return mPreferredTranslation.retargetSuccess();
 	}
 	
+	/**
+	 * Does not attempt to optimize - just checks
+	 * @return
+	 * @throws IOException
+	 * @throws RetargetException
+	 */
 	public boolean isSuccessfullyOptimized() throws IOException, RetargetException {
 		return mPreferredTranslation.optimizationSuccess();
 	}
 	
+	/**
+	 * Will optimize if needed
+	 * @return
+	 * @throws IOException
+	 * @throws RetargetException
+	 */
 	public boolean successfullyOptimized() throws IOException, RetargetException {
 	    return mPreferredTranslation.successfullyOptimized();
 	}

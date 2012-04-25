@@ -603,8 +603,7 @@ public class CtxSensLocking {
 					BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(cgNode);
 					// note that the fact number used for the source of this
 					// path edge doesn't really matter
-					result.add(PathEdge.createPathEdge(fakeEntry, factNum, bb,
-							factNum));
+					result.add(PathEdge.createPathEdge(fakeEntry, factNum, bb, factNum));
 				}
 			}			
 			return result;

@@ -7,6 +7,7 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.util.Set;
@@ -90,9 +91,9 @@ public class WorkConsumer implements Watcher {
 						if (apk.isSuccessfullyOptimized()) {
 							JSONObject panos_result = new JSONObject();
 							try {
-								Set<String> colors = apk.panosAnalyze();
+								ArrayList<String> colors = apk.panosAnalyze();
 								JSONArray colors_array = new JSONArray();
-								colors_array.addAll(colors);
+								colors_array.add(colors);
 								panos_result.put("colors", colors);
 							} catch (Exception e) {
 								panos_result.put("_exception", e.toString());
