@@ -719,7 +719,7 @@ private String getTargetColor(ISSABasicBlock ebb) {
   }
   
   
-  protected void outputSolvedICFG() {
+  public void outputSolvedICFG() {
     E.log(2, "#nodes: " + componentCallgraph.getNumberOfNodes());
     Properties p = WalaExamplesProperties.loadProperties();
     try {

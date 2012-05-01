@@ -96,14 +96,20 @@ public class WakeLockManager {
 	}
 	
 	
+	public enum RefCount {
+		UNSET,
+		TRUE,
+		FALSE;		
+	} 
+	
 	public class WakeLockInfo {
 		
 		private Collection<LockType> types;
-		private boolean referenceCounted;		
+		private RefCount referenceCounted;		
 				
 		WakeLockInfo() {}
 			
-		WakeLockInfo(Collection<LockType> t , boolean r) {			
+		WakeLockInfo(Collection<LockType> t , RefCount r) {			
 			this.types = t;
 			this.referenceCounted = r;
 		}
@@ -116,11 +122,11 @@ public class WakeLockManager {
 			this.types = types;
 		}
 
-		public Boolean isReferenceCounted() {
+		public RefCount isReferenceCounted() {
 			return referenceCounted;
 		}
 
-		public void setReferenceCounted(Boolean referenceCounted) {
+		public void setReferenceCounted(RefCount referenceCounted) {
 			this.referenceCounted = referenceCounted;
 		}
 		
@@ -132,6 +138,7 @@ public class WakeLockManager {
 	
 	public WakeLockManager(AppCallGraph appCallGraph) {
 		this.cg = appCallGraph;
+		variousWakeLocks = new HashMap<WakeLockInstance, WakeLockInfo>();
 	}
 	
 	HashSet<FieldReference> powerManagers = null;
@@ -171,7 +178,7 @@ public class WakeLockManager {
 			variousWakeLocks = new HashMap<WakeLockInstance, WakeLockInfo>();			
 		}
 		//Wake locks are reference counted by default.
-		variousWakeLocks.put(new FieldWakeLock(reference), new WakeLockInfo(null, true));		
+		variousWakeLocks.put(new FieldWakeLock(reference), new WakeLockInfo(null, RefCount.UNSET));		
 	}
 
 	private void addPowerManager(FieldReference reference) {
@@ -193,7 +200,6 @@ public class WakeLockManager {
 		}
 		return result;
 	}
-	
 	
 	public  boolean isWakeLock(FieldReference fr) {		
 		if (variousWakeLocks == null) {
@@ -224,7 +230,6 @@ public class WakeLockManager {
 	    public int getCode() {
 	        return code;
 	    }
-		
 	} 
 	
 	
@@ -242,8 +247,7 @@ public class WakeLockManager {
 
 	public void scanCreation() {		
 		for (CGNode n : cg) {
-			
-			//Need to update these here
+			/* Need to update these here */
 			ir = n.getIR();
 			du = null;
 			/* Null for JNI methods */
@@ -287,7 +291,7 @@ public class WakeLockManager {
 								wli.setLockType(lockType);
 							}
 							else {
-								wli = new WakeLockInfo(lockType, true);
+								wli = new WakeLockInfo(lockType, RefCount.UNSET);
 								//Wake locks are reference counted by default. 
 								variousWakeLocks.put(new FieldWakeLock(field),wli);
 							}
@@ -323,7 +327,7 @@ public class WakeLockManager {
 							}
 							else {
 								//Wake locks are reference counted by default.
-								wli = new WakeLockInfo(lockType, true);
+								wli = new WakeLockInfo(lockType, RefCount.UNSET);
 								variousWakeLocks.put(new LocalWakeLock(pp),	wli);
 							}							
 							E.log(1, "Local: " + pp.toString() + "\nINFO= " + wli.toString());
@@ -339,30 +343,32 @@ public class WakeLockManager {
 						FieldReference field = getFieldFromVar(inv.getUse(0));
 						int bit = inv.getUse(1);
 						boolean refCounted = ir.getSymbolTable().isTrue(bit);
+						E.log(2, "Getting a ref count result: " + refCounted);
 						//Is it a field?
 						if (field != null) {														
 							WakeLockInfo wli = variousWakeLocks.get(new FieldWakeLock(field));							
 							if(wli != null) {
-								wli.setReferenceCounted(refCounted);
+								wli.setReferenceCounted(refCounted?RefCount.TRUE:RefCount.FALSE);
 							}
 							else {
 								variousWakeLocks.put(new FieldWakeLock(field),
-									new WakeLockInfo(null, refCounted));
+									new WakeLockInfo(null, refCounted?RefCount.TRUE:RefCount.FALSE));
 							}
 						}
 						//Is is local?
 						else {
 							SSAInstruction def = du.getDef(inv.getUse(0));
 							SSAProgramPoint pp = new SSAProgramPoint(n, def);
-							WakeLockInfo wli = variousWakeLocks.get(new LocalWakeLock(pp));
+							LocalWakeLock localWakeLock = new LocalWakeLock(pp);
+							WakeLockInfo wli = variousWakeLocks.get(localWakeLock);
 							//TODO: this is not so precise... 
 							//the def of inv could be a checkcast
 							if(wli != null) {
-								wli.setReferenceCounted(refCounted);
+								wli.setReferenceCounted(refCounted?RefCount.TRUE:RefCount.FALSE);
 							}
-							else {
-								variousWakeLocks.put(new FieldWakeLock(field),
-									new WakeLockInfo(null, refCounted));
+							else if (localWakeLock != null) {
+								variousWakeLocks.put(localWakeLock,
+									new WakeLockInfo(null, refCounted?RefCount.TRUE:RefCount.FALSE));
 							}
 						}
 					}

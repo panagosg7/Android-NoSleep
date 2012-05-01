@@ -1,15 +1,22 @@
 package edu.ucsd.salud.mcmutton;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map.Entry;
 
 import org.apache.commons.lang.StringUtils;
+
+import energy.analysis.AnalysisResults.Result;
 
 public class SystemUtil {
 	public static class LogDumper implements Runnable {
@@ -126,5 +133,21 @@ public class SystemUtil {
 		} catch (IOException e) {
 			// meh
 		}
+	}
+
+	
+	public static void writeToFile(String text) {
+			writeToFile("output.txt", text);
+	  }
+
+	public static void writeToFile(String fileName, String text) {
+		try {
+			FileWriter fileWriter = new FileWriter(new File(fileName), true);
+			BufferedWriter bw = new BufferedWriter(fileWriter);
+            bw.write(text);
+            bw.close();
+		} catch (Exception e) {
+        }
+		
 	}
 }

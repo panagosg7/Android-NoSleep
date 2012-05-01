@@ -59,6 +59,7 @@ import edu.ucsd.salud.mcmutton.retarget.SootOptimize;
 import edu.ucsd.salud.mcmutton.retarget.Translation;
 import edu.ucsd.salud.mcmutton.smali.LameSmali;
 import edu.ucsd.salud.mcmutton.smali.LameWorld;
+import energy.analysis.AnalysisResults.Result;
 
 public class ApkInstance {
 	private ApkPaths mPaths;
@@ -347,7 +348,7 @@ public class ApkInstance {
 		return interestingCallSites().keySet();
 	}
 	
-	public ArrayList<String> panosAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException {		
+	public ArrayList<Result> panosAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException {		
 		return this.getWala().panosAnalyze();			//run my stuff		
 	}
  

@@ -13,9 +13,9 @@ import energy.analysis.AppCallGraph;
  *
  */
 
-public class AdapterViewOnItemClickListener extends Component{
+public class ClickListener extends Component{
 
-  public AdapterViewOnItemClickListener(AppCallGraph originalCG, IClass declaringClass, CGNode root) {
+  public ClickListener(AppCallGraph originalCG, IClass declaringClass, CGNode root) {
     super(originalCG, declaringClass, root);
 
   }

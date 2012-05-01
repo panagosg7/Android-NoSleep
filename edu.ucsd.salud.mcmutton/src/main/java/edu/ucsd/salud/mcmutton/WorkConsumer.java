@@ -20,6 +20,7 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 
 import edu.ucsd.salud.mcmutton.apk.Wala;
+import energy.analysis.AnalysisResults.Result;
 
 public class WorkConsumer implements Watcher {
 	ZooKeeper mZookeeper;
@@ -91,7 +92,7 @@ public class WorkConsumer implements Watcher {
 						if (apk.isSuccessfullyOptimized()) {
 							JSONObject panos_result = new JSONObject();
 							try {
-								ArrayList<String> colors = apk.panosAnalyze();
+								ArrayList<Result> colors = apk.panosAnalyze();
 								JSONArray colors_array = new JSONArray();
 								colors_array.add(colors);
 								panos_result.put("colors", colors);

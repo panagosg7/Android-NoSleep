@@ -100,8 +100,14 @@ public class CtxSensLocking {
 	private static final long serialVersionUID = 8053296118288414916L;
 	{
 	    add("android.os.PowerManager$WakeLock.acquire()V");
-		add("android.os.PowerManager$WakeLock.acquire(J)V");
 	}};
+	
+	ArrayList<String> timedAcquireSigs = new ArrayList<String>() {
+		private static final long serialVersionUID = 8053296118288414916L;
+		{
+			add("android.os.PowerManager$WakeLock.acquire(J)V");
+		}};
+		
 	
 	ArrayList<String> releaseSigs = new ArrayList<String>() {
 	private static final long serialVersionUID = 8672603895106192877L;
@@ -119,6 +125,16 @@ public class CtxSensLocking {
 		return lockingCall(bb, acquireSigs);
 	}
 
+	
+	/**
+	 * Not used at the moment
+	 * @param bb
+	 * @return
+	 */
+	private WakeLockInstance timedAcquire(BasicBlockInContext<IExplodedBasicBlock> bb) {
+		return lockingCall(bb, timedAcquireSigs);
+	}
+	
 	private WakeLockInstance release(BasicBlockInContext<IExplodedBasicBlock> bb) {
 		return lockingCall(bb, releaseSigs);
 	}
@@ -159,6 +175,21 @@ public class CtxSensLocking {
 		}
 		return null;
 	}	
+
+	
+	private boolean isFinishCall(BasicBlockInContext<IExplodedBasicBlock> bb) {
+		IExplodedBasicBlock delegate = bb.getDelegate();
+		SSAInstruction instruction = delegate.getInstruction();
+		if (instruction instanceof SSAInvokeInstruction) {
+			SSAInvokeInstruction inv = (SSAInvokeInstruction) instruction;
+			String signature = inv.getDeclaredTarget().getSignature();
+			if (signature.endsWith("finish()V")) {
+				E.log(1, signature);
+				return true;
+			}
+		}
+		return false;
+	}
 	
 	
 	/** 
@@ -467,16 +498,16 @@ public class CtxSensLocking {
 			 * android, java, library code. Acquires and releases are not
 			 * handled here. 	
 			 */			
-			final Map<WakeLockInstance, Set<SingleLockState>> threadExitState = getCalledRunnable(src);			
+			final Map<WakeLockInstance, Set<SingleLockState>> runnableExitState = getCalledRunnable(src);			
 
-			if (threadExitState != null) {
+			if (runnableExitState != null) {
 				//This is a thread start point
-				E.log(2, "Call to: " + threadExitState.toString());
+				E.log(2, "Call to: " + runnableExitState.toString());
 				return new IUnaryFlowFunction() {
 					@Override
 					public IntSet getTargets(int d1) {
 						MutableSparseIntSet threadSet = MutableSparseIntSet.makeEmpty();
-						for(Entry<WakeLockInstance, Set<SingleLockState>> e : threadExitState.entrySet()) {
+						for(Entry<WakeLockInstance, Set<SingleLockState>> e : runnableExitState.entrySet()) {
 							Pair<WakeLockInstance, Set<SingleLockState>> p = Pair.make(e.getKey(), e.getValue());							
 							//Will lose context sensitivity here, because we have to merge all 
 							//the thread's states to a single lock state
@@ -485,11 +516,12 @@ public class CtxSensLocking {
 							int ind = domain.add(q);
 							threadSet.add(ind);
 						}
-						IntSet mergeStates = mergeStates(threadSet, d1);
+						/*IntSet mergeStates = mergeStates(threadSet, d1);
 						if (mergeStates.size() > 1) {
 							E.log(1, "MERGE STATES: " + mergeStates.toString());
 						}
-						return mergeStates;
+						return mergeStates;*/
+						return threadSet; 
 			        }
 				};
 			}
@@ -605,6 +637,13 @@ public class CtxSensLocking {
 					// path edge doesn't really matter
 					result.add(PathEdge.createPathEdge(fakeEntry, factNum, bb, factNum));
 				}
+				
+				//Check for call to finish()
+				/*
+				if(isFinishCall(bb)) {
+					E.log(1, "Calling" + bb.toString());
+				}
+				*/				
 			}			
 			return result;
 		}

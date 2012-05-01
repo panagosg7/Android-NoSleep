@@ -35,7 +35,10 @@ import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.debug.UnimplementedError;
 
 import edu.ucsd.salud.mcmutton.ApkCollection.ApkApplication;
+import edu.ucsd.salud.mcmutton.ApkCollection.ApkVersion;
 import edu.ucsd.salud.mcmutton.apk.Wala;
+import energy.analysis.AnalysisResults.Result;
+import energy.analysis.AnalysisResults.ResultType;
 
 public class BugHunt {
 	
@@ -134,18 +137,23 @@ public class BugHunt {
 //		theSet.add("Slice Slice");			//Runnable exception
 //		theSet.add("aLogcat");				//getter for wakelock
 		
-		
 //		theSet.add("InstaFetch PRO");		//has recursive threads
 //		theSet.add("DISH");					//OK
 //		theSet.add("JuiceDefender");		//OK
 //		theSet.add("3D Level");				//OK
 //		theSet.add("ColorNote");			//OK
-		theSet.add("Adobe AIR");				//OK
+//		theSet.add("Adobe AIR");			//OK
 //		theSet.add("Pikachu");				//OK
 //		theSet.add("Google Sky Map");		//OK
 //		theSet.add("RMaps");				//OK
 //		theSet.add("Foursquare");			//OK
 //		theSet.add("Brain Sooth");			//OK
+//		theSet.add("Touiteur");				//OK
+//		theSet.add("BEE VOA Reader");		//OK
+//		theSet.add("Deezer");				//OK
+//		theSet.add("InstaFetch");			//OK
+//		theSet.add("Royal Horse Club");		//OK
+		theSet.add("KakaoTalk");			//OK
 //		theSet.add("Craigslist");			//OK
 //		theSet.add("AllBinary Arcade One");	//OK
 //		theSet.add("Soccer Livescores");	//OK
@@ -158,13 +166,10 @@ public class BugHunt {
 //		theSet.add("Google Voice");		
 //		theSet.add("Farm Tower");
 
-
 //		theSet.add("YouTube");
 //		theSet.add("imo");
 //		theSet.add("Android Agenda Widget");
 //		theSet.add("ServicesDemo");			//toy example
-		
-		
 		
 		runPatternAnalysis(collection, theSet);
 	}
@@ -176,109 +181,163 @@ public class BugHunt {
 			throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);		
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
-		Map<Wala.UsageType, Integer> histogram = new HashMap<Wala.UsageType, Integer>();
 		
-		int limit = 50;
+		//int limit = 50;
+		int start_after = 0;
 		
-		HashMap<ApkInstance, ArrayList<String>> result = new HashMap<ApkInstance, ArrayList<String>>();
+		HashMap<ApkInstance, ArrayList<Result>> result = new HashMap<ApkInstance, ArrayList<Result>>();
+		
 		
 		for (Object key: theSet) {
+			
 			String app_name = collection.cleanApkName((String)key);			
+			
+			
+			if (--start_after > 0) { 
+				System.out.println("Skipping: " + app_name + " ...");			
+				continue;
+			}
+			
 			String[] catsArray = acqrel_status.getString((String)key).split("[,]");			
 			ArrayList<String> cats = new ArrayList<String>(catsArray.length);			
 			for (String cat: catsArray) cats.add(cat);
 			ApkApplication application = collection.getApplication(app_name);
 			ApkInstance apk = application.getPreferred();
 			Wala.UsageType usageType = Wala.UsageType.UNKNOWN;			
-						
+			ArrayList<Result> res = new ArrayList<Result>();		
 			if (apk.successfullyOptimized()) {
 				try {
-					result.put(apk, apk.panosAnalyze());
+					res = apk.panosAnalyze();
+					result.put(apk, res);
 				} catch(Exception e) {
 					//Any exception should be notified
 					e.printStackTrace();
 					usageType = Wala.UsageType.FAILURE;
-					ArrayList<String> res = new ArrayList<String>();
-					res.add("FAILURE: Analysis failed.");
+					res.add(new Result(ResultType.ANALYSIS_FAILURE, app_name));
 					result.put(apk, res);
 				}
 				catch (UnimplementedError e) {
 					e.printStackTrace();
 					LOGGER.warning(e.getMessage());
-					ArrayList<String> res = new ArrayList<String>();
-					res.add("UNIMPLEMENTED: " + e.getMessage());
+					res.add(new Result(ResultType.UNIMPLEMENTED_FAILURE, app_name));
 					result.put(apk, res);
 					usageType = Wala.UsageType.UNIMPLEMENTED_FAILURE;
 				}								
 			
 			} else {
 				LOGGER.warning("\nOptimization failed.\n");
-				ArrayList<String> res = new ArrayList<String>();
-				res.add("FAILURE: Optimization failed.");
-				result.put(apk, res);
+				res.add(new Result(ResultType.OPTIMIZATION_FAILURE, app_name));
 				usageType = Wala.UsageType.CONVERSION_FAILURE;
 			}
-
-			if (histogram.containsKey(usageType)) {
-				histogram.put(usageType, histogram.get(usageType) + 1);
-			} else {
-				histogram.put(usageType, 1);
-			}
 			
-			if (--limit < 1) break;
-		
+			result.put(apk, res);
+			//System.out.println(res);
+			SystemUtil.writeToFile(apkResultToString(apk, res));
+			
+			//if (--limit < 1) break;
 		}
 		
+		outputAllResults(result);
+				
+		Map<ResultType, Integer> histogram = makeHistogram(result);
 		System.out.println();
 		System.out.println();
-
-		for (Entry<ApkInstance, ArrayList<String>> e : result.entrySet()) {
-			ApkInstance apk = e.getKey();
-			String res = String.format("%30s - %15s :: ", apk.getName(), apk.getVersion());
-			int length = res.length();
-			System.out.print(res);
-			ArrayList<String> value = e.getValue();
-			if (value.size() > 0) {
-				System.out.println(value.get(0));
-				for (int i = 1 ; i < value.size(); i++ ) {
-					System.out.println(String.format("%" + length + "s", " ") + value.get(i));					
-				}
-			}
-			else {
-				System.out.println();
-			}
-		}
-		
-		Map<Wala.BugLikely, Integer> likelihood = new HashMap<Wala.BugLikely, Integer>();
-		
 		long total = 0;
 		for (Integer i: histogram.values()) {
 			total += i;
 		}
-		for (Map.Entry<Wala.UsageType, Integer> e: histogram.entrySet()) {
+		for (Entry<ResultType, Integer> e: histogram.entrySet()) {
 			System.out.println(e.getKey() + " : " + e.getValue());
-			
-			if (!likelihood.containsKey(e.getKey().bugLikely)) {
-				likelihood.put(e.getKey().bugLikely, e.getValue());
-			} else {
-				likelihood.put(e.getKey().bugLikely, e.getValue() + likelihood.get(e.getKey().bugLikely));
-			}
-		}				
-		
-		for (Map.Entry<Wala.BugLikely, Integer> e: likelihood.entrySet()) {
-			System.out.println(e.getKey() + " -- " + e.getValue() + " (" + e.getValue()/(float)total + ")");
 		}
 		
-//		
-//		ApkInstance apk = collection.getApplication("ColorDict").getPreferred();
-//		
-//		Map<MethodReference, Set<MethodReference>> interesting = apk.interestingCallSitesWala();
-//		
-//		for (Map.Entry<MethodReference, Set<MethodReference>> e: interesting.entrySet()) {
-//			System.out.println(e.getKey() + " -- " + e.getValue());
-//		}
 	}
 	
+	
+	public static void runOnAll(ApkCollection collection) {
+		List<ApkApplication> apps = collection.listApplications();
+		for (ApkApplication app : apps) {
+			//List<ApkVersion> vers = app.listVersions();
+			//boolean determined = false;
+			//for (ApkVersion ver : vers) {
+				try {
+					//if(determined) continue;					
+					//ApkInstance apkInstance = ver.getPreferred();
+					ApkInstance apkInstance = app.getPreferred();
+					apkInstance.requiresRetargeted();
+					if (apkInstance.hasWakelockCalls()) {
+						//determined = true;
+						System.out.println("++++++" + apkInstance.getName() + " - " + apkInstance.getVersion());
+						SystemUtil.writeToFile("interesting.txt", apkInstance.getName() + "\n");
+					}
+					else {
+						System.out.println("------" + apkInstance.getName() + " - " + apkInstance.getVersion());
+					}
+					
+				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (RetargetException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (ApkException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			//}
+		}
+		
+		
+		
+		
+	}
+	
+	
+	
+	public static String apkResultToString(ApkInstance apk, ArrayList<Result> result) {
+		StringBuffer sb = new StringBuffer();
+		String res = String.format("%30s - %15s :: ", apk.getName(), apk.getVersion());
+		sb.append(res);
+		int length = res.length();
+		//System.out.print(res);
+		if (result.size() > 0) {
+			sb.append(result.get(0) + "\n");
+			//System.out.println(result.get(0));
+			for (int i = 1 ; i < result.size(); i++ ) {
+				sb.append(String.format("%" + length + "s", " ") + result.get(i) + "\n");
+				//System.out.println(String.format("%" + length + "s", " ") + result.get(i));					
+			}
+		}
+		else {
+			sb.append("\n");
+			//System.out.println();
+		}
+		return sb.toString();
+	}
+
+	public static void outputAllResults(HashMap<ApkInstance, ArrayList<Result>> result) {
+		System.out.println();
+		for (Entry<ApkInstance, ArrayList<Result>> e : result.entrySet()) {
+			System.out.println(apkResultToString(e.getKey(), e.getValue()));
+		}
+	}
+
+	
+	
+	private static Map<ResultType, Integer> makeHistogram(HashMap<ApkInstance, ArrayList<Result>> result) {
+		Map<ResultType, Integer> histogram = new HashMap<ResultType, Integer>();
+		for (Entry<ApkInstance, ArrayList<Result>> e : result.entrySet()) {
+			ArrayList<Result> value = e.getValue();
+			for (Result r : value) {
+				ResultType resultType = r.getResultType();
+				Integer integer = histogram.get(resultType);
+				if (integer == null) {
+					histogram.put(resultType, new Integer(0));
+				}
+				histogram.put(resultType, histogram.get(resultType) + 1);
+			}
+		}
+		return histogram;
+	}
+
 	private static class PhantomTracker {
 		private Map<String, Integer> mPhantoms = new HashMap<String, Integer>();
 		
@@ -492,6 +551,28 @@ public class BugHunt {
 			System.out.println("panos: " + err);
 		}
 	}
+	
+	/**
+	 * Value[1] should be a collection folder
+	 * @param values
+	 * @param collection
+	 */
+	private static void addToCollection(String[] values, ApkCollection collection) {
+		File basePath = new File(values[0]);
+		if (!basePath.exists()) {
+			System.err.println("base apk path does not exist: " + basePath);
+			return;
+		}
+		
+		String collectionName = values[1];
+		if (collectionName.length() == 0) {
+			System.err.println("must specify collection name");
+			return;
+		}
+		collection.integrateApks(basePath, collectionName);		
+	}
+	
+	
 		
 	/**
 	 * @param args
@@ -508,6 +589,7 @@ public class BugHunt {
 		options.addOption(new Option("r", "optimize", false, "optimize unoptimized versions"));
 		options.addOption(new Option("r", "reoptimize", false, "re-optimize failed conversions"));
 		options.addOption(new Option("s", "patterns", false, "perform patterns analysis and print results"));
+		options.addOption(new Option("s", "browse-all", false, "browse all apks"));
 		options.addOption(new Option("S", "test-patterns", false, "perform pattern analysis on a small subset of apks"));
 		options.addOption(OptionBuilder.withLongOpt("panos")
 				   .withDescription("run john's interpretation of panos' code")
@@ -546,22 +628,12 @@ public class BugHunt {
 	    			reoptimize(collection);
 	    		} else if (line.hasOption("patterns")) {
 	    			runPatternAnalysis(collection);
+	    		} else if (line.hasOption("browse-all")) {
+	    			runOnAll(collection);
 	    		} else if (line.hasOption("test-patterns")) {
 	    			runTestPatternAnalysis(collection);
 	    		} else if (line.hasOption("add-to-collection")) {
-	    			String values[] = line.getOptionValues("add-to-collection");
-	    			File basePath = new File(values[0]);
-	    			if (!basePath.exists()) {
-	    				System.err.println("base apk path does not exist: " + basePath);
-	    				return;
-	    			}
-	    			
-	    			String collectionName = values[1];
-	    			if (collectionName.length() == 0) {
-	    				System.err.println("must specify collection name");
-	    				return;
-	    			}
-	    			collection.integrateApks(basePath, collectionName);	    		
+	    			addToCollection(line.getOptionValues("add-to-collection"), collection);
 	    		} else if (line.hasOption("read-consumer")) {
 	    			readWorkConsumerResults(collection);
 	    		} else {
@@ -569,17 +641,13 @@ public class BugHunt {
 	    				System.err.println(opt);
 	    			}
 	    		}
-
-	    	//runFacebookDiff(collection);
-//	    	runPatternAnalysis(collection);
-//	    	dumpFailedConversions(collection);
-//	    	dumpPhantoms(collection);
-	    	
              	
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
+
+
 
 }

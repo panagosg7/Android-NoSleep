@@ -1,6 +1,7 @@
 package energy.analysis;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -11,6 +12,7 @@ import java.util.Set;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.util.collections.Pair;
 
+import energy.analysis.AnalysisResults.Result;
 import energy.analysis.WakeLockManager.WakeLockInstance;
 import energy.components.Component;
 import energy.components.Component.CallBack;
@@ -23,6 +25,8 @@ public class AnalysisResults {
 	 * Main structures that hold the analysis results for every component
 	 */
 	private HashSet<Pair<Component, ComponentSummary>> allStates = null;
+	private ComponentManager componentManager;
+	private ArrayList<Result> result;
 	
 	public class ComponentSummary  {
 		
@@ -80,8 +84,9 @@ public class AnalysisResults {
 		}
 	}
 		
-	public AnalysisResults() {
-		allStates = new HashSet<Pair<Component,ComponentSummary>>();
+	public AnalysisResults(ComponentManager componentManager) {
+		this.allStates = new HashSet<Pair<Component,ComponentSummary>>();
+		this.componentManager = componentManager;
 	}
 	
 	public enum LockUsage {
@@ -103,16 +108,21 @@ public class AnalysisResults {
 		SERVICE_DESTROY,
 		THREAD_RUN,
 		HANDLE_MESSAGE,
-		BROADCAST_RECEIVER_ONRECEIVE, 
+		BROADCAST_RECEIVER_ON_RECEIVE, 
 		LOCKING_ON_START,
 		LOCKING_ON_RESTART, 
 		STRONG_PAUSE_RESUME, 
 		WEAK_PAUSE_RESUME, 
 		WEAK_SERVICE_DESTROY, 
-		STRONG_SERVICE_DESTROY, DID_NOT_PROCESS;
+		STRONG_SERVICE_DESTROY, 
+		DID_NOT_PROCESS,
+		
+		OPTIMIZATION_FAILURE,
+		ANALYSIS_FAILURE,
+		UNIMPLEMENTED_FAILURE;
 	}
 	
-	public class Result { 
+	public static class Result {
 		
 		private ResultType resultType;
 		private String message; 
@@ -180,8 +190,15 @@ public class AnalysisResults {
 	}
 		
 	
-	public ArrayList<Result> processResults() {
-		ArrayList<Result> result = new ArrayList<Result>();
+	public void processResults() {
+		if (result == null) {
+			result = new ArrayList<Result>();
+		}
+		
+		if (componentManager.getNUnresInterestingCBs() > 0) {
+			result.add(new Result(ResultType.UNRESOLVED_INTERESTING_CALLBACKS, ""));
+		}
+		
 		System.out.println("\n==========================================");
 		HashMap<LockUsage, Set<Pair<Component, CGNode>>> usageMap = 
 				new HashMap<LockUsage, Set<Pair<Component, CGNode>>>();
@@ -272,13 +289,28 @@ public class AnalysisResults {
 			if (!logger.isEmpty()) {
 				System.out.println(e.toString());
 				System.out.println(logger.toString());
-				System.out.println("\n");
 			}
-			result = logger.getStringList();
+		}
+		
+		result.addAll(collapseLogger(componentMap.values()));
+	}
+	
+	public ArrayList<Result> collapseLogger(Collection<Logger> cl) {
+		ArrayList<Result> result = new ArrayList<Result>();
+		for (Logger l : cl) {
+			result.addAll(l);
 		}
 		return result;
 	}
 	
+	public ArrayList<Result> getResult() {
+		if (result == null) {
+			processResults();
+		}
+		return result;
+	}
+
+
 	public class Logger extends ArrayList<Result> {
 		private static final long serialVersionUID = 4402714524487791090L;
 		public void output() {
@@ -287,7 +319,7 @@ public class AnalysisResults {
 			}
 		}
 		
-		public ArrayList<Result> getStringList() {
+		public ArrayList<Result> getResultList() {
 			return this;
 		}
 		
@@ -389,7 +421,8 @@ public class AnalysisResults {
 				
 				SingleLockState onPauseState = map.get("onPause");
 				
-				if (!unlocking(onPauseState)) {
+				if ((!locking(onCreateState)) && (!locking(onStartState)) 
+						&& locking(onRestartState) && (!unlocking(onPauseState))) {
 					logNote(new Result(ResultType.STRONG_PAUSE_RESUME, component.toString()));
 				}
 				
@@ -406,7 +439,7 @@ public class AnalysisResults {
 				if (locking(onStartState) && (!unlocking(onDestroyState))) {
 					logNote(new Result(ResultType.STRONG_SERVICE_DESTROY, component.toString()));
 				}
-				if (weakUnlocking(onDestroyState)) {
+				if (weakUnlocking(onDestroyState) && (!strongUnlocking(onDestroyState))) {
 					logNote(new Result(ResultType.WEAK_SERVICE_DESTROY, component.toString()));
 				}
 			}
@@ -438,7 +471,7 @@ public class AnalysisResults {
 			if (component.getComponentType().equals("BroadcastReceiver")) {
 				SingleLockState onReceiveState = map.get("onReceive");
 				if (locking(onReceiveState)) {
-					logNote(new Result(ResultType.BROADCAST_RECEIVER_ONRECEIVE, component.toString()));					
+					logNote(new Result(ResultType.BROADCAST_RECEIVER_ON_RECEIVE, component.toString()));					
 				}				
 			}
 

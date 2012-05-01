@@ -94,8 +94,8 @@ public class ApkCollection {
 	public Map<String, List<File>> buildApkContentMap() {
 		File cacheFile = new File (mCollectionRoot + File.separator + "hash.cache");
 		Map<String, List<File>> result = new HashMap<String, List<File>>();
-		System.out.println("building hash cache " + cacheFile.exists());
 		if (cacheFile.exists()) {
+			System.out.println("Hash cache exists");
 			try {
 				ObjectInputStream is = new ObjectInputStream(new FileInputStream(cacheFile));
 				result = (Map<String, List<File>>)is.readObject();
@@ -110,6 +110,7 @@ public class ApkCollection {
 				System.err.println("Class not found decoding hash cache");
 			}
 		} else {
+			System.out.println("Building hash cache");
 			// Self loop to test pathway...
 			try {
 				ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(cacheFile));
@@ -168,11 +169,11 @@ public class ApkCollection {
 	
 	public void integrateApks(File basePath, String sourceName) {
 		getApkContentMap();
-		
 		for (File sub: basePath.listFiles()) {
 			if (sub.isDirectory()) {
 				integrateApks(sub, sourceName);
 			} else if (sub.getName().endsWith(".apk")) {
+				System.out.println("Integrating: " + sub.toString());
 				integrateApk(sub, sourceName);
 			}
 		}

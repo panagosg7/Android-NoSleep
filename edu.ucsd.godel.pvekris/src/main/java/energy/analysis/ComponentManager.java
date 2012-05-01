@@ -33,21 +33,21 @@ import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphReachability;
 import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
-import com.ibm.wala.util.graph.traverse.BFSIterator;
 import com.ibm.wala.util.graph.traverse.DFSPathFinder;
-import com.ibm.wala.util.intset.IBinaryNaturalRelation;
 
+import energy.analysis.AnalysisResults.Result;
 import energy.analysis.SpecialConditions.SpecialCondition;
 import energy.components.Activity;
-import energy.components.AdapterViewOnItemClickListener;
 import energy.components.Application;
 import energy.components.AsyncTask;
 import energy.components.BaseAdapter;
 import energy.components.BroadcastReceiver;
+import energy.components.Callable;
+import energy.components.ClickListener;
 import energy.components.Component;
-import energy.components.Component.CallBack;
 import energy.components.CompoundButton;
 import energy.components.ContentProvider;
+import energy.components.DialogInterface;
 import energy.components.Handler;
 import energy.components.Initializer;
 import energy.components.LocationListener;
@@ -57,8 +57,8 @@ import energy.components.RunnableThread;
 import energy.components.SensorEventListener;
 import energy.components.Service;
 import energy.components.ServiceConnection;
+import energy.components.TextView;
 import energy.components.View;
-import energy.components.ViewOnClickListener;
 import energy.components.WebViewClient;
 import energy.interproc.SensibleExplodedInterproceduralCFG;
 import energy.util.E;
@@ -77,6 +77,12 @@ public class ComponentManager {
 
   private GraphReachability<CGNode> graphReachability;
 
+  private int unresolvedInterestingCallBacks;
+
+  private ArrayList<Result> results;
+
+  private AnalysisResults resultAnalysis;
+  
   public HashMap<TypeReference, Component> getComponents() {
     return componentMap;
   }
@@ -97,7 +103,10 @@ public class ComponentManager {
 	  return componentMap.get(n.getMethod().getDeclaringClass().getReference());
   }
   
-
+  public int getNUnresInterestingCBs() {
+	  return unresolvedInterestingCallBacks;
+  }
+  
   /**
    * 1. Reachability results are going to be useful later
    */
@@ -130,7 +139,7 @@ public class ComponentManager {
     int totalCallBacks = 0;
     int resolvedConstructors = 0;
     int unresolvedCallBacks = 0;
-    int unresolvedInterestingCallBacks = 0;
+    unresolvedInterestingCallBacks = 0;
     List<String>  unresolvedSB = new ArrayList<String>();
     Collection<CGNode>  roots = GraphUtil.inferRoots(originalCG);
     
@@ -341,13 +350,9 @@ public class ComponentManager {
    * @return
    */
   private static Component resolveKnownImplementors(CGNode root) {
-	  
     IClass klass = root.getMethod().getDeclaringClass();
-    
     TypeReference reference = klass.getReference();
-    
     String methName = root.getMethod().getName().toString();
-
     Component comp = componentMap.get(reference);
     if (comp == null) {
       Collection<IClass> allImplementedInterfaces = klass.getAllImplementedInterfaces();
@@ -357,11 +362,11 @@ public class ComponentManager {
         if (implName.equals("Ljava/lang/Runnable")) {
           comp = new RunnableThread(originalCG, klass, root);
         }
-        if (implName.equals("Landroid/widget/AdapterView$OnItemClickListener")) {
-          comp = new AdapterViewOnItemClickListener(originalCG, klass, root);
-        }
-        if (implName.equals("Landroid/view/View$OnClickListener")) {
-        	comp = new ViewOnClickListener(originalCG, klass, root);
+        if (implName.equals("Ljava/util/concurrent/Callable")) {
+            comp = new Callable(originalCG, klass, root);
+          }
+        if (implName.endsWith("ClickListener")) {
+        	comp = new ClickListener(originalCG, klass, root);
         }
         if (implName.equals("Landroid/content/SharedPreferences$OnSharedPreferenceChangeListener")
             || implName.equals("Landroid/preference/Preference$OnPreferenceChangeListener")) {
@@ -379,6 +384,14 @@ public class ComponentManager {
         if (implName.startsWith("Landroid/content/ServiceConnection")) {
         	comp = new ServiceConnection(originalCG, klass, root);
         }
+        if (implName.startsWith("Landroid/content/DialogInterface")) {
+        	comp = new DialogInterface(originalCG, klass, root);
+        }
+        if (implName.startsWith("Landroid/widget/TextView")) {
+        	comp = new TextView(originalCG, klass, root);
+        }
+        
+        
         
         if (comp != null) break;
       }
@@ -432,13 +445,14 @@ public class ComponentManager {
   /**
    * 2. Process the components that have been resolved
    */
-  public AnalysisResults processComponents() {
-     
-    
+  public void processComponents() {
 	  /* 
 	   * Gather intent info 
 	   */
 	//getGlobalIntents();
+
+	//Initialize results
+	resultAnalysis = new AnalysisResults(this);
 	  
     /* Build the constraints graph 
      * (threads should be analyzed before their parents)
@@ -446,12 +460,6 @@ public class ComponentManager {
     Collection<Component> components = componentMap.values();    
     Graph<Component> constraintGraph = constraintGraph(components);
     Iterator<Component> bottomUpIterator = GraphBottomUp.bottomUpIterator(constraintGraph);
-    
-    /*
-     * Results about all Components
-     */
-    AnalysisResults result = new AnalysisResults();
-    
     
     /* And analyze the components based on this graph in bottom up order */
     while (bottomUpIterator.hasNext()) {
@@ -525,16 +533,17 @@ public class ComponentManager {
 	     
 	    if(Opts.OUTPUT_COLOR_CFG_DOT) {
 	    	component.outputColoredCFGs();
-	        //component.outputSolvedICFG();
 	    }      
-	            
+
+	    if(Opts.OUTPUT_SOLVED_EICFG) {
+	    	component.outputSolvedICFG();
+	    }
+	    
 	    /* Check the policy - defined for each type of component separately */
 	    if (Opts.CHECK_LOCKING_POLICY) {
-	    	result.createComponentSummary(component);
-	    	//result.registerExitLockState(component, component.getCallBackExitStates());               
+	    	resultAnalysis.createComponentSummary(component);
 	    }
     }    
-	return result;
     
   }
   
@@ -603,11 +612,11 @@ public class ComponentManager {
    * 
    ****************************************************************************/
   
-  private ThreadInvestigation threadCreation = null;
+  private RunnableInvestigation threadCreation = null;
 
   private HashMap<SSAProgramPoint,Component> getGlobalThreadInvocations() {
 	if (threadCreation == null) {
-		threadCreation = new ThreadInvestigation(this);
+		threadCreation = new RunnableInvestigation(this);
 	}
 	return threadCreation.getThreadInvocations();
   }
@@ -718,7 +727,7 @@ public class ComponentManager {
    * @return
    */
   public Graph<Component> constraintGraph(Collection<Component> cc) {
-	  
+	  System.out.println("Building constraint graph...");
 	  final SparseNumberedGraph<Component> g = new SparseNumberedGraph<Component>(1);			
 	  for(Component c : cc) {
 			g.addNode(c);
@@ -775,6 +784,14 @@ public class ComponentManager {
 		e.printStackTrace();
 		return;
 	}
-}	  
+  }	
+
+	public ArrayList<Result> getAnalysisResults() {
+		return resultAnalysis.getResult();
+	}
+	
+	public void processResults() {
+		resultAnalysis.processResults();		
+	}	  
 
 }

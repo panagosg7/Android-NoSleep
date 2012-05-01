@@ -620,8 +620,9 @@ public class Wala {
 			ComponentManager componentManager = new ComponentManager(cg);
 			componentManager.prepareReachability();
 			componentManager.resolveComponents();
-			AnalysisResults results = componentManager.processComponents();
-			return results.processResults();
+			componentManager.processComponents();
+			componentManager.processResults();
+			return componentManager.getAnalysisResults();
 		}
 		ArrayList<Result> result = new ArrayList<AnalysisResults.Result>();
 		result.add(new Result(ResultType.DID_NOT_PROCESS, ""));
