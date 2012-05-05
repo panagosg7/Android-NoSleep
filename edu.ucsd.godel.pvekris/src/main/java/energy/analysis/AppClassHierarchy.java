@@ -25,7 +25,7 @@ import energy.util.Util;
 
 public class AppClassHierarchy {
 
-  private static ClassHierarchy cha;
+  private ClassHierarchy cha;
   private String appJar;
   private String exclusionFileName;
 	
@@ -69,19 +69,19 @@ public class AppClassHierarchy {
   }
   
   
-  public static void validateCommandLine(Properties p) {
+  public  void validateCommandLine(Properties p) {
     if (p.get("appJar") == null) {
       throw new UnsupportedOperationException("expected command-line to include -appJar");
     }
   }
   
   
-  public static <T> Graph<T> pruneGraph(Graph<T> g, Filter<T> f) throws WalaException {
+  public  <T> Graph<T> pruneGraph(Graph<T> g, Filter<T> f) throws WalaException {
     Collection<T> slice = GraphSlicer.slice(g, f);
     return GraphSlicer.prune(g, new CollectionFilter<T>(slice));
   }
   
-  public static Graph<IClass> pruneForAppLoader(Graph<IClass> g) throws WalaException {
+  public  Graph<IClass> pruneForAppLoader(Graph<IClass> g) throws WalaException {
     Filter<IClass> f = new Filter<IClass>() {
       public boolean accepts(IClass c) {
         return (c.getClassLoader().getReference().equals(ClassLoaderReference.Application));

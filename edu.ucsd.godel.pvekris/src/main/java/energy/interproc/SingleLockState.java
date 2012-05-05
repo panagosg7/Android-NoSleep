@@ -10,7 +10,7 @@ import com.ibm.wala.util.collections.Quartet;
  */
 public class SingleLockState  {
 	
-	static SingleLockState UNDEFINED;
+	SingleLockState UNDEFINED;
 	
 	
 	/** state */
@@ -62,6 +62,10 @@ public class SingleLockState  {
 				q.thr.booleanValue(),q.frt.booleanValue());
 	}
 
+	public SingleLockState() {
+		
+	}
+
 	@Override
 	public int hashCode() {
 	  return 1 * (maybeAcquired?1:0) +  2 * (mustbeAcquired?1:0) + 
@@ -102,9 +106,6 @@ public class SingleLockState  {
 		return (maybeAcquired || maybeReleased);
 	}
 	
-	
-	
-	/*XXX: should I return a new LockState every time?? */
 	public SingleLockState merge(SingleLockState l) {		
 		if (l == null) {
 			return this;
@@ -140,26 +141,7 @@ public class SingleLockState  {
 		return lockStateColor.toString();
 	}
 	
-	
-	/**
-	 * Merge a set of lock states. Should return UNDEFIINED if the set is empty
-	 * @param set
-	 * @return
-	 */
-	public static SingleLockState mergeSingleLockStates(Set<SingleLockState> set) {
-		SingleLockState result = null;
-		for(SingleLockState s : set)  {
-			if (result == null) {
-				result = s;
-			}
-			else {
-				result = result.merge(s);
-			}
-		}
-		return result;		
-	}
-	
-	
+		
 }
 
 	

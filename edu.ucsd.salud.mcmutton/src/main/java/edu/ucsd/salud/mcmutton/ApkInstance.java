@@ -59,7 +59,7 @@ import edu.ucsd.salud.mcmutton.retarget.SootOptimize;
 import edu.ucsd.salud.mcmutton.retarget.Translation;
 import edu.ucsd.salud.mcmutton.smali.LameSmali;
 import edu.ucsd.salud.mcmutton.smali.LameWorld;
-import energy.analysis.AnalysisResults.Result;
+import energy.analysis.Result;
 
 public class ApkInstance {
 	private ApkPaths mPaths;
@@ -388,8 +388,13 @@ public class ApkInstance {
 	 * @throws IOException
 	 * @throws RetargetException
 	 */
-	public boolean successfullyOptimized() throws IOException, RetargetException {
-	    return mPreferredTranslation.successfullyOptimized();
+	public boolean successfullyOptimized() throws IOException {
+		try {
+			return mPreferredTranslation.successfullyOptimized();
+		}
+		catch (RetargetException e) {
+			return false;
+		}
 	}
 	
 	public void requiresRetargetedJar() throws IOException, RetargetException {

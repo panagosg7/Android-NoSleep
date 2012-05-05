@@ -15,7 +15,10 @@ public class E {
 
   public static void plog(int i, String f, String out) {
     if (i<=DEBUG_LEVEL) {
-      System.out.println(out);
+      if(!Opts.RUN_IN_PARALLEL) {
+    	  System.out.println(out);
+      }
+      
       if (Opts.LOG_RESULTS) {
         try {        	        
 	        File file = new File(Util.getResultDirectory() + 

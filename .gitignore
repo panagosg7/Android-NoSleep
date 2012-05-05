@@ -3,6 +3,8 @@
 .*.swp
 */target/*
 */mcmutton.properties
+*.out
+*.json
 [core]
   whitespace=nowarn
 

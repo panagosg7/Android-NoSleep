@@ -161,11 +161,11 @@ public class WakeLockManager {
 					addPowerManager(reference);
 				}
 				else if (fieldType.equals(TypeReference.ApplicationWakeLock)) {
-					E.log(1, reference.toString());
+					E.log(2, reference.toString());
 					addWakeLockField(reference);
 				}
 				else if (fieldType.equals(TypeReference.PrimordialWakeLock)) {
-					E.log(1, reference.toString());
+					E.log(2, reference.toString());
 					addWakeLockField(reference);
 				}				
 			};
@@ -245,7 +245,8 @@ public class WakeLockManager {
 	}
 	
 
-	public void scanCreation() {		
+	public void scanCreation() {	
+		E.log(1, "Scanning source for lock creation...");
 		for (CGNode n : cg) {
 			/* Need to update these here */
 			ir = n.getIR();

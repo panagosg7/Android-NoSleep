@@ -35,7 +35,6 @@ import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.graph.traverse.DFSPathFinder;
 
-import energy.analysis.AnalysisResults.Result;
 import energy.analysis.SpecialConditions.SpecialCondition;
 import energy.components.Activity;
 import energy.components.Application;
@@ -69,11 +68,11 @@ import energy.viz.GraphDotUtil;
 @SuppressWarnings("deprecation")
 public class ComponentManager {
 
-  private static int DEBUG_LEVEL = 2;
+  private  int DEBUG_LEVEL = 2;
 
-  private static HashMap<TypeReference, Component> componentMap;
+  private  HashMap<TypeReference, Component> componentMap;
 
-  private static AppCallGraph originalCG;
+  private  AppCallGraph originalCG;
 
   private GraphReachability<CGNode> graphReachability;
 
@@ -81,7 +80,7 @@ public class ComponentManager {
 
   private ArrayList<Result> results;
 
-  private AnalysisResults resultAnalysis;
+  private ProcessResults resultAnalysis;
   
   public HashMap<TypeReference, Component> getComponents() {
     return componentMap;
@@ -91,7 +90,7 @@ public class ComponentManager {
     originalCG = cg;
     componentMap = new HashMap<TypeReference, Component>();
   }
-  private static void registerComponent(TypeReference declaringClass, Component comp) {
+  private  void registerComponent(TypeReference declaringClass, Component comp) {
     componentMap.put(declaringClass, comp);
   }
   
@@ -198,35 +197,38 @@ public class ComponentManager {
       }
     }
 
-    System.out.println();
-    System.out.println( "==========================================");
-    String fst = String.format("%-30s: %d", "Resolved classes", resolvedComponentCount);
-    System.out.println(fst);
-    fst = String.format("%-30s: %d", "Resolved implementors", resolvedImplementorCount);
-    System.out.println(fst);
-    fst = String.format("%-30s: %d", "Resolved constructors", resolvedConstructors);
-    System.out.println(fst);
-    fst = String.format("%-30s: %d (%.2f %%)", "Unresolved callbacks", unresolvedCallBacks,        
-        100 * ((double) unresolvedCallBacks / (double) totalCallBacks));
-    System.out.println(fst);
-    fst = String.format("%-30s: %d (%.2f %%)", "Interesting Unresolved cbs", unresolvedInterestingCallBacks, 
-        100 * ((double) unresolvedInterestingCallBacks / (double) totalCallBacks));
-    System.out.println(fst);
-    System.out.println("------------------------------------------");
     
-    E.log(2, "Unresolved");
-    E.log(2, unresolvedSB);
-    E.log(2, "----------------------------------------------------");
+    if(! Opts.RUN_IN_PARALLEL) {
+	    System.out.println();
+	    System.out.println( "==========================================");
+	    String fst = String.format("%-30s: %d", "Resolved classes", resolvedComponentCount);
+	    System.out.println(fst);
+	    fst = String.format("%-30s: %d", "Resolved implementors", resolvedImplementorCount);
+	    System.out.println(fst);
+	    fst = String.format("%-30s: %d", "Resolved constructors", resolvedConstructors);
+	    System.out.println(fst);
+	    fst = String.format("%-30s: %d (%.2f %%)", "Unresolved callbacks", unresolvedCallBacks,        
+	        100 * ((double) unresolvedCallBacks / (double) totalCallBacks));
+	    System.out.println(fst);
+	    fst = String.format("%-30s: %d (%.2f %%)", "Interesting Unresolved cbs", unresolvedInterestingCallBacks, 
+	        100 * ((double) unresolvedInterestingCallBacks / (double) totalCallBacks));
+	    System.out.println(fst);
+	    System.out.println("------------------------------------------");
+	    
+	    E.log(2, "Unresolved");
+	    E.log(2, unresolvedSB);
+	    E.log(2, "----------------------------------------------------");
+	    
+	    fst = String.format("%-30s: %d", "Total callbacks", totalCallBacks);
+	    System.out.println(fst);
+	    fst = String.format("%-30s: %d", "Resolved components", componentMap.size());
+	    System.out.println(fst);
+	    System.out.println("==========================================\n");
+    }
     
-    fst = String.format("%-30s: %d", "Total callbacks", totalCallBacks);
-    System.out.println(fst);
-    fst = String.format("%-30s: %d", "Resolved components", componentMap.size());
-    System.out.println(fst);
-    System.out.println("==========================================\n");
-
   }
 
-  private static void outputUnresolvedInfo(CGNode root, List<CGNode> path) {
+  private  void outputUnresolvedInfo(CGNode root, List<CGNode> path) {
     IClass declaringClass = root.getMethod().getDeclaringClass();
     Collection<IClass> allImplementedInterfaces = declaringClass.getAllImplementedInterfaces();
     E.log(1, "#### UnResolved: " + root.getMethod().getSignature().toString());
@@ -251,7 +253,7 @@ public class ComponentManager {
    * @return
    * @throws IOException
    */
-  private static Component resolveComponent(CGNode root) {
+  private  Component resolveComponent(CGNode root) {
 
     IClass klass = root.getMethod().getDeclaringClass();
     TypeReference reference = klass.getReference();
@@ -332,7 +334,7 @@ public class ComponentManager {
    * @param klass
    * @return
    */
-  private static ArrayList<IClass> getClassAncestors(IClass klass) {
+  private  ArrayList<IClass> getClassAncestors(IClass klass) {
     ArrayList<IClass> classList = new ArrayList<IClass>();
     IClass currentClass = klass;
     IClass superClass;
@@ -349,7 +351,7 @@ public class ComponentManager {
    * @param root
    * @return
    */
-  private static Component resolveKnownImplementors(CGNode root) {
+  private  Component resolveKnownImplementors(CGNode root) {
     IClass klass = root.getMethod().getDeclaringClass();
     TypeReference reference = klass.getReference();
     String methName = root.getMethod().getName().toString();
@@ -419,7 +421,7 @@ public class ComponentManager {
    * @return
    */
   @SuppressWarnings("unused")
-  private static HashSet<CGNode> getThreadStartSuccessors(CallGraph cg) {
+  private  HashSet<CGNode> getThreadStartSuccessors(CallGraph cg) {
     Iterator<CGNode> iterator = cg.iterator();
     while (iterator.hasNext()) {
       CGNode node = iterator.next();
@@ -445,14 +447,12 @@ public class ComponentManager {
   /**
    * 2. Process the components that have been resolved
    */
-  public void processComponents() {
-	  /* 
-	   * Gather intent info 
-	   */
+  public void solveComponents() {
+  
 	//getGlobalIntents();
 
 	//Initialize results
-	resultAnalysis = new AnalysisResults(this);
+	resultAnalysis = new ProcessResults(this);
 	  
     /* Build the constraints graph 
      * (threads should be analyzed before their parents)
@@ -512,7 +512,6 @@ public class ComponentManager {
 	    	  for(CallBack cb : callbacks) {
 	    		  E.log(1, "\t" + cb.toString());
 	    	  }
-	    	  
 	    	  for (Iterator<CGNode> it = component.getCallgraph().iterator(); it.hasNext(); ) {
 	    		CGNode next = it.next();
 	    		E.log(1, "\tNode: " + next.getMethod().getSignature().toString());	    		  
@@ -538,13 +537,7 @@ public class ComponentManager {
 	    if(Opts.OUTPUT_SOLVED_EICFG) {
 	    	component.outputSolvedICFG();
 	    }
-	    
-	    /* Check the policy - defined for each type of component separately */
-	    if (Opts.CHECK_LOCKING_POLICY) {
-	    	resultAnalysis.createComponentSummary(component);
-	    }
     }    
-    
   }
   
   
@@ -727,7 +720,7 @@ public class ComponentManager {
    * @return
    */
   public Graph<Component> constraintGraph(Collection<Component> cc) {
-	  System.out.println("Building constraint graph...");
+	  
 	  final SparseNumberedGraph<Component> g = new SparseNumberedGraph<Component>(1);			
 	  for(Component c : cc) {
 			g.addNode(c);
@@ -754,13 +747,11 @@ public class ComponentManager {
 				return Acyclic.isAcyclic(g, c);
 			}
 	  };
-
-	  E.log(1, "Thread dependence graph has " + GraphUtil.countEdges(g) + " edge(s).");
+	  E.log(1, "Building constraint graph... " + GraphUtil.countEdges(g) + " edge(s).");
 	  
 	  boolean acyclic = com.ibm.wala.util.collections.Util.forAll(cc, p);
 	  dumpConstraintGraph(g);	  
 	  if (!acyclic) {
-		  
 		  Assertions.productionAssertion(acyclic, 
 		    "Cannot handle circular dependencies in thread calls. Dumping thread dependency graph");  
 	  }
@@ -771,13 +762,13 @@ public class ComponentManager {
 
   private void dumpConstraintGraph(SparseNumberedGraph<Component> g) {
 	try {
+		E.log(1, "Dumping constraint graph... ");
 		Properties p = null;
 		p = WalaExamplesProperties.loadProperties();
 		p.putAll(WalaProperties.loadProperties());
 		String dotFile = energy.util.Util.getResultDirectory()
 				+ File.separatorChar + "thread_dependencies.dot";
 		String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
-		E.log(1, "Dumping thread graph");
 		GraphDotUtil.dotify(g, null, dotFile, null, dotExe);
 		return;
 	} catch (WalaException e) {
@@ -790,8 +781,8 @@ public class ComponentManager {
 		return resultAnalysis.getResult();
 	}
 	
-	public void processResults() {
-		resultAnalysis.processResults();		
+	public void processExitStates() {
+		resultAnalysis.processExitStates();		
 	}	  
 
 }

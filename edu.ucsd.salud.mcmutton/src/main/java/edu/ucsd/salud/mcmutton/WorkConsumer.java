@@ -20,7 +20,7 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 
 import edu.ucsd.salud.mcmutton.apk.Wala;
-import energy.analysis.AnalysisResults.Result;
+import energy.analysis.Result;
 
 public class WorkConsumer implements Watcher {
 	ZooKeeper mZookeeper;

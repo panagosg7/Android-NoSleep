@@ -9,6 +9,7 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 
 import energy.analysis.AppCallGraph;
 import energy.analysis.WakeLockManager.WakeLockInstance;
+import energy.interproc.CompoundLockState;
 import energy.interproc.SingleLockState;
 
 /**
@@ -28,7 +29,7 @@ public class Callable extends Component {
   }    
 
   
-  public Map<WakeLockInstance,Set<SingleLockState>> getThreadExitState() {
+  public CompoundLockState getThreadExitState() {
 	CGNode runNode = super.getCallBackByName("call").getNode();	
 	return super.getExitState(runNode);
   }

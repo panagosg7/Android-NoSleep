@@ -89,22 +89,22 @@ import energy.viz.GraphDotUtil;
 public class AppCallGraph implements CallGraph {
 
 	// Output Files
-	private final static String PDF_FILE = "cg.pdf";
-	private final static String DOT_FILE = "cg.dot";
+	private  String PDF_FILE = "cg.pdf";
+	private  String DOT_FILE = "cg.dot";
 
 	// Analysis parameters
-	private static AnalysisScope scope = null;
-	private static AnalysisOptions options = null;
-	private static ClassHierarchy cha = null;
-	private static HashSet<Entrypoint> entrypoints = null;
-	private static AnalysisCache cache = null;
-	private static CallGraph g = null;
+	private AnalysisScope scope = null;
+	private AnalysisOptions options = null;
+	private ClassHierarchy cha = null;
+	private HashSet<Entrypoint> entrypoints = null;
+	private AnalysisCache cache = null;
+	private CallGraph g = null;
 
 	// WakeLock parameters
-	private static Hashtable<String, IClass> targetClassHash;
-	private static Hashtable<String, IMethod> targetMethodHash;
-	private static Hashtable<String, CGNode> targetCGNodeHash;
-	private static ArrayList<String> targetMethods = null;
+	private Hashtable<String, IClass> targetClassHash;
+	private Hashtable<String, IMethod> targetMethodHash;
+	private Hashtable<String, CGNode> targetCGNodeHash;
+	private ArrayList<String> targetMethods = null;
 
 	private AppClassHierarchy appCha = null;
 
@@ -122,11 +122,11 @@ public class AppCallGraph implements CallGraph {
 		return targetCGNodeHash;
 	}
 
-	public static boolean isDirectory(String appJar) {
+	public  boolean isDirectory(String appJar) {
 		return (new File(appJar).isDirectory());
 	}
 
-	public static String findJarFiles(String[] directories)
+	public  String findJarFiles(String[] directories)
 			throws WalaException {
 		Collection<String> result = HashSetFactory.make();
 		for (int i = 0; i < directories.length; i++) {
@@ -139,7 +139,7 @@ public class AppCallGraph implements CallGraph {
 		return composeString(result);
 	}
 
-	private static String composeString(Collection<String> s) {
+	private  String composeString(Collection<String> s) {
 		StringBuffer result = new StringBuffer();
 		Iterator<String> it = s.iterator();
 		for (int i = 0; i < s.size() - 1; i++) {
@@ -312,7 +312,7 @@ public class AppCallGraph implements CallGraph {
 	 * @param cg
 	 * @return
 	 */
-	private static CallGraph pruneLockIrrelevantNodes(CallGraph cg) {
+	private  CallGraph pruneLockIrrelevantNodes(CallGraph cg) {
 
 		HashSet<CGNode> keepNodes = new HashSet<CGNode>();
 		Queue<CGNode> q = new LinkedList<CGNode>();
@@ -386,7 +386,7 @@ public class AppCallGraph implements CallGraph {
 		return boundedGraph;
 	}
 
-	private static void callGraphStats(CallGraph cg) {
+	private  void callGraphStats(CallGraph cg) {
 		Iterator<CGNode> iterator = cg.iterator();
 		int appNodes = 0;
 		int primNodes = 0;
@@ -404,7 +404,7 @@ public class AppCallGraph implements CallGraph {
 	}
 
 	@SuppressWarnings("unused")
-	private static HashSet<CGNode> getFakeRootSuccessors(CallGraph cg) {
+	private  HashSet<CGNode> getFakeRootSuccessors(CallGraph cg) {
 		HashSet<CGNode> roots = new HashSet<CGNode>();
 		Iterator<CGNode> rootIter = cg.getSuccNodes(cg.getFakeRootNode());
 		while (rootIter.hasNext()) {
@@ -420,7 +420,7 @@ public class AppCallGraph implements CallGraph {
 	 * @param pcg
 	 * @return
 	 */
-	private static CallGraph getBoundedGraph(CallGraph pcg) {
+	private  CallGraph getBoundedGraph(CallGraph pcg) {
 		HashSet<CGNode> nearSet = new HashSet<CGNode>();
 
 		if (Opts.MAX_HOPS_FROM_TARGET < 0) {
@@ -454,7 +454,7 @@ public class AppCallGraph implements CallGraph {
 	 * Function that prints information about the root nodes of the call graph
 	 */
 	@SuppressWarnings("unused")
-	private static void getRootInformation(Graph<CGNode> graph,
+	private  void getRootInformation(Graph<CGNode> graph,
 			HashSet<CGNode> keepNodes) {
 		Collection<CGNode> roots = InferGraphRoots.inferRoots(graph);
 		for (CGNode root : roots) {
@@ -462,7 +462,7 @@ public class AppCallGraph implements CallGraph {
 		}
 	}
 
-	private static void printRootInfo(CGNode root) {
+	private  void printRootInfo(CGNode root) {
 		E.log(0, "Examining root:");
 		E.log(0, root.getMethod().getDeclaringClass().toString());
 		E.log(0, root.getMethod().getSignature().toString());
@@ -475,7 +475,7 @@ public class AppCallGraph implements CallGraph {
 	 * 
 	 * @param finalKeepNodes
 	 */
-	private static void removeFakeNodes(HashSet<CGNode> nodeset) {
+	private  void removeFakeNodes(HashSet<CGNode> nodeset) {
 		Iterator<CGNode> iterator = nodeset.iterator();
 		HashSet<CGNode> toRemove = new HashSet<CGNode>();
 		while (iterator.hasNext()) {
@@ -494,7 +494,7 @@ public class AppCallGraph implements CallGraph {
 	}
 
 	@SuppressWarnings("unused")
-	private static void printNodeCollectionFull(Collection<CGNode> nodes,
+	private  void printNodeCollectionFull(Collection<CGNode> nodes,
 			String title) {
 		int i = 0;
 		E.log(0, title);
@@ -505,7 +505,7 @@ public class AppCallGraph implements CallGraph {
 	}
 
 	@SuppressWarnings("unused")
-	private static void printNodeCollectionNames(Collection<CGNode> nodes,
+	private  void printNodeCollectionNames(Collection<CGNode> nodes,
 			String title) {
 		int i = 0;
 		E.log(0, title);
@@ -516,7 +516,7 @@ public class AppCallGraph implements CallGraph {
 	}
 
 	@SuppressWarnings("unused")
-	private static Collection<CGNode> getApplicationNodes(
+	private  Collection<CGNode> getApplicationNodes(
 			Collection<CGNode> nodeSet) {
 		Collection<CGNode> appNodes = new HashSet<CGNode>();
 		for (CGNode n : nodeSet) {
@@ -527,7 +527,7 @@ public class AppCallGraph implements CallGraph {
 		return appNodes;
 	}
 
-	private static boolean isAppNode(CGNode n) {
+	private  boolean isAppNode(CGNode n) {
 		if (n.getMethod().toString().contains("< Application")) {
 			return true;
 		}
@@ -541,7 +541,7 @@ public class AppCallGraph implements CallGraph {
 	 * @throws IOException
 	 * @throws CancelException
 	 */
-	private static void insertTargetMethodsToCG(CallGraph cg)
+	private  void insertTargetMethodsToCG(CallGraph cg)
 			throws IOException, CancelException {
 
 		File targetsFile = FileProvider.getFile(Opts.TARGET_FUNCTIONS,
@@ -639,12 +639,12 @@ public class AppCallGraph implements CallGraph {
 		}
 	}
 
-	public static Graph<CGNode> pruneForAppLoader(CallGraph g)
+	public  Graph<CGNode> pruneForAppLoader(CallGraph g)
 			throws WalaException {
 		return PDFTypeHierarchy.pruneGraph(g, new ApplicationLoaderFilter());
 	}
 
-	public static void validateCommandLine(Properties p) {
+	public  void validateCommandLine(Properties p) {
 		if (p.get("appJar") == null) {
 			throw new UnsupportedOperationException(
 					"expected command-line to include -appJar");
@@ -661,7 +661,7 @@ public class AppCallGraph implements CallGraph {
 	 * <li> {@link LocalPointerKey}
 	 * </ul>
 	 */
-	private static class ApplicationLoaderFilter implements Filter<CGNode> {
+	private  class ApplicationLoaderFilter implements Filter<CGNode> {
 		public boolean accepts(CGNode o) {
 			if (o instanceof CGNode) {
 				CGNode n = (CGNode) o;

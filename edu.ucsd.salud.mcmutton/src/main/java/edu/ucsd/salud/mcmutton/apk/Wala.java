@@ -76,13 +76,13 @@ import com.ibm.wala.util.config.AnalysisScopeReader;
 import edu.ucsd.salud.mcmutton.ApkException;
 import edu.ucsd.salud.mcmutton.ApkInstance;
 import edu.ucsd.salud.mcmutton.RetargetException;
-import energy.analysis.AnalysisResults;
-import energy.analysis.AnalysisResults.Result;
-import energy.analysis.AnalysisResults.ResultType;
+import energy.analysis.ProcessResults;
+import energy.analysis.ProcessResults.ResultType;
 import energy.analysis.AppCallGraph;
 import energy.analysis.AppClassHierarchy;
 import energy.analysis.ComponentManager;
 import energy.analysis.Opts;
+import energy.analysis.Result;
 
 public class Wala {
 	private File mPath;
@@ -611,7 +611,11 @@ public class Wala {
 				"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";						
 		
 		energy.util.Util.setResultDirectory(mPath.getAbsolutePath());
-		energy.util.Util.printLabel(mPath.getAbsolutePath());		
+		
+		if(!Opts.RUN_IN_PARALLEL) {
+			energy.util.Util.printLabel(mPath.getAbsolutePath());	
+		}
+				
 		
 		AppClassHierarchy	ch = new AppClassHierarchy(appJar, exclusionFile);		
 		AppCallGraph 		cg = new AppCallGraph(ch);		
@@ -620,11 +624,11 @@ public class Wala {
 			ComponentManager componentManager = new ComponentManager(cg);
 			componentManager.prepareReachability();
 			componentManager.resolveComponents();
-			componentManager.processComponents();
-			componentManager.processResults();
+			componentManager.solveComponents();
+			componentManager.processExitStates();
 			return componentManager.getAnalysisResults();
 		}
-		ArrayList<Result> result = new ArrayList<AnalysisResults.Result>();
+		ArrayList<Result> result = new ArrayList<Result>();
 		result.add(new Result(ResultType.DID_NOT_PROCESS, ""));
 		
 		return result;

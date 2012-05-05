@@ -23,10 +23,10 @@ import energy.util.Util;
 
 public class SCCManager {
   
-  private static AppCallGraph cg = null;
-  private static SSCGraph sccGraph;  
+  private  AppCallGraph cg = null;
+  private  SSCGraph sccGraph;  
 
-  public static class SCC {
+  public  class SCC {
     private Set<CGNode> nodeSet;
     private int id;
     
@@ -103,7 +103,7 @@ public class SCCManager {
     
   }
 
-  public static class SCCNodeManager implements NumberedNodeManager<SCC> {
+  public  class SCCNodeManager implements NumberedNodeManager<SCC> {
     private int id_counter;
     
     private HashMap<CGNode, SCC>  nodeToSCC         = null;
@@ -238,7 +238,7 @@ public class SCCManager {
     
   }
   
-  public static class SCCEdgeManager implements NumberedEdgeManager<SCC> {
+  public  class SCCEdgeManager implements NumberedEdgeManager<SCC> {
 
     @Override
     public Iterator<SCC> getPredNodes(SCC n) {
@@ -313,7 +313,7 @@ public class SCCManager {
     
   }
     
-  public static class SSCGraph extends AbstractNumberedGraph<SCC> {
+  public  class SSCGraph extends AbstractNumberedGraph<SCC> {
 
     private SCCNodeManager sccNodeManager;
     private SCCEdgeManager sccEdgeManager;

@@ -2,7 +2,6 @@ package energy.interproc;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -42,7 +41,6 @@ import energy.analysis.SpecialConditions.IsHeldCondition;
 import energy.analysis.SpecialConditions.NullCondition;
 import energy.analysis.SpecialConditions.SpecialCondition;
 import energy.analysis.WakeLockManager;
-import energy.analysis.WakeLockManager.LocalWakeLock;
 import energy.analysis.WakeLockManager.WakeLockInstance;
 import energy.components.RunnableThread;
 import energy.interproc.LockingTabulationSolver.LockingResult;
@@ -234,11 +232,11 @@ public class CtxSensLocking {
 	 * @param bb
 	 * @return null if this is not a thread call site
 	 */
-	private Map<WakeLockInstance, Set<SingleLockState>> getCalledRunnable(BasicBlockInContext<IExplodedBasicBlock> bb) {		
+	private CompoundLockState getCalledRunnable(BasicBlockInContext<IExplodedBasicBlock> bb) {		
 		RunnableThread calleeThread = icfg.getThreadInvocations(bb);		
 		if (calleeThread != null) {
 			Assertions.productionAssertion(calleeThread.isSolved);		//Make sure the constraint graph is working
-			Map<WakeLockInstance, Set<SingleLockState>> threadExitState = calleeThread.getThreadExitState();
+			CompoundLockState threadExitState = calleeThread.getThreadExitState();
 			E.log(2, calleeThread.toString() + " :: " + threadExitState.toString() );			
 			return threadExitState;	
 		}
@@ -498,7 +496,7 @@ public class CtxSensLocking {
 			 * android, java, library code. Acquires and releases are not
 			 * handled here. 	
 			 */			
-			final Map<WakeLockInstance, Set<SingleLockState>> runnableExitState = getCalledRunnable(src);			
+			final CompoundLockState runnableExitState = getCalledRunnable(src);			
 
 			if (runnableExitState != null) {
 				//This is a thread start point
@@ -507,27 +505,40 @@ public class CtxSensLocking {
 					@Override
 					public IntSet getTargets(int d1) {
 						MutableSparseIntSet threadSet = MutableSparseIntSet.makeEmpty();
-						for(Entry<WakeLockInstance, Set<SingleLockState>> e : runnableExitState.entrySet()) {
-							Pair<WakeLockInstance, Set<SingleLockState>> p = Pair.make(e.getKey(), e.getValue());							
+						
+						for(Entry<WakeLockInstance, Set<SingleLockState>> e : 
+								runnableExitState.getAllLockStates().entrySet()) {
+							//Be conservative and take the merge for state regarding a wakelock
+							Pair<WakeLockInstance, Set<SingleLockState>> p = 
+									Pair.make(e.getKey(), e.getValue());							
 							//Will lose context sensitivity here, because we have to merge all 
 							//the thread's states to a single lock state
 							Pair<WakeLockInstance, SingleLockState> q = 
-									Pair.make(p.fst, SingleLockState.mergeSingleLockStates(p.snd));
+									Pair.make(p.fst, mergeSingleLockStates(p.snd));
 							int ind = domain.add(q);
 							threadSet.add(ind);
 						}
-						/*IntSet mergeStates = mergeStates(threadSet, d1);
-						if (mergeStates.size() > 1) {
-							E.log(1, "MERGE STATES: " + mergeStates.toString());
-						}
-						return mergeStates;*/
-						return threadSet; 
+						return threadSet;
 			        }
 				};
 			}
 			return IdentityFlowFunction.identity();
 		}
 
+		public SingleLockState mergeSingleLockStates(Set<SingleLockState> set) {
+			SingleLockState result = null;
+			for(SingleLockState s : set)  {
+				if (result == null) {
+					result = s;
+				}
+				else {
+					result = result.merge(s);
+				}
+			}
+			return result;		
+		}
+		
+		
 		@Override
 		public IFlowFunction getUnbalancedReturnFlowFunction(
 				BasicBlockInContext<IExplodedBasicBlock> src,
@@ -609,7 +620,7 @@ public class CtxSensLocking {
 			for (BasicBlockInContext<IExplodedBasicBlock> bb : supergraph) {
 				WakeLockInstance acquiredWL = acquire(bb);
 				if (acquiredWL != null) {
-					E.log(1, bb.toShortString() + ":: adding acquire fact: " + acquiredWL.toString());
+					E.log(2, bb.toShortString() + ":: adding acquire fact: " + acquiredWL.toString());
 					
 					SingleLockState sls = new SingleLockState(true, true, false, false);					
 					Pair<WakeLockInstance, SingleLockState> fact = Pair.make(acquiredWL, sls);					
@@ -625,7 +636,7 @@ public class CtxSensLocking {
 				
 				WakeLockInstance releasedWL = release(bb);
 				if (releasedWL != null)  {					
-					E.log(1, bb.toShortString() + ":: adding release fact: " + releasedWL.toString());
+					E.log(2, bb.toShortString() + ":: adding release fact: " + releasedWL.toString());
 					
 					SingleLockState sls = new SingleLockState(false, false, true, true);					
 					Pair<WakeLockInstance, SingleLockState> fact = Pair.make(releasedWL, sls);
@@ -638,7 +649,7 @@ public class CtxSensLocking {
 					result.add(PathEdge.createPathEdge(fakeEntry, factNum, bb, factNum));
 				}
 				
-				//Check for call to finish()
+				//TODO: Check for call to finish()
 				/*
 				if(isFinishCall(bb)) {
 					E.log(1, "Calling" + bb.toString());

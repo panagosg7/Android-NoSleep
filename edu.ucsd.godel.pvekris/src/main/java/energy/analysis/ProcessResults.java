@@ -10,21 +10,26 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ssa.IR;
+import com.ibm.wala.ssa.ISSABasicBlock;
+import com.ibm.wala.ssa.SSACFG;
+import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.util.collections.Pair;
 
-import energy.analysis.AnalysisResults.Result;
 import energy.analysis.WakeLockManager.WakeLockInstance;
 import energy.components.Component;
 import energy.components.Component.CallBack;
 import energy.interproc.CompoundLockState;
 import energy.interproc.SingleLockState;
+import energy.util.E;
 
-public class AnalysisResults {
+public class ProcessResults {
 	
 	/**
 	 * Main structures that hold the analysis results for every component
 	 */
-	private HashSet<Pair<Component, ComponentSummary>> allStates = null;
+	private HashSet<Pair<Component, ComponentSummary>> componentSummaries = null;
 	private ComponentManager componentManager;
 	private ArrayList<Result> result;
 	
@@ -84,8 +89,7 @@ public class AnalysisResults {
 		}
 	}
 		
-	public AnalysisResults(ComponentManager componentManager) {
-		this.allStates = new HashSet<Pair<Component,ComponentSummary>>();
+	public ProcessResults(ComponentManager componentManager) {
 		this.componentManager = componentManager;
 	}
 	
@@ -122,28 +126,6 @@ public class AnalysisResults {
 		UNIMPLEMENTED_FAILURE;
 	}
 	
-	public static class Result {
-		
-		private ResultType resultType;
-		private String message; 
-		
-		public ResultType getResultType() {
-			return resultType;
-		}
-		
-		public String getMessage() {
-			return message;
-		}
-		
-		public Result(ResultType rt, String msg) {
-			message = msg;
-			resultType = rt;
-		}
-		
-		public String toString() {
-			return (resultType.name() + " " + message);
-		}
-	}
 		
 	
 
@@ -151,17 +133,53 @@ public class AnalysisResults {
 	 * Invoke this after the component has been analyzed
 	 * @param component
 	 */
-	public void createComponentSummary(Component component) {
-		ComponentSummary componentSummary = new ComponentSummary(component);
-		for(Iterator<CGNode> it = component.getCallgraph().iterator(); it.hasNext(); ) {
-			CGNode next = it.next();
-			Map<WakeLockInstance, Set<SingleLockState>> exitState = component.getExitState(next);
-			if (exitState != null) {
-				CompoundLockState compoundLockState = new CompoundLockState(exitState);
-				componentSummary.registerNodeState(next, compoundLockState);
-			}			
+	public void createComponentSummary() {
+		componentSummaries = new HashSet<Pair<Component,ComponentSummary>>();
+		for (Component component : componentManager.getComponents().values()) {
+			StringBuffer compSB = new StringBuffer();
+			ComponentSummary componentSummary = new ComponentSummary(component);
+			for(Iterator<CGNode> it = component.getCallgraph().iterator(); it.hasNext(); ) {
+				CGNode node = it.next();
+				IR ir = node.getIR();
+				if (ir == null) {
+					continue;
+				}
+				//Get the exit state
+				CompoundLockState exitState = component.getExitState(node);
+				if (exitState != null) {
+					componentSummary.registerNodeState(node, exitState);
+				}			
+				StringBuffer nodeSB = new StringBuffer();
+				//Get the state at method calls
+				
+				SSACFG cfg = ir.getControlFlowGraph();
+				for(Iterator<ISSABasicBlock> itcs = cfg.iterator(); itcs.hasNext(); ) {
+					ISSABasicBlock ssabb = itcs.next();
+					for(Iterator<SSAInstruction> ssait = ssabb.iterator(); ssait.hasNext() ; ) {
+						SSAInstruction inst = ssait.next();
+						if (inst instanceof SSAInvokeInstruction) {
+							SSAInvokeInstruction inv = (SSAInvokeInstruction) inst;
+							int num = cfg.getNumber(ssabb);
+							CompoundLockState compState = component.getState(node, num);							
+							SingleLockState state = compState.simplify();
+							if (state != null && state.isMustbeAcquired()) {
+								nodeSB.append("\t\t" + inv.getDeclaredTarget().getSignature() + "\n");
+							}
+						}
+					}
+				}
+				if (nodeSB.length() > 0) {					
+					compSB.append("\t" + node.getMethod().getSignature() + "\n");
+					compSB.append(nodeSB.toString());
+				}
+			}
+			if(compSB.length() > 0) {
+				E.log(1, component.toString());
+				E.log(1, compSB.toString());
+			}
+			
+			componentSummaries.add(Pair.make(component,componentSummary));
 		}
-		allStates.add(Pair.make(component,componentSummary));
 	}
 	
 	
@@ -190,7 +208,27 @@ public class AnalysisResults {
 	}
 		
 	
-	public void processResults() {
+
+	/**
+	 * Merge a set of lock states. Should return UNDEFIINED if the set is empty
+	 * @param set
+	 * @return
+	 */
+	public SingleLockState mergeSingleLockStates(Set<SingleLockState> set) {
+		SingleLockState result = null;
+		for(SingleLockState s : set)  {
+			if (result == null) {
+				result = s;
+			}
+			else {
+				result = result.merge(s);
+			}
+		}
+		return result;		
+	}
+	
+	
+	public void processExitStates() {
 		if (result == null) {
 			result = new ArrayList<Result>();
 		}
@@ -198,12 +236,17 @@ public class AnalysisResults {
 		if (componentManager.getNUnresInterestingCBs() > 0) {
 			result.add(new Result(ResultType.UNRESOLVED_INTERESTING_CALLBACKS, ""));
 		}
+			
+		if (componentSummaries == null) {
+			createComponentSummary();
+		}
 		
-		System.out.println("\n==========================================");
+		E.log(1, "\n==========================================");
 		HashMap<LockUsage, Set<Pair<Component, CGNode>>> usageMap = 
 				new HashMap<LockUsage, Set<Pair<Component, CGNode>>>();
 		HashMap<Component, Logger> componentMap = new HashMap<Component, Logger>();
-		for (Pair<Component, ComponentSummary> pair : allStates) {
+		
+		for (Pair<Component, ComponentSummary> pair : componentSummaries) {
 			Component component = pair.fst;
 			ComponentSummary cSummary = pair.snd;
 			ComponentPolicy policy = new ComponentPolicy(component);			
@@ -225,7 +268,7 @@ public class AnalysisResults {
 					 * Ideally this shouldn't matter for callbacks, as there
 					 * should only be one state 
 					 */
-					SingleLockState sl = SingleLockState.mergeSingleLockStates(sls);
+					SingleLockState sl = mergeSingleLockStates(sls);
 					lockUsage = getLockUsage(sl);
 					lockUsages.put(wli, lockUsage);
 					if(lockUsage != LockUsage.EMPTY) {
@@ -245,11 +288,11 @@ public class AnalysisResults {
 							//Gather the info of every callback
 							WakeLockInstance key = fs.getKey();
 							Set<SingleLockState> value = fs.getValue();
-							tempState.add(SingleLockState.mergeSingleLockStates(value));
+							tempState.add(mergeSingleLockStates(value));
 							sb.append("\t" + key.toString() + "\n\t" + value.toString() + "\n");
 						}
 						
-						SingleLockState mergedLS = SingleLockState.mergeSingleLockStates(tempState);
+						SingleLockState mergedLS = mergeSingleLockStates(tempState);
 						LockUsage lu = getLockUsage(mergedLS);
 						if (component.isCallBack(node)) {
 							
@@ -269,26 +312,26 @@ public class AnalysisResults {
 				}
 			}
 			if (printComponent) {
-				System.out.println(component.toString() + "\n" + sb.toString());
+				E.log(1, component.toString() + "\n" + sb.toString());
 				policy.solveFacts();
 				componentMap.put(component, policy.getLogger());
 			}
 		}	//endfor Component
 
-		System.out.println("==========================================\n");
+		E.log(1, "==========================================\n");
 		for(LockUsage e : usageMap.keySet()) {
-			System.out.println(e.toString());
+			E.log(1, e.toString());
 			for (Pair<Component, CGNode> s : usageMap.get(e)) {
-				System.out.println("   " + s.toString());
+				E.log(1, "   " + s.toString());
 			}
 		}
-		System.out.println("==========================================\n");
+		E.log(1, "==========================================\n");
 
 		for(Component e : componentMap.keySet()) {
 			Logger logger = componentMap.get(e);
 			if (!logger.isEmpty()) {
-				System.out.println(e.toString());
-				System.out.println(logger.toString());
+				E.log(1, e.toString());
+				E.log(1, logger.toString());
 			}
 		}
 		
@@ -305,7 +348,7 @@ public class AnalysisResults {
 	
 	public ArrayList<Result> getResult() {
 		if (result == null) {
-			processResults();
+			processExitStates();
 		}
 		return result;
 	}
@@ -315,7 +358,7 @@ public class AnalysisResults {
 		private static final long serialVersionUID = 4402714524487791090L;
 		public void output() {
 			for(Result r : this) {
-				System.out.println("    " + r.getResultType().toString());
+				E.log(1, "    " + r.getResultType().toString());
 			}
 		}
 		

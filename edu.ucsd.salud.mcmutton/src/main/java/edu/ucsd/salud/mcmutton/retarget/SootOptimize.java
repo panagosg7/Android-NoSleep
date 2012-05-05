@@ -75,7 +75,7 @@ public class SootOptimize implements JavaOptimize {
 					"-p", "db.force-recompile", "off"
 			};
 			
-			ApkInstance.LOGGER.info("optimize cmd: " + StringUtils.join(cmd, " "));
+			//ApkInstance.LOGGER.info("optimize cmd: " + StringUtils.join(cmd, " "));
 			
 			getTarget().mkdirs();
 			SystemUtil.runCommand(cmd, this.getLogTarget(), this.getErrTarget(), this.getSuccessTarget(), new File("/home/pvekris/dev/ded"));

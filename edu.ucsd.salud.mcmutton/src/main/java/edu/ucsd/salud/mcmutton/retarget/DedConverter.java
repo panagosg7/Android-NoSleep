@@ -32,7 +32,6 @@ public class DedConverter implements DexConverter {
 				source.getAbsolutePath()
 		};
 		
-		
 		SystemUtil.runCommand(cmd, mPaths.dedLog, mPaths.dedErrLogTarget, mPaths.dedSuccess, 
 				new File(mPaths.dedPath.getAbsolutePath()));
 	}

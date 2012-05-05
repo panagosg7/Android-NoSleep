@@ -10,13 +10,13 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map.Entry;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.TimeZone;
 
 import org.apache.commons.lang.StringUtils;
 
-import energy.analysis.AnalysisResults.Result;
 
 public class SystemUtil {
 	public static class LogDumper implements Runnable {
@@ -135,19 +135,28 @@ public class SystemUtil {
 		}
 	}
 
+
+	final static String getDateTime() {  
+	    DateFormat df = new SimpleDateFormat("yyyy-MM-dd_hh:mm:ss");  
+	    df.setTimeZone(TimeZone.getTimeZone("PST"));  
+	    return df.format(new Date());  
+	}  
 	
 	public static void writeToFile(String text) {
-			writeToFile("output.txt", text);
-	  }
+		writeToFile("output.txt", text);
+	}
 
+	
 	public static void writeToFile(String fileName, String text) {
 		try {
 			FileWriter fileWriter = new FileWriter(new File(fileName), true);
 			BufferedWriter bw = new BufferedWriter(fileWriter);
+			System.out.println("Writing to: " + fileName);
             bw.write(text);
             bw.close();
 		} catch (Exception e) {
+			ApkInstance.LOGGER.warning("Could not create file: " + fileName);
         }
-		
 	}
+	
 }

@@ -29,7 +29,7 @@ public class AnalysisDriver {
         ComponentManager componentManager = new ComponentManager(cg);
         componentManager.prepareReachability();
         componentManager.resolveComponents();
-        componentManager.processComponents();
+        componentManager.solveComponents();
       }
 
       /*

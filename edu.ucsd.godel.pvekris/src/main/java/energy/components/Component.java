@@ -45,6 +45,7 @@ import energy.analysis.AppCallGraph;
 import energy.analysis.Opts;
 import energy.analysis.SpecialConditions.SpecialCondition;
 import energy.analysis.WakeLockManager.WakeLockInstance;
+import energy.interproc.CompoundLockState;
 import energy.interproc.CtxInsensLocking;
 import energy.interproc.CtxSensLocking;
 import energy.interproc.LockingTabulationSolver.LockingResult;
@@ -652,16 +653,14 @@ private String getTargetColor(ISSABasicBlock ebb) {
   /** Set this true if we analyze it as part of a larger graph */
   public boolean	isSolved		= false;
   
-  
-  
 
   
   /**
-   *  Super-ugly way to keep the colors for every method in the graph 
+   *  Super-ugly way to keep the states for every method in the graph 
    */  
   private HashMap<Pair<IMethod, Integer>, Map<WakeLockInstance,Set<SingleLockState>>> stateHash;
 
-  public void cacheStates() {	
+  public void cacheStates() {
 	  stateHash = new HashMap<Pair<IMethod, Integer>, Map<WakeLockInstance,Set<SingleLockState>>>();
 	  Iterator<BasicBlockInContext<IExplodedBasicBlock>> iterator = icfg.iterator();
 	  while (iterator.hasNext()) {	      
@@ -713,8 +712,6 @@ private String getTargetColor(ISSABasicBlock ebb) {
 	          		false /* no info */));	    	  	    	 
 	    	  Assertions.UNREACHABLE("Need to fix context-insensitive analysis.");	       
 	      }	      
-	      	     
-	      
 	    }
   }
   
@@ -756,7 +753,7 @@ private String getTargetColor(ISSABasicBlock ebb) {
    * @param cgNode
    * @return May return null (eg. JNI)
    */
-  public Map<WakeLockInstance, Set<SingleLockState>> getExitState(CGNode cgNode) {
+  public CompoundLockState getExitState(CGNode cgNode) {
 	  //This will create problems (JNI)
 	  if (icfg.getCFG(cgNode) == null) {
 		  return null;
@@ -764,7 +761,20 @@ private String getTargetColor(ISSABasicBlock ebb) {
 	  BasicBlockInContext<IExplodedBasicBlock> exit = icfg.getExit(cgNode);
       Pair<IMethod, Integer> p = Pair.make(
           cgNode.getMethod(), exit.getNumber());
-      return stateHash.get(p);
+      Map<WakeLockInstance, Set<SingleLockState>> map = stateHash.get(p);
+      CompoundLockState compoundLockState = new CompoundLockState(map);
+      return compoundLockState;
+  }
+  
+  public CompoundLockState getState(CGNode cgNode, int num) {
+	  //This will create problems (JNI)
+	  if (icfg.getCFG(cgNode) == null) {
+		  return null;
+	  }
+      Pair<IMethod, Integer> p = Pair.make(cgNode.getMethod(), num);
+      Map<WakeLockInstance, Set<SingleLockState>> map = stateHash.get(p);
+      CompoundLockState compoundLockState = new CompoundLockState(map);
+      return compoundLockState;
   }
   
   
@@ -772,10 +782,10 @@ private String getTargetColor(ISSABasicBlock ebb) {
    * Apply the policies to the corresponding callbacks. This one checks that at
    * the end of the method, we have an expected state.
    */
-  public Map<String, Map<WakeLockInstance, Set<SingleLockState>>> getCallBackExitStates() {
+  public Map<String, CompoundLockState> getCallBackExitStates() {
 	
-	Map<String, Map<WakeLockInstance,Set<SingleLockState>>> result = 
-			new HashMap<String, Map<WakeLockInstance,Set<SingleLockState>>>();
+	Map<String, CompoundLockState> result = 
+			new HashMap<String, CompoundLockState>();
 	
 	/* get the defined callbacks */
 	HashSet<CallBack> callbacks = getCallbacks();
@@ -789,11 +799,8 @@ private String getTargetColor(ISSABasicBlock ebb) {
     
   }
 
-  public Map<String, Map<WakeLockInstance, Set<SingleLockState>>> getAllExitStates() {
-		
-		Map<String, Map<WakeLockInstance,Set<SingleLockState>>> result = 
-				new HashMap<String, Map<WakeLockInstance,Set<SingleLockState>>>();			
-		
+  public Map<String, CompoundLockState> getAllExitStates() {
+		Map<String, CompoundLockState> result = new HashMap<String, CompoundLockState>();			
 		for (Iterator<CGNode> it = icfg.getCallGraph().iterator(); it.hasNext(); ) {
 	  		CGNode node = it.next();
 			result.put(node.getMethod().getName().toString(), getExitState(node));

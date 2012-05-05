@@ -183,6 +183,10 @@ public static final boolean OUTPUT_ALL_NODE_INFO = false;
 
 
 
+public static boolean RUN_IN_PARALLEL = false;
+
+
+
 
 
 

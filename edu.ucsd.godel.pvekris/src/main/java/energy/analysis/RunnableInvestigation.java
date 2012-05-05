@@ -102,7 +102,6 @@ public class RunnableInvestigation {
 
 			/* After the search is done, do the defuse only if there are interesting results */
 			if (iSet.size() > 0) {				
-				//System.out.println(ir);
 				DefUse du = new DefUse(ir);
 				for (Pair<SSANewInstruction, Component> i : iSet) {
 					//E.log(1, n.getMethod().getSignature().toString() + " :: " + i.toString());					
