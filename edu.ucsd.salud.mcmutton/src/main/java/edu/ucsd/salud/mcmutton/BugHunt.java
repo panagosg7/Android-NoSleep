@@ -120,72 +120,18 @@ public class BugHunt {
 			throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
+		LOGGER.info("acq_rel size: " + is.toString());
+		
 		runPatternAnalysis(collection, acqrel_status.keySet());	
 	}
 	
 	public static void runTestPatternAnalysis(ApkCollection collection) 
 			throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		Set<String> theSet = new HashSet<String>();
-		
 		/* The applications you specify here need to be in apk_collection !!! */
-		
-//		theSet.add("AndTweet");
-//		theSet.add("K-9 Mail");
-//		theSet.add("aFlashlight");			//conversion error
-//		theSet.add("Maxthon");				//conversion error
-//		theSet.add("FBReader");				//conversion error
-//		theSet.add("Phonebook 2.0");		//conversion error
-//		theSet.add("Twidroyd");				//conversion error
-//		theSet.add("WebSMS");				//conversion error
-//		theSet.add("Call Control");			//conversion error
-//		theSet.add("Geohash Droid");		//conversion error
-//		theSet.add("AdvancedMapViewer");	//conversion error
-//		theSet.add("TagReader");			//conversion error
-//		theSet.add("ReChat");				//conversion error
-//		theSet.add("Strawberry Shortcake PhoneImage");		//conversion error
-
-//		theSet.add("InstaFetch PRO");		//has recursive threads
-//		theSet.add("2 Player Reactor");		//has recursive threads
-//		theSet.add("Slice Slice");			//Runnable exception
-//		theSet.add("aLogcat");				//getter for wakelock
-		
-//		theSet.add("InstaFetch PRO");		//has recursive threads
-//		theSet.add("DISH");					//OK
-//		theSet.add("JuiceDefender");		//OK
-//		theSet.add("3D Level");				//OK
-//		theSet.add("ColorNote");			//OK
 		theSet.add("BeyondPod");			//OK
-//		theSet.add("Adobe AIR");			//OK
-//		theSet.add("Pikachu");				//OK
-//		theSet.add("Google Sky Map");		//OK
-//		theSet.add("RMaps");				//OK
-//		theSet.add("Foursquare");			//OK
-//		theSet.add("Brain Sooth");			//OK
-//		theSet.add("Touiteur");				//OK
-//		theSet.add("BEE VOA Reader");		//OK
-//		theSet.add("Deezer");				//OK
-//		theSet.add("InstaFetch");			//OK
-//		theSet.add("Royal Horse Club");		//OK
-//		theSet.add("Babbler Lite");			//OK
-//		theSet.add("Craigslist");			//OK
-//		theSet.add("AllBinary Arcade One");	//OK
-//		theSet.add("Soccer Livescores");	//OK
-
-//		theSet.add("ICQ");					
-//		theSet.add("Alchemy");
-//		theSet.add("Farm Tower");
-//		theSet.add("AndroBOINC");		
-//		theSet.add("Tangram");
-//		theSet.add("Google Voice");		
-//		theSet.add("Farm Tower");
-
-//		theSet.add("YouTube");
-//		theSet.add("imo");
-//		theSet.add("Android Agenda Widget");
-		
 		runPatternAnalysis(collection, theSet);
 	}
-
 	
 	private final static Logger LOGGER = Logger.getLogger(ApkInstance.class.getName());
 	
@@ -201,6 +147,7 @@ public class BugHunt {
 		TimeUnit unit = TimeUnit.SECONDS;
 		LinkedBlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<Runnable>(1000);
 		LOGGER.info("Thread pool size: " + numberOfThreads) ;
+		LOGGER.info("Input set size: " + theSet.size()) ;
 		ThreadPoolExecutor tPoolExec = new ThreadPoolExecutor(numberOfThreads, numberOfThreads,
 				keepAliveTime, unit, workQueue);
 		for (Object key: theSet) {
@@ -272,7 +219,7 @@ public class BugHunt {
 	}
 
 	
-	public static void runOnAll(ApkCollection collection) {
+	public static void findInteresting(ApkCollection collection) {
 		List<ApkApplication> apps = collection.listApplications();
 		for (ApkApplication app : apps) {
 			//List<ApkVersion> vers = app.listVersions();
@@ -478,10 +425,9 @@ public class BugHunt {
 	public static void optimize(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
-	
+		
 		for (Object key: acqrel_status.keySet()) {
 			String app_name = ApkCollection.cleanApkName((String)key);
-			System.out.println("\n" + app_name + "\n");			
 			ApkInstance apk = collection.getApplication(app_name).getPreferred();
 			if (apk.isSuccessfullyOptimized()) {
 				ApkInstance.LOGGER.info("Already optimized");
@@ -496,6 +442,34 @@ public class BugHunt {
 			}
 			System.out.println("------------------------------------------");
 		}
+	}
+	
+	/**
+	 * Check to see how many apps have been successfully optimized
+	 * Output a json file containing them
+	 */
+	public static void collectOptimized(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
+		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
+		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
+		JSONObject obj = new JSONObject();		//The output object			
+		int ok = 0;
+		int fail = 0;
+		for (Object key: acqrel_status.keySet()) {
+			String app_name = /*ApkCollection.cleanApkName*/((String)key);
+			System.out.print(app_name + " ... ");
+			ApkInstance apk = collection.getApplication(app_name).getPreferred();
+			if (apk.isSuccessfullyOptimized()) {
+				obj.put(apk.getName(), "");
+				System.out.println("[OK]");
+				ok++;
+			}
+			else {
+				System.out.println("[FAIL]");
+				fail++;
+			}
+		}
+		System.out.println("OK/FAIL/TOTAL = " + ok + "/" + fail + "/" + (ok+fail));
+		SystemUtil.writeToFile(outputFileName, obj.toString());
 	}
 	
 	
@@ -644,9 +618,9 @@ public class BugHunt {
 		options.addOption(new Option("e", "opt-exceptions", false, "list histogram of optimization exception types"));
 		options.addOption(new Option("f", "failed", false, "list failed conversions"));
 		options.addOption(new Option("r", "optimize", false, "optimize unoptimized versions"));
+		options.addOption(new Option("c", "collect-optimized", false, "collect optimized apps"));
 		options.addOption(new Option("r", "reoptimize", false, "re-optimize failed conversions"));
 		options.addOption(new Option("s", "patterns", false, "perform patterns analysis and print results"));
-		options.addOption(new Option("s", "browse-all", false, "browse all apks"));
 		options.addOption(new Option("S", "test-patterns", false, "perform pattern analysis on a small subset of apks"));
 		options.addOption(new Option("o", "output", true, "specify an output filename (date will be included)"));
 		options.addOption(new Option("i", "input", true, "specify the input json file"));
@@ -663,15 +637,10 @@ public class BugHunt {
 				.withDescription("process stats output by WorkConsumer").create());
 		try {
 	    	ApkCollection collection = new ApkCollection();
-					
 	    	CommandLine line = parser.parse(options,  args);
-	    	
-
-	    	
 	    	if (line.hasOption("threads")) {
 				setThreadNumber(line.getOptionValue("threads"));
 	    	}
-			
 			if (line.hasOption("output")) {
 				setOutputFile(line.getOptionValue("output"));
 			}
@@ -681,7 +650,6 @@ public class BugHunt {
 			else{
 				acqrelDatabaseFile = new File("/home/pvekris/dev/apk_scratch/input.json");
 			}
-			
     		if (line.hasOption("flush-phantoms")) {
     			flushPhantom(collection, line.getOptionValue("flush-phantoms"));
     		} else if (line.hasOption("phantoms")) {
@@ -694,12 +662,12 @@ public class BugHunt {
     			dumpFailedConversions(collection);
     		} else if (line.hasOption("optimize")) {
     			optimize(collection);
+    		} else if (line.hasOption("collect-optimized")) {
+    			collectOptimized(collection);
     		} else if (line.hasOption("reoptimize")) {
     			reoptimize(collection);
     		} else if (line.hasOption("patterns")) {
     			runPatternAnalysis(collection);
-    		} else if (line.hasOption("browse-all")) {
-    			runOnAll(collection);
     		} else if (line.hasOption("create-json")) {
     			String input = line.getOptionValue("create-json");
     			createJSON(input);
