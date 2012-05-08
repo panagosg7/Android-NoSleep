@@ -1,3 +1,0 @@
-Primordial,Java,stdlib,none
-Primordial,Java,jarFile,primordial.jar.model
-Primordial,Java,jarFile,android.jar

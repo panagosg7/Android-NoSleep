@@ -21,10 +21,8 @@
         <module>com.ibm.wala.core</module>
         <module>com.ibm.wala.shrike</module>
         <module>com.ibm.wala.core.tests</module>
-        <module>edu.ucsd.salud.mcmutton</module>
+        <module>edu.ucsd.energy</module>
         <!--<module>com.ibm.wala.ide</module>-->
-        
-        <module>edu.ucsd.godel.pvekris</module>
     </modules>
 
     <build>
