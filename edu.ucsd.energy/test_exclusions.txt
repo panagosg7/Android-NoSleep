@@ -1,0 +1,7 @@
+com\/sun\/.*
+sun\/.*
+javax\/.*
+java\/util\/.*
+java\/nio\/.*
+java\/awt\/.*
+java\/net\/.*
