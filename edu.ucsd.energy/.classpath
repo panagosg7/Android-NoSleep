@@ -4,15 +4,5 @@
 	<classpathentry kind="src" output="target/test-classes" path="src/test/java"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/J2SE-1.5"/>
 	<classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER"/>
-	<classpathentry kind="lib" path="/home/pvekris/dev/android-sdk_r12-linux_x86/platforms/android-10/android.jar">
-		<attributes>
-			<attribute name="javadoc_location" value="file:/home/progsys/dev/android-sdk_r12-linux_x86/docs/reference"/>
-		</attributes>
-		<accessrules>
-			<accessrule kind="nonaccessible" pattern="com/android/internal/**"/>
-		</accessrules>
-	</classpathentry>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
-	<classpathentry kind="lib" path="/home/pvekris/dev/brut.apktool/apktool-lib/target/apktool-lib-1.4.1.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
