@@ -9,7 +9,7 @@ import java.io.IOException;
 import edu.ucsd.energy.apk.ApkInstance;
 import edu.ucsd.energy.apk.ApkPaths;
 import edu.ucsd.energy.entry.RetargetException;
-import edu.ucsd.energy.entry.SystemUtil;
+import edu.ucsd.energy.util.SystemUtil;
 
 public class DedConverter implements DexConverter {
 	private ApkPaths mPaths;

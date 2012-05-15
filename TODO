@@ -1,5 +1,8 @@
 TODO:
-Restrict null checks to wakelocks?
+
+Insert context information in wakelock creation
+
+ThreadInvestigation: A thread should be called here.
 
 Put result directories in ApkPaths.java
 

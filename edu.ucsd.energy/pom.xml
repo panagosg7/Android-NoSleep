@@ -105,6 +105,13 @@
           <classifier>jdk15</classifier>
       </dependency>
 
+					<dependency>
+					   <groupId>org.json</groupId>
+					   <artifactId>json</artifactId>
+					   <version>20090211</version>
+					</dependency>
+					            
+
       <dependency>
           <groupId>org.jgrapht</groupId>
           <artifactId>jgrapht-jdk1.5</artifactId>

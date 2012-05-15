@@ -48,12 +48,13 @@ import edu.ucsd.energy.analysis.WakeLockManager.WakeLockInstance;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.CtxInsensLocking;
 import edu.ucsd.energy.interproc.CtxSensLocking;
+import edu.ucsd.energy.interproc.LockingTabulationSolver.LockingResult;
 import edu.ucsd.energy.interproc.SensibleCallGraph;
 import edu.ucsd.energy.interproc.SensibleExplodedInterproceduralCFG;
 import edu.ucsd.energy.interproc.SingleLockState;
-import edu.ucsd.energy.interproc.LockingTabulationSolver.LockingResult;
 import edu.ucsd.energy.interproc.SingleLockState.LockStateColor;
 import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.SystemUtil;
 import edu.ucsd.energy.util.Util;
 import edu.ucsd.energy.viz.ColorNodeDecorator;
 import edu.ucsd.energy.viz.GraphDotUtil;
@@ -427,7 +428,7 @@ private String getTargetColor(ISSABasicBlock ebb) {
       p.putAll(WalaProperties.loadProperties());
       String className = klass.getName().toString();
       String bareFileName = className.replace('/', '.');
-      String folder = edu.ucsd.energy.util.Util.getResultDirectory() + File.separatorChar + prefix;
+      String folder = SystemUtil.getResultDirectory() + File.separatorChar + prefix;
       new File(folder).mkdirs();
       String fileName = folder + File.separatorChar + bareFileName + ".dot";
       String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
@@ -457,7 +458,7 @@ private String getTargetColor(ISSABasicBlock ebb) {
     } catch (WalaException e) {
       e.printStackTrace();
     }
-    String cfgs = edu.ucsd.energy.util.Util.getResultDirectory() + File.separatorChar + "color_cfg";
+    String cfgs = SystemUtil.getResultDirectory() + File.separatorChar + "color_cfg";
     new File(cfgs).mkdirs();
     Iterator<CGNode> it = componentCallgraph.iterator();
     while (it.hasNext()) {
@@ -495,7 +496,7 @@ private String getTargetColor(ISSABasicBlock ebb) {
     } catch (WalaException e) {
       e.printStackTrace();
     }
-    String cfgs = edu.ucsd.energy.util.Util.getResultDirectory() + File.separatorChar + "cfg";
+    String cfgs = SystemUtil.getResultDirectory() + File.separatorChar + "cfg";
     new File(cfgs).mkdirs();
     Iterator<CGNode> it = componentCallgraph.iterator();
     while (it.hasNext()) {
@@ -712,7 +713,7 @@ private String getTargetColor(ISSABasicBlock ebb) {
     String DOT_FILE = "ExpInterCFG_" + fileName + ".dot";
     String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
     String pdfFile = null;
-    String dotFile = edu.ucsd.energy.util.Util.getResultDirectory() + File.separatorChar + DOT_FILE;
+    String dotFile = SystemUtil.getResultDirectory() + File.separatorChar + DOT_FILE;
 
     try {
       /* Do the colored graph */

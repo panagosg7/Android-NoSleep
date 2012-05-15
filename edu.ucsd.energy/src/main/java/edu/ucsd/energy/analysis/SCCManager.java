@@ -19,6 +19,7 @@ import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.IntSetUtil;
 import com.ibm.wala.viz.DotUtil;
 
+import edu.ucsd.energy.util.SystemUtil;
 import edu.ucsd.energy.util.Util;
 
 public class SCCManager {
@@ -328,7 +329,7 @@ public class SCCManager {
 
     public void outputCallgraphToDot() throws WalaException {
       String dotFile = /*AndroidAnalysisOptions.OUTPUT_FOLDER*/
-          Util.getResultDirectory() + File.separatorChar + "scc_cg.dot";
+          SystemUtil.getResultDirectory() + File.separatorChar + "scc_cg.dot";
       DotUtil.writeDotFile(this, null, "SCC", dotFile);      
       
     }

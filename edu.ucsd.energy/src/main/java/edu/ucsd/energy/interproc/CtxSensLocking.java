@@ -134,7 +134,7 @@ public class CtxSensLocking {
 	private WakeLockInstance lockingCall(BasicBlockInContext<IExplodedBasicBlock> bb, Collection<String> acceptedSigs) {		
 		IExplodedBasicBlock ebb = bb.getDelegate();		
 		SSAInstruction instruction = ebb.getInstruction();
-		WakeLockInstance wli = wakeLockManager.getWakeLockFromInstruction(instruction);
+		WakeLockInstance wli = wakeLockManager.getWakeLockFromInstruction(instruction, bb.getMethod().getReference());
 		if (wli != null) {
 			if (instruction instanceof SSAInvokeInstruction) {
 				SSAInvokeInstruction inv = (SSAInvokeInstruction) instruction;
@@ -452,7 +452,7 @@ public class CtxSensLocking {
 						MutableSparseIntSet threadSet = MutableSparseIntSet.makeEmpty();
 						
 						for(Entry<WakeLockInstance, Set<SingleLockState>> e : 
-								runnableExitState.getAllLockStates().entrySet()) {
+								runnableExitState.getLockStateMap().entrySet()) {
 							//Be conservative and take the merge for state regarding a wakelock
 							Pair<WakeLockInstance, Set<SingleLockState>> p = 
 									Pair.make(e.getKey(), e.getValue());							

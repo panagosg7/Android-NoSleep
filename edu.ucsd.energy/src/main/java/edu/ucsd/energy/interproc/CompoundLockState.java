@@ -4,6 +4,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.json.JSONObject;
+
 import edu.ucsd.energy.analysis.WakeLockManager.WakeLockInstance;
 
 public class CompoundLockState {
@@ -48,7 +50,7 @@ public class CompoundLockState {
 		return pair;		
 	}
 	
-	public Map<WakeLockInstance, Set<SingleLockState>> getAllLockStates() {			
+	public Map<WakeLockInstance, Set<SingleLockState>> getLockStateMap() {			
 		return map;
 	}
 	
@@ -58,6 +60,17 @@ public class CompoundLockState {
 			sb.append(e.getKey().toString() + " :: " + e.getValue().toString());			
 		}
 		return sb.toString();
+	}
+
+	public JSONObject toJSON() {
+		JSONObject compObj = new JSONObject(map);
+		
+		/*
+		for(Entry<WakeLockInstance, Set<SingleLockState>> e : map.entrySet()) {
+			JSONObject key = e.getKey().toJSON();
+		}
+		*/
+		return compObj;
 	}
 	
 }

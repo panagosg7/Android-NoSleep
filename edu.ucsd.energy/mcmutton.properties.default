@@ -7,4 +7,4 @@ collection_path = /home/pvekris/dev/apk_collection
 scratch_path = /home/pvekris/dev/apk_scratch
 android_sdk_base = /home/pvekris/dev/android-sdk_r12-linux_x86
 ded_path = /home/pvekris/dev/ded
-database_file = /home/pvekris/dev/WALA/acqrel_status.json"
+database_file = /home/pvekris/dev/WALA/acqrel_status.json

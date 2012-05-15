@@ -14,10 +14,12 @@ import com.ibm.wala.ssa.SSAGetInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.types.FieldReference;
+import com.ibm.wala.types.MethodReference;
+import com.ibm.wala.util.collections.Iterator2List;
 
+import edu.ucsd.energy.analysis.WakeLockManager.WakeLockInstance;
 import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.SSAProgramPoint;
-import edu.ucsd.energy.util.Util;
 
 /**
  * Need to run LockInvestigation before invoking this
@@ -26,10 +28,11 @@ import edu.ucsd.energy.util.Util;
  */
 public class SpecialConditions {
 	
+	private final int DEBUG = 1;
+	
 	private AppCallGraph cg;
 //	private ComponentManager cm;
 //	private ClassHierarchy ch; 
-	
 
 	public SpecialConditions(ComponentManager componentManager) {
 		this.cg = componentManager.getCG();
@@ -37,10 +40,12 @@ public class SpecialConditions {
 	}
 
 	private HashMap<SSAProgramPoint,SpecialCondition> ppToSpecCondition = null;
-	
+
+	private DefUse du;
+	private IR ir;
 	
 	public class SpecialCondition {
-		FieldReference field = null;
+		WakeLockInstance field = null;
 		protected ISSABasicBlock instrBlock;
 		protected ISSABasicBlock trueSucc;
 		protected ISSABasicBlock falseSucc;
@@ -54,11 +59,12 @@ public class SpecialConditions {
 		public ISSABasicBlock getFalseSucc() {
 			return falseSucc;
 		}
-		public FieldReference getField() {
+		//TODO: use WakeLockInstance instead
+		public WakeLockInstance getField() {
 			return field;
 		}
 		
-		SpecialCondition (ISSABasicBlock bb, FieldReference f, ISSABasicBlock trueSucc, ISSABasicBlock falseSucc) {
+		SpecialCondition (ISSABasicBlock bb, WakeLockInstance f, ISSABasicBlock trueSucc, ISSABasicBlock falseSucc) {
 			this.instrBlock = bb;
 			this.field = f;		
 			this.trueSucc = trueSucc;
@@ -95,7 +101,7 @@ public class SpecialConditions {
 	
 	public class NullCondition extends SpecialCondition {		
 
-		NullCondition(ISSABasicBlock bb, FieldReference f, ISSABasicBlock trueSucc, ISSABasicBlock falseSucc) {
+		NullCondition(ISSABasicBlock bb, WakeLockInstance f, ISSABasicBlock trueSucc, ISSABasicBlock falseSucc) {
 			super(bb, f, trueSucc, falseSucc);
 			
 		}		
@@ -108,7 +114,7 @@ public class SpecialConditions {
 	
 	public class IsHeldCondition extends SpecialCondition {	
 
-		IsHeldCondition(ISSABasicBlock bb, FieldReference f, ISSABasicBlock trueSucc, ISSABasicBlock falseSucc) {			
+		IsHeldCondition(ISSABasicBlock bb, WakeLockInstance f, ISSABasicBlock trueSucc, ISSABasicBlock falseSucc) {			
 			super(bb, f, trueSucc, falseSucc);					
 		}
 		
@@ -118,142 +124,118 @@ public class SpecialConditions {
 	}
 	
 	
-		
-
+	
 	public void prepare() {
 		
 		ppToSpecCondition = new HashMap<SSAProgramPoint, SpecialCondition>();
 		for (CGNode n : cg) {
 			//WARNING: this needs to be done here!!!
-			DefUse du = null;			//TODO: cache this nicer
-			IR ir = n.getIR();
-		
+			du = null;
+			ir = n.getIR();
 			/* Null for JNI methods */
+			E.log(DEBUG + 1, "Analyzing: " + n.getMethod().getSignature());
 			if (ir == null) {
-				E.log(2, "Skipping: " + n.getMethod().toString());
+				E.log(DEBUG, "Skipping: " + n.getMethod().getSignature());
 				continue;				
 			}	
-			
 			SSACFG cfg = ir.getControlFlowGraph();
 			
-			// Clear the map from previous bindings
-			//edgeToBranchInfo = new HashMap<ConditionEdge, GeneralCondition>();			
-			
-			for (Iterator<ISSABasicBlock> it = cfg.iterator(); it.hasNext(); ) {
-			ISSABasicBlock bb = it.next();
-				for (Iterator<SSAInstruction> iIter = bb.iterator(); iIter.hasNext(); ) {
-				SSAInstruction instr = iIter.next();
-				if (instr != null) {
-					try {	//TODO: Fix array out of bound
-						//TODO: refine check: check operator ...
-						if (instr instanceof SSAConditionalBranchInstruction) {
-							SSAConditionalBranchInstruction cinstr = (SSAConditionalBranchInstruction) instr;							
-							Iterator<ISSABasicBlock> succNodesItr = cfg.getSuccNodes(bb);
-							ArrayList<ISSABasicBlock> succNodesArray = Util.iteratorToArrayList(succNodesItr);
-							switch (succNodesArray.size()) {
-							/* XXX: assume for the moment that the first successor is the 
-							 * true branch and the second the false 
-							 */
-							case 2: {
-								
-								if (du == null) {
-									du = new DefUse(ir);
-								}
-								int use1 = cinstr.getUse(0);
-								int use2 = cinstr.getUse(1);	
-								
-								//Try first for Null Check
-								FieldReference field1 = getFieldForNullCheck(ir, du, use1);
-								FieldReference field2 = getFieldForNullCheck(ir, du, use2);
-								
-								if ((field1 != null && ir.getSymbolTable().isNullConstant(use2)) ||
-									(field2 != null && ir.getSymbolTable().isNullConstant(use1))) {
-									
-									//E.log(1, instr.toString());
-									SSAProgramPoint pp = new SSAProgramPoint(n,cinstr);
-									ISSABasicBlock trueSucc = succNodesArray.get(0);
-									ISSABasicBlock falseSucc = succNodesArray.get(1);									
-									if (field1 != null){
-										NullCondition c = new NullCondition(pp.getBasicBlock(), field1, trueSucc, falseSucc);
-										E.log(2, c.toString());										
-										ppToSpecCondition.put(pp, c);
-									}
-									else {
-										NullCondition c = new NullCondition(pp.getBasicBlock(), field2, trueSucc, falseSucc);
-										E.log(2, c.toString());
-										ppToSpecCondition.put(pp, c);
-									}
-								}		
-								
-								//Try for isHeld()
-								//XXX: the test must be exactly isHeld() (and not !isHeld()), or else it will mess up...
-								field1 = getFieldForIsHeld(ir, du, use1);
-								field2 = getFieldForIsHeld(ir, du, use2);
-								if (((field1 != null) && ir.getSymbolTable().isZero(use2)) ||
-									((field2 != null) && ir.getSymbolTable().isZero(use1))) {
-									SSAProgramPoint pp = new SSAProgramPoint(n,cinstr);
-									ISSABasicBlock trueSucc = succNodesArray.get(0);
-									ISSABasicBlock falseSucc = succNodesArray.get(1);
-									//E.log(1,instr.toString());
-									if (field1 != null){
-										IsHeldCondition c = new IsHeldCondition(pp.getBasicBlock(), field1, falseSucc, trueSucc);
-										ppToSpecCondition.put(pp,c);
-										E.log(2, c.toString());
-									}
-									else {
-										IsHeldCondition c = new IsHeldCondition(pp.getBasicBlock(), field2, falseSucc, trueSucc);
-										ppToSpecCondition.put(pp,c);										
-										E.log(2, c.toString());
-									}
-								}
-							}
-					        default: break;
-							}
-						} 
-						/* Switch, exception variables not investigated */	
-					} catch (ArrayIndexOutOfBoundsException e) {
-						// Just ignore the out of bound for now
+			for (Iterator<SSAInstruction> it = ir.iterateAllInstructions(); it.hasNext(); ) {
+				SSAInstruction instr = it.next();
+				if (instr instanceof SSAConditionalBranchInstruction) {
+					SSAConditionalBranchInstruction cinstr = (SSAConditionalBranchInstruction) instr;
+					ISSABasicBlock bb = ir.getBasicBlockForInstruction(instr);
+					Iterator<ISSABasicBlock> succNodesItr = cfg.getSuccNodes(bb);
+					Iterator2List<ISSABasicBlock> succNodesArray = 
+							new Iterator2List<ISSABasicBlock>(succNodesItr, new ArrayList<ISSABasicBlock>(2));
+					switch (succNodesArray.size()) {
+					/* We assume for the moment that the first successor is the 
+					 * true branch and the second the false */
+					case 2: {
+						if (du == null) {
+							du = new DefUse(ir);
+						}
+						int use1 = cinstr.getUse(0);
+						int use2 = cinstr.getUse(1);	
+						
+						//Try first for Null Check
+						WakeLockInstance ins1 = findInterestingInstance(use1);
+						WakeLockInstance ins2 = findInterestingInstance(use2);
+						
+						if (((ins1 != null) && ir.getSymbolTable().isNullConstant(use2)) ||
+							((ins2 != null) && ir.getSymbolTable().isNullConstant(use1))) {
+							WakeLockInstance ins = (ins1!=null)?ins1:ins2;
+							E.log(DEBUG, ins.toString());
+							E.log(DEBUG, instr.toString());
+							SSAProgramPoint pp = new SSAProgramPoint(n,cinstr);
+							ISSABasicBlock trueSucc = succNodesArray.get(0);
+							ISSABasicBlock falseSucc = succNodesArray.get(1);									
+							NullCondition c = new NullCondition(pp.getBasicBlock(), ins, trueSucc, falseSucc);
+							E.log(DEBUG, c.toString());										
+							ppToSpecCondition.put(pp, c);
+							continue;
+						}
+						
+						//Try for isHeld()
+						//XXX: the test must be exactly isHeld() (and not !isHeld()), or else it will mess up...
+						ins1 = getFieldForIsHeld(use1);
+						ins2 = getFieldForIsHeld(use2);
+						if (((ins1 != null) && ir.getSymbolTable().isZero(use2)) ||
+							((ins2 != null) && ir.getSymbolTable().isZero(use1))) {
+							WakeLockInstance field = (ins1 != null)?ins1:ins2;
+							E.log(DEBUG, field.toString());
+							E.log(DEBUG, instr.toString());
+							SSAProgramPoint pp = new SSAProgramPoint(n,cinstr);
+							ISSABasicBlock trueSucc = succNodesArray.get(0);
+							ISSABasicBlock falseSucc = succNodesArray.get(1);
+							IsHeldCondition c = new IsHeldCondition(pp.getBasicBlock(), field, falseSucc, trueSucc);
+							ppToSpecCondition.put(pp,c);
+							E.log(DEBUG, c.toString());
+							continue;
+						}
 					}
-				}
-				}
+			        default: break;
+					}
+				} 
 			}
 		}
 	}
 
-	
 	/**
 	 * Get the field associated with a value in the IR
-	 * @param ir
-	 * @param du
 	 * @param val
 	 * @return null if the value is not associated with a wakelock
 	 */
-	private FieldReference getFieldForNullCheck(IR ir, DefUse du, int val) {
+	private WakeLockInstance findInterestingInstance(int val) {
+		//TODO: use traceWakeLockInstance
 		SSAInstruction def = du.getDef(val);
 		if (def instanceof SSAGetInstruction) {
 			SSAGetInstruction get = (SSAGetInstruction) def;			
 			FieldReference field = get.getDeclaredField();
-			//if (cg.getLockFieldInfo().isWakeLock(field)) {
-				return field;				
-			//};			
+			//Only interesting fields are going to be here
+			return cg.getWakeLockManager().findOrCreateWakeLock(field);
+		}
+		else if (def instanceof SSAInvokeInstruction) {
+			SSAInvokeInstruction inv = (SSAInvokeInstruction) def;
+			MethodReference mr = inv.getDeclaredTarget();
+			//Only interesting method returns are here
+			return cg.getWakeLockManager().getMethodReturn(mr);
 		}
 		return null;
 	}
 		
 	/**
 	 * Get the field associated with an isHeld() call
-	 * @param ir
-	 * @param du
 	 * @param val
 	 * @return null if the value is not associated with a wakelock
 	 */
-	private FieldReference getFieldForIsHeld (IR ir, DefUse du, int val) {
+	private WakeLockInstance getFieldForIsHeld (int val) {
 		SSAInstruction def = du.getDef(val);
 		if (def instanceof SSAInvokeInstruction) {			
 			SSAInvokeInstruction inv = (SSAInvokeInstruction) def;			
 			if (inv.getDeclaredTarget().getSignature().equals("android.os.PowerManager$WakeLock.isHeld()Z")) {
 				int wlNum = inv.getUse(0);			
-				return getFieldForNullCheck(ir, du, wlNum);	
+				return findInterestingInstance(wlNum);
 			}
 		};
 		return null;
@@ -269,6 +251,5 @@ public class SpecialConditions {
 		}		
 		return ppToSpecCondition;
 	}
-	
 	
 }

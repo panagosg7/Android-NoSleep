@@ -18,19 +18,17 @@ import com.ibm.wala.ssa.SSAConditionalBranchInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSASwitchInstruction;
 import com.ibm.wala.ssa.SymbolTable;
-import com.ibm.wala.ssa.Value;
+import com.ibm.wala.util.collections.Iterator2List;
 import com.ibm.wala.util.graph.Acyclic;
 import com.ibm.wala.util.graph.InferGraphRoots;
 import com.ibm.wala.util.graph.Path;
 
 import edu.ucsd.energy.analysis.Opts;
-import edu.ucsd.energy.intraproc.IntraProcAnalysis;
-import edu.ucsd.energy.intraproc.VariableManager;
 import edu.ucsd.energy.intraproc.IntraProcAnalysis.ConditionEdge;
+import edu.ucsd.energy.intraproc.VariableManager;
 import edu.ucsd.energy.intraproc.VariableManager.ConditionVariable;
 import edu.ucsd.energy.intraproc.VariableManager.FunctionCallResult;
 import edu.ucsd.energy.util.InvokeInfo;
-import edu.ucsd.energy.util.Util;
 
 /**
  * Condition Manager: gathers mapping: edge -> condition
@@ -101,7 +99,8 @@ public class ConditionManager {
           int var2 = condInstr.getUse(1);
 
           Iterator<ISSABasicBlock> succNodesItr = currCFG.getSuccNodes(bb);
-          ArrayList<ISSABasicBlock> succNodesArray = Util.iteratorToArrayList(succNodesItr);
+          Iterator2List<ISSABasicBlock> succNodesArray = 
+					new Iterator2List<ISSABasicBlock>(succNodesItr, new ArrayList<ISSABasicBlock>(2));
           switch (succNodesArray.size()) {
           case 0: break;
           case 1: break;

@@ -20,12 +20,6 @@ import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.core.tests.callGraph.CallGraphTestUtil;
-import com.ibm.wala.demandpa.alg.ContextSensitiveStateMachine;
-import com.ibm.wala.demandpa.alg.DemandRefinementPointsTo;
-import com.ibm.wala.demandpa.alg.statemachine.StateMachineFactory;
-import com.ibm.wala.demandpa.flowgraph.IFlowLabel;
-import com.ibm.wala.demandpa.util.MemoryAccessMap;
-import com.ibm.wala.demandpa.util.SimpleMemoryAccessMap;
 import com.ibm.wala.examples.drivers.PDFTypeHierarchy;
 import com.ibm.wala.examples.properties.WalaExamplesProperties;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
@@ -41,15 +35,8 @@ import com.ibm.wala.ipa.callgraph.impl.Everywhere;
 import com.ibm.wala.ipa.callgraph.impl.ExplicitCallGraph;
 import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.ipa.callgraph.impl.Util;
-import com.ibm.wala.ipa.callgraph.propagation.AbstractFieldPointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.AbstractLocalPointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.HeapModel;
-import com.ibm.wala.ipa.callgraph.propagation.InstanceFieldKey;
-import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.LocalPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
-import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.SSAPropagationCallGraphBuilder;
 import com.ibm.wala.ipa.cfg.ExceptionPrunedCFG;
 import com.ibm.wala.ipa.cfg.PrunedCFG;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
@@ -69,7 +56,6 @@ import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.collections.CollectionFilter;
 import com.ibm.wala.util.collections.Filter;
-import com.ibm.wala.util.collections.HashSetFactory;
 import com.ibm.wala.util.config.AnalysisScopeReader;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.graph.Graph;
@@ -79,7 +65,6 @@ import com.ibm.wala.util.graph.impl.InvertedGraph;
 import com.ibm.wala.util.graph.traverse.BoundedBFSIterator;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.io.FileProvider;
-import com.ibm.wala.util.io.FileUtil;
 import com.ibm.wala.viz.DotUtil;
 import com.ibm.wala.viz.NodeDecorator;
 import com.ibm.wala.viz.PDFViewUtil;
@@ -87,6 +72,7 @@ import com.ibm.wala.viz.PDFViewUtil;
 import edu.ucsd.energy.intraproc.IntraProcAnalysis;
 import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.GraphBottomUp;
+import edu.ucsd.energy.util.SystemUtil;
 import edu.ucsd.energy.viz.GraphDotUtil;
 
 public class AppCallGraph implements CallGraph {
@@ -98,7 +84,8 @@ public class AppCallGraph implements CallGraph {
 	// Analysis parameters
 	private AnalysisScope scope = null;
 	private AnalysisOptions options = null;
-	private ClassHierarchy cha = null;
+	private AppClassHierarchy cha = null;
+	
 	private HashSet<Entrypoint> entrypoints = null;
 	private AnalysisCache cache = null;
 	private CallGraph g = null;
@@ -111,6 +98,10 @@ public class AppCallGraph implements CallGraph {
 	private PointerAnalysis pointerAnalysis;
 
 
+	public AppClassHierarchy getAppClassHierarchy() {
+		return cha;
+	}
+	
 	public Hashtable<String, IClass> getTargetClassHash() {
 		return targetClassHash;
 	}
@@ -123,19 +114,18 @@ public class AppCallGraph implements CallGraph {
 		return targetCGNodeHash;
 	}
 
-	
-	public AppCallGraph(AppClassHierarchy app_cha)
+	public AppCallGraph(AppClassHierarchy cha)
 			throws IllegalArgumentException, WalaException, CancelException,
 			IOException {
-		String appJar = app_cha.getAppJar();
-		String exclusionFile = app_cha.getExclusionFileName();
-		cha = app_cha.getClassHierarchy();
+		this.cha = cha;
+		String appJar = cha.getAppJar();
+		String exclusionFile = cha.getExclusionFileName();
 		// Get the graph on which we will work
 		g = buildPrunedCallGraph(appJar, FileProvider.getFile(exclusionFile));
 		if (Opts.OUTPUT_CG_DOT_FILE) {
 			outputCallGraphToDot(g);
+			outputCFGs();
 		}
-		outputCFGs();
 	}
 
 	public void outputCallGraphToDot(CallGraph g) {
@@ -151,11 +141,9 @@ public class AppCallGraph implements CallGraph {
 			String pdfFile = null;
 			if (Opts.OUTPUT_CALLGRAPH_PDF) {
 				pdfFile = /* p.getProperty(WalaProperties.OUTPUT_DIR) */
-				edu.ucsd.energy.util.Util.getResultDirectory() + File.separatorChar
-						+ PDF_FILE;
+				SystemUtil.getResultDirectory() + File.separatorChar + PDF_FILE;
 			}
-			String dotFile = edu.ucsd.energy.util.Util.getResultDirectory()
-					+ File.separatorChar + DOT_FILE;
+			String dotFile = SystemUtil.getResultDirectory() + File.separatorChar + DOT_FILE;
 			String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
 			GraphDotUtil.dotify(g, null, dotFile, pdfFile, dotExe);
 			// String gvExe = p.getProperty(WalaExamplesProperties.PDFVIEW_EXE);
@@ -186,7 +174,8 @@ public class AppCallGraph implements CallGraph {
 				exclusionFile != null ? exclusionFile : new File(CallGraphTestUtil.REGRESSION_EXCLUSIONS));
 
 		// Must use this - WALA assumes that entry point is just main
-		entrypoints = new AllApplicationEntrypoints(scope, cha);
+		ClassHierarchy classHierarchy = cha.getClassHierarchy();
+		entrypoints = new AllApplicationEntrypoints(scope, classHierarchy);
 		options = new AnalysisOptions(scope, entrypoints);
 		cache = new AnalysisCache();
 		targetCGNodeHash = new Hashtable<String, CGNode>();
@@ -194,7 +183,7 @@ public class AppCallGraph implements CallGraph {
 		E.log(0, "#Nodes: " + entrypoints.size());
 
 		/* Build the call graph */
-		CallGraphBuilder builder = Util.makeZeroCFABuilder(options, cache, cha, scope);
+		CallGraphBuilder builder = Util.makeZeroCFABuilder(options, cache, classHierarchy, scope);
 		
 		ExplicitCallGraph cg = (ExplicitCallGraph) builder.makeCallGraph(options, null);
 		
@@ -524,7 +513,7 @@ public class AppCallGraph implements CallGraph {
 		while ((str = targetBuffer.readLine()) != null) {
 			targetMethods.add(str);
 		}
-		for (IClass iclass : cha) {
+		for (IClass iclass : cha.getClassHierarchy()) {
 			TypeName clname = iclass.getName();
 			for (String targetMethodName : targetMethods) {
 				String targetClassName = "L"
@@ -685,7 +674,7 @@ public class AppCallGraph implements CallGraph {
 
 			if (Opts.OUTPUT_SIMPLE_CFG_DOT) {
 
-				String cfgs = edu.ucsd.energy.util.Util.getResultDirectory()
+				String cfgs = SystemUtil.getResultDirectory()
 						+ File.separatorChar + "cfg";
 				new File(cfgs).mkdirs();
 				// Output the CFG
@@ -702,7 +691,7 @@ public class AppCallGraph implements CallGraph {
 			}
 
 			if (Opts.OUTPUT_SIMPLE_CDG_DOT) {
-				String cdgs = edu.ucsd.energy.util.Util.getResultDirectory()
+				String cdgs = SystemUtil.getResultDirectory()
 						+ File.separatorChar + "cdgs/";
 				new File(cdgs).mkdirs();
 				// Output the CDG
@@ -728,7 +717,7 @@ public class AppCallGraph implements CallGraph {
 		} catch (WalaException e) {
 			e.printStackTrace();
 		}
-		String cfgs = edu.ucsd.energy.util.Util.getResultDirectory()
+		String cfgs = SystemUtil.getResultDirectory()
 				+ File.separatorChar + "cfg";
 		new File(cfgs).mkdirs();
 
@@ -922,7 +911,7 @@ public class AppCallGraph implements CallGraph {
 	public WakeLockManager getWakeLockManager() {
 		if (wlm == null) {
 			wlm = new WakeLockManager(this);
-			wlm.scanDefinitions();		//This might be redundant
+			//wlm.scanDefinitions(); //We only account for the locks that are created
 			wlm.prepare();
 		}
 		return wlm;

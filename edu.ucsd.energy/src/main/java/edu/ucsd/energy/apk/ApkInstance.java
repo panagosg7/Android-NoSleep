@@ -31,6 +31,7 @@ import javax.xml.xpath.XPathFactory;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 
+import org.json.JSONException;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
@@ -46,11 +47,10 @@ import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.strings.StringStuff;
 
-import edu.ucsd.energy.analysis.Result;
 import edu.ucsd.energy.entry.ApkException;
 import edu.ucsd.energy.entry.FailedManifestException;
 import edu.ucsd.energy.entry.RetargetException;
-import edu.ucsd.energy.entry.SystemUtil;
+import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.retarget.D2jConverter;
 import edu.ucsd.energy.retarget.DedConverter;
 import edu.ucsd.energy.retarget.SootD2jOptimize;
@@ -58,6 +58,7 @@ import edu.ucsd.energy.retarget.SootOptimize;
 import edu.ucsd.energy.retarget.Translation;
 import edu.ucsd.energy.smali.LameSmali;
 import edu.ucsd.energy.smali.LameWorld;
+import edu.ucsd.energy.util.SystemUtil;
 
 public class ApkInstance {
 	private ApkPaths mPaths;
@@ -225,6 +226,7 @@ public class ApkInstance {
 		}
 	}
 	
+	public final String getId() { return (getName() + "(" + getVersion() + ")"); };
 	public final String getName() { return mPaths.basePath.getParentFile().getParentFile().getName();  }
 	public final String getVersion() { return new File(mPaths.basePath.getParent()).getName();  }
 	public final String getPath() { return mPaths.basePath.getPath(); }
@@ -346,10 +348,14 @@ public class ApkInstance {
 		return interestingCallSites().keySet();
 	}
 	
-	public ArrayList<Result> panosAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException {		
-		return this.getWala().panosAnalyze();		
+	public IReport analyzeFull() throws IOException, CancelException, RetargetException, WalaException, ApkException {		
+		return this.getWala().analyzeFull();		
 	}
  
+	public IReport wakelockAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException, JSONException {		
+		return this.getWala().wakelockAnalyze();		
+	}
+	
 	public Wala.UsageType analyze() throws IOException, RetargetException {
 		return this.getWala().analyze();
 	}

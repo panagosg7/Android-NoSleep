@@ -7,7 +7,6 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.ArrayList;
 import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.util.Set;
@@ -19,9 +18,9 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 
-import edu.ucsd.energy.analysis.Result;
 import edu.ucsd.energy.apk.ApkInstance;
 import edu.ucsd.energy.apk.Wala;
+import edu.ucsd.energy.results.IReport;
 
 public class WorkConsumer implements Watcher {
 	ZooKeeper mZookeeper;
@@ -93,7 +92,7 @@ public class WorkConsumer implements Watcher {
 						if (apk.isSuccessfullyOptimized()) {
 							JSONObject panos_result = new JSONObject();
 							try {
-								ArrayList<Result> colors = apk.panosAnalyze();
+								IReport colors = apk.analyzeFull();
 								JSONArray colors_array = new JSONArray();
 								colors_array.add(colors);
 								panos_result.put("colors", colors);

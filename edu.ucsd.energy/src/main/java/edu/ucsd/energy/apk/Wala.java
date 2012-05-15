@@ -22,6 +22,7 @@ import org.jgrapht.DirectedGraph;
 import org.jgrapht.alg.BellmanFordShortestPath;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
+import org.json.JSONException;
 
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
@@ -77,11 +78,14 @@ import edu.ucsd.energy.analysis.AppCallGraph;
 import edu.ucsd.energy.analysis.AppClassHierarchy;
 import edu.ucsd.energy.analysis.ComponentManager;
 import edu.ucsd.energy.analysis.Opts;
-import edu.ucsd.energy.analysis.ProcessResults;
-import edu.ucsd.energy.analysis.Result;
-import edu.ucsd.energy.analysis.ProcessResults.ResultType;
+import edu.ucsd.energy.analysis.WakeLockManager;
 import edu.ucsd.energy.entry.ApkException;
 import edu.ucsd.energy.entry.RetargetException;
+import edu.ucsd.energy.results.ApkBugReport;
+import edu.ucsd.energy.results.FailReport;
+import edu.ucsd.energy.results.IReport;
+import edu.ucsd.energy.results.ProcessResults.ResultType;
+import edu.ucsd.energy.util.SystemUtil;
 
 public class Wala {
 	private File mPath;
@@ -601,35 +605,45 @@ public class Wala {
 		}
 	}
 
-	public ArrayList<Result> panosAnalyze() throws IOException, WalaException, CancelException, ApkException {
-		
+	
+	public IReport wakelockAnalyze() throws IOException, WalaException, CancelException, ApkException, JSONException {
 		String appJar = mPath.getAbsolutePath();
-
-		//TODO: Put this somewhere else
 		String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/" +
 				"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";						
-		
-		edu.ucsd.energy.util.Util.setResultDirectory(mPath.getAbsolutePath());
-		
+		SystemUtil.setResultDirectory(mPath.getAbsolutePath());
 		if(!Opts.RUN_IN_PARALLEL) {
 			edu.ucsd.energy.util.Util.printLabel(mPath.getAbsolutePath());	
 		}
-				
-		
-		AppClassHierarchy	ch = new AppClassHierarchy(appJar, exclusionFile);		
-		AppCallGraph 		cg = new AppCallGraph(ch);		
-		
+		AppClassHierarchy	ch = new AppClassHierarchy(appJar, exclusionFile);
+		AppCallGraph 		cg = new AppCallGraph(ch);
+		WakeLockManager wakeLockManager = cg.getWakeLockManager();
+		return wakeLockManager.getWakeLockReport();
+	}
+
+	
+	public IReport analyzeFull() throws IOException, WalaException, CancelException, ApkException {
+		String appJar = mPath.getAbsolutePath();
+		IReport result; 
+		//TODO: Put this somewhere else
+		String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/" +
+				"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";						
+		SystemUtil.setResultDirectory(mPath.getAbsolutePath());
+		if(!Opts.RUN_IN_PARALLEL) {
+			edu.ucsd.energy.util.Util.printLabel(mPath.getAbsolutePath());	
+		}
+		AppClassHierarchy ch = new AppClassHierarchy(appJar, exclusionFile);		
+		AppCallGraph cg = new AppCallGraph(ch);		
 		if (Opts.PROCESS_ANDROID_COMPONENTS) {
 			ComponentManager componentManager = new ComponentManager(cg);
 			componentManager.prepareReachability();
 			componentManager.resolveComponents();
 			componentManager.solveComponents();
-			componentManager.processExitStates();
-			return componentManager.getAnalysisResults();
+			
+			ApkBugReport bugReport = componentManager.getAnalysisResults();
+			bugReport.setWakeLockManager(cg.getWakeLockManager());
+			return bugReport;
 		}
-		ArrayList<Result> result = new ArrayList<Result>();
-		result.add(new Result(ResultType.DID_NOT_PROCESS, ""));
-		
+		result = new FailReport(ResultType.DID_NOT_PROCESS);
 		return result;
 	}
 }

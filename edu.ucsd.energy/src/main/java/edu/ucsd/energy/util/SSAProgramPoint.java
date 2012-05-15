@@ -2,8 +2,8 @@ package edu.ucsd.energy.util;
 
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IMethod;
-import com.ibm.wala.classLoader.ProgramCounter;
 import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
@@ -16,18 +16,20 @@ public class SSAProgramPoint {
 	private ISSABasicBlock bb;
 	private IntSet indices;	//index within the basic block - at the moment only for "new" and "invoke" instructions
 	private SSAInstruction instruction;
+	private int bytecodeIndex = -1;
 	
 	
 	public SSAProgramPoint(CGNode n, SSAInstruction instr) {
 		this.node = n;
-				
 		this.method = n.getMethod();
-		this.bb = n.getIR().getBasicBlockForInstruction(instr);
+		IR ir = n.getIR();
+		this.bb = ir.getBasicBlockForInstruction(instr);
 		
 		if (instr instanceof SSAInvokeInstruction) {
 			SSAInvokeInstruction inv = (SSAInvokeInstruction) instr;
 			CallSiteReference site = inv.getCallSite();
-			this.indices = n.getIR().getCallInstructionIndices(site);
+			this.indices = ir.getCallInstructionIndices(site);
+			this.bytecodeIndex = site.getProgramCounter();
 		}
 		this.instruction = instr;				
 	}
@@ -82,10 +84,9 @@ public class SSAProgramPoint {
 	}
 	
 	
-	//TODO 
-	public ProgramCounter getPC() {
-		return null;
-		
+	
+	public int getCreationByteCodeIndex() {
+		return bytecodeIndex;
 	}
 
 }

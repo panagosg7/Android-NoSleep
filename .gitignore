@@ -5,6 +5,7 @@
 */mcmutton.properties
 *.out
 *.json
+output
 [core]
   whitespace=nowarn
 

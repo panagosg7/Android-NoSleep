@@ -44,19 +44,26 @@ import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.debug.UnimplementedError;
 
 import edu.ucsd.energy.analysis.Opts;
-import edu.ucsd.energy.analysis.Result;
-import edu.ucsd.energy.analysis.ProcessResults.ResultType;
 import edu.ucsd.energy.apk.ApkInstance;
 import edu.ucsd.energy.entry.ApkCollection.ApkApplication;
+import edu.ucsd.energy.results.BugResult;
+import edu.ucsd.energy.results.FailReport;
+import edu.ucsd.energy.results.IReport;
+import edu.ucsd.energy.results.ProcessResults.ResultType;
+import edu.ucsd.energy.util.SystemUtil;
 
 public class BugHunt {
 	
 	private static File acqrelDatabaseFile;
-	private static String outputFileName;
-	private static File outputFile;
 	
 	private static int numberOfThreads = 1;		//default is one thread
 
+	private final static Logger LOGGER = Logger.getLogger(ApkInstance.class.getName());
+	
+	private static ApkCollection collection;
+	
+	private static Set<String> theSet = new HashSet<String>();
+	
 	public static void dumpReachability(Map<MethodReference, Set<MethodReference>> reach, String dst) throws IOException {
 		JSONObject obj = new JSONObject();
 		for (MethodReference dstMr: reach.keySet()) {
@@ -115,74 +122,174 @@ public class BugHunt {
 		dumpReachability(fb130.interestingCallSites(), "call_130.json");
 
 	}
-	
 
-	public static void runPatternAnalysis(ApkCollection collection) 
-			throws ApkException, IOException, RetargetException, WalaException, CancelException {
-		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
-		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
-		LOGGER.info("acq_rel size: " + is.toString());
-		
-		runPatternAnalysis(collection, acqrel_status.keySet());	
+	public static void runWakeLockAnalysis() 
+			throws IOException, ApkException, RetargetException, WalaException, CancelException, InterruptedException {
+		JobPool<WakeLockCreationTask> jobPool = new JobPool<WakeLockCreationTask>() {
+			protected WakeLockCreationTask newTask(ApkInstance apk) { return new WakeLockCreationTask(apk); } 
+		};
+		doAnalysis(collection, jobPool);
 	}
 	
-	public static void runTestPatternAnalysis(ApkCollection collection) 
-			throws ApkException, IOException, RetargetException, WalaException, CancelException {
-		Set<String> theSet = new HashSet<String>();
-		/* The applications you specify here need to be in apk_collection !!! */
-		theSet.add("NetCounter");
-//		theSet.add("m+Talk");
-		runPatternAnalysis(collection, theSet);
+	public static void runPatternAnalysis() 
+			throws ApkException, IOException, RetargetException, WalaException, CancelException, InterruptedException {
+		JobPool<PatternAnalysisTask> jobPool = new JobPool<PatternAnalysisTask>() {
+			protected PatternAnalysisTask newTask(ApkInstance apk) { return new PatternAnalysisTask(apk); } 
+		};
+		doAnalysis(collection, jobPool);
 	}
 	
-	private final static Logger LOGGER = Logger.getLogger(ApkInstance.class.getName());
-	
-	public static void runPatternAnalysis(ApkCollection collection, Set<String> theSet) 
-			throws ApkException, IOException, RetargetException, WalaException, CancelException {
-		FileInputStream is = new FileInputStream(acqrelDatabaseFile);		
-		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
+	private static abstract class RunnableTask implements Runnable {
 		
-		HashMap<ApkInstance, ArrayList<Result>> result = new HashMap<ApkInstance, ArrayList<Result>>();
+		public static JSONObject fullObject = new JSONObject();
 
+		protected ApkInstance apk;
+		
+		RunnableTask(ApkInstance apk) {
+			this.apk = apk;			
+		}
+		
+		public String getApkName() {
+			return apk.getName();
+		}
+		
+	}
+	
+	private static class PatternAnalysisTask extends RunnableTask {
+		
+		PatternAnalysisTask(ApkInstance apk) {
+			super(apk);
+		}
+		
+		public void run() {
+			try {
+				LOGGER.info("Starting: " + apk.getName());
+				String app_name = apk.getName();
+				IReport res;
+				if (apk.successfullyOptimized()) {
+					try {
+						res = apk.analyzeFull();
+					} catch(Exception e) {
+						//Any exception should be notified
+						e.printStackTrace();		//XXX: keep this somewhere
+						res = new FailReport(ResultType.ANALYSIS_FAILURE);
+					}
+					catch (UnimplementedError e) {
+						e.printStackTrace();
+						LOGGER.warning(e.getMessage());
+						res = new FailReport(ResultType.UNIMPLEMENTED_FAILURE);
+					}								
+				} else {
+					LOGGER.warning("Optimization failed: " + app_name);
+					res = new FailReport(ResultType.OPTIMIZATION_FAILURE);
+				}
+				JSONObject json = res.toJSON();
+				json.put("version", apk.getVersion());
+				SystemUtil.commitReport(apk.getName(), json);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			//Dump the output file in each intermediate step
+			SystemUtil.writeToFile();
+		}
+	}
+
+	private static class WakeLockCreationTask extends RunnableTask {
+		
+		WakeLockCreationTask(ApkInstance apk) {
+			super(apk);
+		}
+		
+		private void updateJSON(String key, JSONObject obj) {
+			synchronized (fullObject) {
+				fullObject.put(key, obj);
+			}
+		}
+		
+		public void run() {
+			JSONObject json = new JSONObject();
+			try {
+				LOGGER.info("Starting: " + apk.getName());
+				if (apk.successfullyOptimized()) {
+					try {
+						json = apk.wakelockAnalyze().toJSON();
+					} catch(Exception e) {
+						json.put("result", ResultType.ANALYSIS_FAILURE.toString());
+						System.err.println(apk.getName());
+						e.printStackTrace();
+					}
+					catch (UnimplementedError e) {
+						LOGGER.warning(e.getMessage());
+						json.put("result", ResultType.UNIMPLEMENTED_FAILURE.toString());
+					}								
+				} else {
+					json.put("result", ResultType.OPTIMIZATION_FAILURE.toString());
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			json.put("version", apk.getVersion());
+			SystemUtil.commitReport(apk.getName(), json);
+			SystemUtil.writeToFile();
+		}
+	}
+	
+	
+	
+	private static abstract class JobPool<T extends RunnableTask> {
+		Set<T> pool;
+		JobPool() throws IOException {
+			FileInputStream is = new FileInputStream(acqrelDatabaseFile);		
+			JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
+			//pool = new HashSet<RunnableTask>();
+			pool = new HashSet<T>();
+			for (Object key: theSet) {
+				String app_name = ApkCollection.cleanApkName((String) key);
+				String[] catsArray = acqrel_status.getString((String)key).split("[,]");			
+				ArrayList<String> cats = new ArrayList<String>(catsArray.length);
+				for (String cat: catsArray) cats.add(cat);
+				final ApkApplication application = collection.getApplication(app_name);
+				ApkInstance apk = application.getPreferred();
+				T task = newTask(apk);
+				pool.add(task);
+			}
+		}
+		
+		public Set<T> getPool() {
+			return pool;
+		}
+		
+		abstract protected T newTask(ApkInstance apk);
+	}
+	
+	
+	public static void doAnalysis(ApkCollection collection, JobPool<? extends RunnableTask> jobPool) 
+			throws ApkException, IOException, RetargetException, WalaException, CancelException, InterruptedException {
 		//Initialize thread pool
 		long keepAliveTime = 1;
 		TimeUnit unit = TimeUnit.SECONDS;
 		LinkedBlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<Runnable>(1000);
+		
 		LOGGER.info("Thread pool size: " + numberOfThreads) ;
 		LOGGER.info("Input set size: " + theSet.size()) ;
-		ThreadPoolExecutor tPoolExec = new ThreadPoolExecutor(numberOfThreads, numberOfThreads,
+		ThreadPoolExecutor tPoolExec = 
+				new ThreadPoolExecutor(numberOfThreads, numberOfThreads,
 				keepAliveTime, unit, workQueue);
-		for (Object key: theSet) {
-			String app_name = collection.cleanApkName((String)key);
-			String[] catsArray = acqrel_status.getString((String)key).split("[,]");			
-			ArrayList<String> cats = new ArrayList<String>(catsArray.length);
-			for (String cat: catsArray) cats.add(cat);
-			final ApkApplication application = collection.getApplication(app_name);
+		for (RunnableTask job: (Set<? extends RunnableTask>) jobPool.getPool()) {
 			try {
-				tPoolExec.execute(new Runnable() {
-					public void run() {
-						ArrayList<Result> res;
-						try {
-							ApkInstance apk = application.getPreferred();
-							LOGGER.info("Starting: " + apk.getName());
-							res = runPatternAnalysisOnApk(apk);
-							synchronized (outputFileName) {
-								SystemUtil.writeToFile(outputFileName, apkResultToString(apk, res));	
-							}
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-					}
-				});
+				tPoolExec.execute(job);
 			}
 			catch (RejectedExecutionException e) {
-				LOGGER.info("Rejected: " + app_name);
+				LOGGER.info("Rejected: " + job.getApkName());
 			}
 		}
-		
 		tPoolExec.shutdown();
-		outputAllResults(result);
-				
+		
+		tPoolExec.awaitTermination(20, TimeUnit.HOURS);
+		
+		//SystemUtil.writeToFile(RunnableTask.fullObject.toString());
+		//outputAllResults(result);
+		/*
 		Map<ResultType, Integer> histogram = makeHistogram(result);
 		long total = 0;
 		for (Integer i: histogram.values()) {
@@ -191,72 +298,38 @@ public class BugHunt {
 		for (Entry<ResultType, Integer> e: histogram.entrySet()) {
 			System.out.println(e.getKey() + " : " + e.getValue());
 		}
+		*/
 	}
 	
-	
-	private static ArrayList<Result> runPatternAnalysisOnApk(ApkInstance apk) throws IOException {		
-		String app_name = apk.getName();
-		ArrayList<Result> res = new ArrayList<Result>();
-		if (apk.successfullyOptimized()) {
-			try {
-				res = apk.panosAnalyze();
-				return res;
-			} catch(Exception e) {
-				//Any exception should be notified
-				//e.printStackTrace();		//XXX: keep this somewhere
-				res.add(new Result(ResultType.ANALYSIS_FAILURE, app_name));
-				return res;
-			}
-			catch (UnimplementedError e) {
-				//e.printStackTrace();
-				LOGGER.warning(e.getMessage());
-				res.add(new Result(ResultType.UNIMPLEMENTED_FAILURE, app_name));
-				return res;
-			}								
-		} else {
-			LOGGER.warning("Optimization failed: " + app_name);
-			res.add(new Result(ResultType.OPTIMIZATION_FAILURE, app_name));
-		}
-		return res;
-	}
-
-	
+	/*
+	 * TODO: Parallelize this
+	 */
 	public static void findInteresting(ApkCollection collection) {
 		List<ApkApplication> apps = collection.listApplications();
 		for (ApkApplication app : apps) {
-			//List<ApkVersion> vers = app.listVersions();
-			//boolean determined = false;
-			//for (ApkVersion ver : vers) {
-				try {
-					//if(determined) continue;					
-					//ApkInstance apkInstance = ver.getPreferred();
-					ApkInstance apkInstance = app.getPreferred();
-					apkInstance.requiresRetargeted();
-					if (apkInstance.hasWakelockCalls()) {
-						//determined = true;
-						System.out.println("++++++" + apkInstance.getName() + " - " + apkInstance.getVersion());
-						SystemUtil.writeToFile("interesting.txt", apkInstance.getName() + "\n");
-					}
-					else {
-						System.out.println("------" + apkInstance.getName() + " - " + apkInstance.getVersion());
-					}
-					
-				} catch (IOException e) {
-					e.printStackTrace();
-				} catch (RetargetException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (ApkException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+			try {
+				ApkInstance apkInstance = app.getPreferred();
+				apkInstance.requiresRetargeted();
+				if (apkInstance.hasWakelockCalls()) {
+					//determined = true;
+					System.out.println("++++++" + apkInstance.getName() + " - " + apkInstance.getVersion());
+					SystemUtil.writeToFile(apkInstance.getName() + "\n");
 				}
-			//}
+				else {
+					System.out.println("------" + apkInstance.getName() + " - " + apkInstance.getVersion());
+				}
+				
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (RetargetException e) {
+				e.printStackTrace();
+			} catch (ApkException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 	
-	
-	
-	public static String apkResultToString(ApkInstance apk, ArrayList<Result> result) {
+	public static String apkResultToString(ApkInstance apk, ArrayList<BugResult> result) {
 		StringBuffer sb = new StringBuffer();
 		String res = String.format("%30s - %15s :: ", apk.getName(), apk.getVersion());
 		sb.append(res);
@@ -277,20 +350,18 @@ public class BugHunt {
 		return sb.toString();
 	}
 
-	public static void outputAllResults(HashMap<ApkInstance, ArrayList<Result>> result) {
+	public static void outputAllResults(HashMap<ApkInstance, ArrayList<BugResult>> result) {
 		System.out.println();
-		for (Entry<ApkInstance, ArrayList<Result>> e : result.entrySet()) {
+		for (Entry<ApkInstance, ArrayList<BugResult>> e : result.entrySet()) {
 			System.out.println(apkResultToString(e.getKey(), e.getValue()));
 		}
 	}
 
-	
-	
-	private static Map<ResultType, Integer> makeHistogram(HashMap<ApkInstance, ArrayList<Result>> result) {
+	private static Map<ResultType, Integer> makeHistogram(HashMap<ApkInstance, ArrayList<BugResult>> result) {
 		Map<ResultType, Integer> histogram = new HashMap<ResultType, Integer>();
-		for (Entry<ApkInstance, ArrayList<Result>> e : result.entrySet()) {
-			ArrayList<Result> value = e.getValue();
-			for (Result r : value) {
+		for (Entry<ApkInstance, ArrayList<BugResult>> e : result.entrySet()) {
+			ArrayList<BugResult> value = e.getValue();
+			for (BugResult r : value) {
 				ResultType resultType = r.getResultType();
 				Integer integer = histogram.get(resultType);
 				if (integer == null) {
@@ -333,7 +404,7 @@ public class BugHunt {
 		}
 	}
 	
-	public static void dumpPhantoms(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
+	public static void dumpPhantoms() throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 
@@ -348,7 +419,7 @@ public class BugHunt {
 		t.dump();
 	}
 	
-	public static void dumpPhantomCounts(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
+	public static void dumpPhantomCounts() throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 
@@ -359,7 +430,7 @@ public class BugHunt {
 		}
 	}
 	
-	public static void flushPhantom(ApkCollection collection, String phantom) throws ApkException, IOException, RetargetException, WalaException, CancelException {
+	public static void flushPhantom(String phantom) throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 
@@ -373,7 +444,7 @@ public class BugHunt {
 		}
 	}
 	
-	public static void dumpExceptions(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
+	public static void dumpExceptions() throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 
@@ -388,7 +459,7 @@ public class BugHunt {
 		t.dump();
 	}
 	
-	public static void dumpFailedConversions(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
+	public static void dumpFailedConversions() throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 
@@ -407,7 +478,7 @@ public class BugHunt {
 		}
 	}
 	
-	public static void reoptimize(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
+	public static void reoptimize() throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 	
@@ -424,7 +495,7 @@ public class BugHunt {
 	 * Just do the optimization.
 	 * If the version we have is optimized do not try to optimize again.
 	 */
-	public static void optimize(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
+	public static void optimize() throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 		
@@ -446,11 +517,13 @@ public class BugHunt {
 		}
 	}
 	
+	
 	/**
 	 * Check to see how many apps have been successfully optimized
 	 * Output a json file containing them
 	 */
-	public static void collectOptimized(ApkCollection collection) throws ApkException, IOException, RetargetException, WalaException, CancelException {
+	public static void collectOptimized() 
+			throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 		JSONObject obj = new JSONObject();		//The output object			
@@ -471,11 +544,10 @@ public class BugHunt {
 			}
 		}
 		System.out.println("OK/FAIL/TOTAL = " + ok + "/" + fail + "/" + (ok+fail));
-		SystemUtil.writeToFile(outputFileName, obj.toString());
+		SystemUtil.writeToFile(obj.toString());
 	}
 	
-	
-	public static void readWorkConsumerResults(ApkCollection collection) {
+	public static void readWorkConsumerResults() {
 		File resultsPath = new File(ApkInstance.sScratchPath + File.separator + "results");
 		
 		FileFilter filter = new FileFilter() {
@@ -529,7 +601,6 @@ public class BugHunt {
 			} 
 		}
 		
-		
 		System.out.println("totalCount: " + totalCount);
 		System.out.println("wakeLockCount: " + hasWakelockCalls);
 		System.out.println("retargeted: " + retargeted);
@@ -541,13 +612,8 @@ public class BugHunt {
 			System.out.println("panos: " + err);
 		}
 	}
-	
-	/**
-	 * Value[1] should be a collection folder
-	 * @param values
-	 * @param collection
-	 */
-	private static void addToCollection(String[] values, ApkCollection collection) {
+
+	private static void addToCollection(String[] values) {
 		File basePath = new File(values[0]);
 		if (!basePath.exists()) {
 			System.err.println("base apk path does not exist: " + basePath);
@@ -574,8 +640,8 @@ public class BugHunt {
 			numberOfThreads = 1;
 		}
 	}
-	
 
+	//This is a temporary method - to be deprecated
 	private static void createJSON(String input) {
 		try {
 			File file = new File(input);
@@ -588,7 +654,7 @@ public class BugHunt {
 				obj.put(strLine.replace(" ", ""), "");
 			}
 			in.close();
-			SystemUtil.writeToFile(outputFileName, obj.toString());
+			SystemUtil.writeToFile(obj.toString());
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -600,8 +666,7 @@ public class BugHunt {
 	private static void setOutputFile(String optionValue) {
 		String extension = FilenameUtils.getExtension(optionValue);
 		String pureName = FilenameUtils.removeExtension(optionValue);
-		outputFileName = pureName + "_" + SystemUtil.getDateTime() + "." + extension;
-		outputFile = new File(outputFileName);
+		SystemUtil.setOutputFileName(pureName + "_" + SystemUtil.getDateTime() + "." + extension);
 	}
 
 	private static void setInputJSONFile(String optionValue) {
@@ -615,18 +680,19 @@ public class BugHunt {
 		Options options = new Options();
 		CommandLineParser parser = new PosixParser();
 		
-		options.addOption(new Option("p", "phantoms", false, "list phantom refs histogram"));
-		options.addOption(new Option("P", "phantom-counts", false, "list phantom counts per app"));
+		options.addOption(new Option("ph", "phantoms", false, "list phantom refs histogram"));
+		options.addOption(new Option("pc", "phantom-counts", false, "list phantom counts per app"));
 		options.addOption(new Option("e", "opt-exceptions", false, "list histogram of optimization exception types"));
 		options.addOption(new Option("f", "failed", false, "list failed conversions"));
 		options.addOption(new Option("r", "optimize", false, "optimize unoptimized versions"));
 		options.addOption(new Option("c", "collect-optimized", false, "collect optimized apps"));
 		options.addOption(new Option("r", "reoptimize", false, "re-optimize failed conversions"));
-		options.addOption(new Option("s", "patterns", false, "perform patterns analysis and print results"));
-		options.addOption(new Option("S", "test-patterns", false, "perform pattern analysis on a small subset of apks"));
+		options.addOption(new Option("p", "patterns", false, "perform patterns analysis and print results"));
+		options.addOption(new Option("w", "wakelock-info", false, "gather info about wakelock creation"));
 		options.addOption(new Option("o", "output", true, "specify an output filename (date will be included)"));
 		options.addOption(new Option("i", "input", true, "specify the input json file"));
 		options.addOption(new Option("t", "threads", true, "run the analysis on t threads (works for pattern analysis only)"));
+		options.addOption(new Option("s", "small-set", false, "run the analysis on a small set"));
 		
 		options.addOption(OptionBuilder.withLongOpt("create-json").hasArg()
 				   .withDescription("create a JSONObject from a file with a list of apps").create());
@@ -638,7 +704,8 @@ public class BugHunt {
 		options.addOption(OptionBuilder.withLongOpt("read-consumer").hasArgs(0)
 				.withDescription("process stats output by WorkConsumer").create());
 		try {
-	    	ApkCollection collection = new ApkCollection();
+	    	
+			collection = new ApkCollection();
 	    	CommandLine line = parser.parse(options,  args);
 	    	if (line.hasOption("threads")) {
 				setThreadNumber(line.getOptionValue("threads"));
@@ -650,35 +717,46 @@ public class BugHunt {
 				setInputJSONFile(line.getOptionValue("input"));
 			}
 			else{
-				acqrelDatabaseFile = new File("/home/pvekris/dev/apk_scratch/input.json");
+				acqrelDatabaseFile = new File("/home/pvekris/dev/apk_scratch/output/optimized.json");
+			}
+			if (line.hasOption("small-set")) {
+				theSet = new HashSet<String>();
+				/* The applications you specify here need to be in apk_collection !!! */
+				theSet.add("Bubble");
+				theSet.add("Remember_The_Milk");
+			}
+			else {
+				FileInputStream is = new FileInputStream(acqrelDatabaseFile);
+				JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
+				theSet = acqrel_status.keySet();
 			}
     		if (line.hasOption("flush-phantoms")) {
-    			flushPhantom(collection, line.getOptionValue("flush-phantoms"));
+    			flushPhantom(line.getOptionValue("flush-phantoms"));
     		} else if (line.hasOption("phantoms")) {
-    			dumpPhantoms(collection);
+    			dumpPhantoms();
     		} else if (line.hasOption("phantom-counts")) {
-    			dumpPhantomCounts(collection);
+    			dumpPhantomCounts();
     		} else if (line.hasOption("opt-exceptions")) {
-    			dumpExceptions(collection);
+    			dumpExceptions();
     		} else if (line.hasOption("failed")) {
-    			dumpFailedConversions(collection);
+    			dumpFailedConversions();
     		} else if (line.hasOption("optimize")) {
-    			optimize(collection);
+    			optimize();
+    		} else if (line.hasOption("wakelock-info")) {
+    			runWakeLockAnalysis();
     		} else if (line.hasOption("collect-optimized")) {
-    			collectOptimized(collection);
+    			collectOptimized();
     		} else if (line.hasOption("reoptimize")) {
-    			reoptimize(collection);
+    			reoptimize();
     		} else if (line.hasOption("patterns")) {
-    			runPatternAnalysis(collection);
+    			runPatternAnalysis();
     		} else if (line.hasOption("create-json")) {
     			String input = line.getOptionValue("create-json");
     			createJSON(input);
-    		} else if (line.hasOption("test-patterns")) {
-    			runTestPatternAnalysis(collection);
     		} else if (line.hasOption("add-to-collection")) {
-    			addToCollection(line.getOptionValues("add-to-collection"), collection);
+    			addToCollection(line.getOptionValues("add-to-collection"));
     		} else if (line.hasOption("read-consumer")) {
-    			readWorkConsumerResults(collection);
+    			readWorkConsumerResults();
     		} else {
     			for (Object opt: options.getOptions()) {
     				System.err.println(opt);
@@ -693,3 +771,4 @@ public class BugHunt {
 
 
 }
+	

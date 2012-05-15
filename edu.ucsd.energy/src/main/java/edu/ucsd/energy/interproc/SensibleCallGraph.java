@@ -20,6 +20,7 @@ import com.ibm.wala.viz.NodeDecorator;
 import edu.ucsd.energy.components.Component;
 import edu.ucsd.energy.components.Component.CallBack;
 import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.SystemUtil;
 import edu.ucsd.energy.viz.GraphDotUtil;
 
 public class SensibleCallGraph extends SparseNumberedGraph<SensibleCGNode> {
@@ -123,7 +124,7 @@ public class SensibleCallGraph extends SparseNumberedGraph<SensibleCGNode> {
       p.putAll(WalaProperties.loadProperties());
       String className = component.getKlass().getName().toString();        
       String bareFileName = className.replace('/', '.');
-      String dotFile = edu.ucsd.energy.util.Util.getResultDirectory() + 
+      String dotFile = SystemUtil.getResultDirectory() + 
           File.separatorChar + "aux_scg_" + 
           bareFileName + ".dot";            
       NodeDecorator nd = new NodeDecorator() {

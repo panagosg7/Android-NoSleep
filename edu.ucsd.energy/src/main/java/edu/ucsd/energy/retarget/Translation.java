@@ -6,7 +6,7 @@ package edu.ucsd.energy.retarget;
 import java.io.IOException;
 
 import edu.ucsd.energy.entry.RetargetException;
-import edu.ucsd.energy.entry.SystemUtil;
+import edu.ucsd.energy.util.SystemUtil;
 
 public class Translation {
 	public DexConverter mConverter;

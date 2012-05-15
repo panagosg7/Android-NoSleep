@@ -21,7 +21,7 @@ public class E {
       
       if (Opts.LOG_RESULTS) {
         try {        	        
-	        File file = new File(Util.getResultDirectory() + 
+	        File file = new File(SystemUtil.getResultDirectory() + 
 	            File.separatorChar + f);
 	        if(!file.exists()){	          
 	          file.createNewFile();

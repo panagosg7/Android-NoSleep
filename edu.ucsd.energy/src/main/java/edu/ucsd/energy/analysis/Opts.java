@@ -163,7 +163,7 @@ public class Opts {
 
 
 
-  public static final boolean OUTPUT_CLASSHIERARCHY = true;
+  public static final boolean OUTPUT_CLASS_HIERARCHY = true;
 
 
 

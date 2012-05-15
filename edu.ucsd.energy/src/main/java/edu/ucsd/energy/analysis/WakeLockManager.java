@@ -1,5 +1,6 @@
 package edu.ucsd.energy.analysis;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -7,16 +8,11 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import com.ibm.wala.classLoader.IClass;
-import com.ibm.wala.classLoader.IField;
+import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
+
 import com.ibm.wala.classLoader.IMethod;
-import com.ibm.wala.core.tests.demandpa.AbstractPtrTest;
 import com.ibm.wala.ipa.callgraph.CGNode;
-import com.ibm.wala.ipa.callgraph.propagation.AbstractPointerAnalysis;
-import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
-import com.ibm.wala.ipa.callgraph.propagation.LocalPointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
-import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.shrikeBT.IBinaryOpInstruction.IOperator;
 import com.ibm.wala.shrikeBT.IBinaryOpInstruction.Operator;
 import com.ibm.wala.ssa.DefUse;
@@ -26,133 +22,148 @@ import com.ibm.wala.ssa.SSAGetInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSAPhiInstruction;
+import com.ibm.wala.ssa.SSAPiInstruction;
 import com.ibm.wala.ssa.SSAPutInstruction;
 import com.ibm.wala.ssa.SSAReturnInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeReference;
-import com.ibm.wala.util.intset.OrdinalSet;
+import com.ibm.wala.util.collections.Iterator2List;
+import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.apk.Interesting;
+import edu.ucsd.energy.results.WakeLockReport;
 import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.GraphBottomUp;
 import edu.ucsd.energy.util.SSAProgramPoint;
 
 public class WakeLockManager {
 	
+	private int DEBUG = 1;
+	
 	private AppCallGraph cg;
 	private ComponentManager cm;
+
+	private WakeLockReport report = null;
 	
-	public interface WakeLockInstance {}
 	
-	public class FieldWakeLock implements WakeLockInstance {
-		private FieldReference field;
+	public class WakeLockInstance {
+
+		//The program point where WakeLock was created
+		private SSAProgramPoint pp;
 		
+		private FieldReference field;
+	
+		private WakeLockInfo info;
+		
+		public WakeLockInstance(SSAProgramPoint pp2) {
+			this.pp = pp2;
+			this.info = new WakeLockInfo();
+		}
+
+		public WakeLockInstance(FieldReference field2) {
+			this.field = field2;
+		}
+
+		public int hashCode() {
+			return pp.hashCode();
+		} 
+		
+		public boolean equals(Object o) {
+			if (o instanceof WakeLockInstance){
+				WakeLockInstance wli = (WakeLockInstance) o;
+				return pp.equals(wli.getPP());
+			}
+			return false;				
+		}
+		
+		public SSAProgramPoint getPP() {
+			return pp;
+		}
+
 		public FieldReference getField() {
 			return field;
 		}
 		
-		public FieldWakeLock(FieldReference f) {
-			this.field = f;
-		}		
-		
-		@Override
-		public int hashCode() {
-			return (-1) * field.hashCode();		//keep them separate from locals
-		}
-		
-		@Override
-		public boolean equals(Object obj) {
-			if (obj instanceof FieldWakeLock) {
-				FieldWakeLock lwl = (FieldWakeLock) obj;
-				return field.equals(lwl.getField());
-			}
-			return false;
-		}		
-		
-		@Override
 		public String toString() {
-			return ("F:" + field.toString()); 
-		}
-	}
-	
-	//Cache the wakelock refs
-	private Map<FieldReference, FieldWakeLock> mFieldRefs;
-	private FieldWakeLock findOrCreateFieldWakeLock(FieldReference fr) {
-		if (mFieldRefs == null) {
-			mFieldRefs = new HashMap<FieldReference, WakeLockManager.FieldWakeLock>();
-		}
-		FieldWakeLock fWL = mFieldRefs.get(fr);
-		if (fWL == null) {	
-			FieldWakeLock newFWL = new FieldWakeLock(fr);
-			mFieldRefs.put(fr, newFWL);
-			return newFWL;
-		}
-		return fWL;
-	}
-	
-	private Map<SSAProgramPoint, LocalWakeLock> mLocalRefs;
-	private LocalWakeLock findOrCreateLocalWakeLock(SSAProgramPoint pp) {
-		if (mLocalRefs == null) {
-			mLocalRefs = new HashMap<SSAProgramPoint, WakeLockManager.LocalWakeLock>();
-		}
-		LocalWakeLock lWL = mLocalRefs.get(pp);
-		if (lWL == null) {	
-			LocalWakeLock newLWL = new LocalWakeLock(pp);
-			mLocalRefs.put(pp, newLWL);
-			return newLWL;
-		}
-		return lWL;
-	}
-	
-	
-	public class LocalWakeLock implements WakeLockInstance { 
-		//The program point where newWakeLock was called
-		private SSAProgramPoint pp;
-		
-		public LocalWakeLock(SSAProgramPoint pp) {
-			this.pp = pp;
+			return (((field!=null)?field.toString():"NO_FIELD") + 
+					" Created: " + 
+					((pp!=null)?pp.toString():"null")); 
 		}
 
-		public SSAProgramPoint getCreatioinPP() {
-			return pp;
-		}		
-		
-		@Override
-		public int hashCode() {
-			return pp.hashCode();
+		public WakeLockInfo getInfo() {
+			return info;
+		}
+
+		public void setLockType(Collection<LockType> lockType) {
+			this.info.setLockType(lockType);			
 		}
 		
-		@Override
-		public boolean equals(Object obj) {
-			if (obj instanceof LocalWakeLock) {
-				LocalWakeLock lwl = (LocalWakeLock) obj;
-				return pp.equals(lwl.getCreatioinPP());
+		public JSONObject toJSON() {
+			JSONObject o = new JSONObject();
+			WakeLockInfo info = getInfo();				
+			if (pp!=null) {
+				String methSig = pp.getMethod().getSignature();
+				pp.getInstruction();				
+				o.put("creating_method", methSig);
 			}
-			return false;
+			else {
+				o.put("creating_method", "could not resolve this");
+			}
+			//o.put("method_offset", 0);
+			o.put("reference_counted", info.isReferenceCounted().toString());
+			JSONArray ta = new JSONArray();
+			ta.addAll(info.getLockType());
+			o.put("lock_type",info.getLockType());
+			return o;
 		}
-		
-		@Override
-		public String toString() {
-			return ("LOCAL: " + pp.toString()); 
+
+		public void setField(FieldReference fr) {
+			field = fr;			
 		}
 		
 	}
-	
-	
+		
 	public enum RefCount {
 		UNSET,
 		TRUE,
 		FALSE;		
 	} 
 	
+	public enum LockType {
+		// Values taken from here:
+		// http://developer.android.com/reference/android/os/PowerManager.html
+		ACQUIRE_CAUSES_WAKEUP	(0x10000000),
+		FULL_WAKE_LOCK 			(0x0000001a),
+		ON_AFTER_RELEASE 		(0x20000000),
+		PARTIAL_WAKE_LOCK 		(0x00000001),
+		SCREEN_BRIGHT_WAKE_LOCK (0x0000000a),
+		SCREEN_DIM_WAKE_LOCK 	(0x00000006),
+		UNKNOWN					(0xFFFFFFFF);
+				
+		private int code;
+	    
+		LockType(int value) {
+	        this.code = value;
+	    }
+		
+	    public int getCode() {
+	        return code;
+	    }
+	}
+
 	public class WakeLockInfo {
 		
 		private Collection<LockType> types;
 		private RefCount referenceCounted;		
 				
-		WakeLockInfo() {}
-			
-		WakeLockInfo(Collection<LockType> t , RefCount r) {			
+		WakeLockInfo() {
+			this.types = new HashSet<LockType>();
+			this.referenceCounted = RefCount.UNSET;
+		}
+
+		WakeLockInfo(Collection<LockType> t , RefCount r) {
+			//Assertions.productionAssertion(pp != null, "inserting WakeLockInfo without creation");
 			this.types = t;
 			this.referenceCounted = r;
 		}
@@ -175,116 +186,213 @@ public class WakeLockManager {
 		
 		public String toString() {
 			return ("Type:" + ((types==null)?"NULL":types.toString()) + " RefCounted:" + referenceCounted);
-		}		
+		}
+		
 	}
 	
+		
+	public JSONObject getJSON() {
+		JSONObject result = new JSONObject();
+
+		JSONObject obj = new JSONObject();
+		if (mFieldRefs != null) {
+			for (Entry<FieldReference, WakeLockInstance> e : mFieldRefs.entrySet()) {
+				obj.put(e.getKey().toString(), e.getValue().toJSON());
+			}
+		}
+		E.log(1, "Adding fields");
+		result.put("fields", obj);
+		
+		obj = new JSONObject();
+		if (mCreationRefs != null) {
+			for (Entry<SSAProgramPoint, WakeLockInstance> e : mCreationRefs.entrySet()) {
+				obj.put(e.getKey().toString(), e.getValue().toJSON());
+			}
+		}
+		E.log(1, "Adding creation");
+		result.put("creation_sites", obj);
+		
+		obj = new JSONObject();
+		if (mInstrToWakeLock != null) {
+			int i = 1;
+			for (Entry<Pair<MethodReference, SSAInstruction>, WakeLockInstance> e : mInstrToWakeLock.entrySet()) {
+				MethodReference methRef = e.getKey().fst;
+				SSAInstruction instr = e.getKey().snd;
+				WakeLockInstance wli = e.getValue();
+				if (instr instanceof SSAInvokeInstruction) {
+					SSAInvokeInstruction inv = (SSAInvokeInstruction) instr;
+					JSONObject o = new JSONObject();
+					o.put("caller", methRef.getSignature());
+					o.put("target method", inv.getDeclaredTarget().getName().toString());
+					FieldReference field = wli.getField();
+					o.put("field", (field==null)?"NO_FIELD":field.toString());
+					SSAProgramPoint pp = wli.getPP();
+					o.put("created", (pp==null)?"NO_PROG_POINT":pp.toString());
+					obj.put(Integer.toString(i++),o);
+				}
+			}
+		}
+		E.log(1, "Adding use");
+		result.put("calls", obj);
+		
+		return result;
+	}
+
 	
 	public WakeLockManager(AppCallGraph appCallGraph) {
 		this.cg = appCallGraph;
-		mWakeLocks = new HashMap<WakeLockInstance, WakeLockInfo>();
-		mMethodReturns = new HashMap<MethodReference, WakeLockManager.WakeLockInstance>();
-		mInstrToWakeLock = new HashMap<SSAInstruction, WakeLockManager.WakeLockInstance>();
+		mMethodReturns = new HashMap<MethodReference, WakeLockInstance>();
+		mInstrToWakeLock = new HashMap<Pair<MethodReference,SSAInstruction>, WakeLockInstance>();
 	}
+
 	
 	
-	HashSet<FieldReference> powerManagers = null;
-	HashMap<WakeLockInstance, WakeLockInfo> mWakeLocks = null;
-	HashMap<MethodReference, WakeLockInstance> mMethodReturns = null;
+	//Cache the wakelock refs
+	private Map<FieldReference, WakeLockInstance> mFieldRefs;
+	
+	private Map<SSAProgramPoint, WakeLockInstance> mCreationRefs;
+
+	private Map<MethodReference, WakeLockInstance> mMethodReturns;
 	
 	//SSAInstruction should work as a key since it does not change ever
-	HashMap<SSAInstruction, WakeLockInstance> mInstrToWakeLock = null;
+	HashMap<Pair<MethodReference, SSAInstruction>, WakeLockInstance> mInstrToWakeLock = null;
 	
 	private IR ir;
+
 	private DefUse du;
+
 	private IMethod method;
+
 	private CGNode node;
-	private IClass declaringClass;
-	
 
-	public void scanDefinitions() {
-		for(IClass c : cg.getClassHierarchy()) {
-			for (IField f : c.getAllFields()) {
-				FieldReference reference = f.getReference();
-				TypeReference fieldType = reference.getFieldType();
-				if (fieldType.equals(TypeReference.ApplicationPowerManager)) {
-					E.log(2, "PowerManager: " + reference.toString());
-					addPowerManager(reference);
-				}
-				else if (fieldType.equals(TypeReference.PrimordialPowerManager)) {
-					E.log(2, "PowerManager: " + reference.toString());
-					addPowerManager(reference);
-				}
-				else if (fieldType.equals(TypeReference.ApplicationWakeLock)) {
-					E.log(2, reference.toString());
-					addWakeLockField(reference);
-				}
-				else if (fieldType.equals(TypeReference.PrimordialWakeLock)) {
-					E.log(2, reference.toString());
-					addWakeLockField(reference);
-				}				
-			};
-		}
-	}
-	
 
-	private void addWakeLockField(FieldReference reference) {
-		//Wake locks are reference counted by default.
-		mWakeLocks.put(findOrCreateFieldWakeLock(reference), new WakeLockInfo(null, RefCount.UNSET));		
-	}
-
-	private void addPowerManager(FieldReference reference) {
-		if (powerManagers== null) {
-			powerManagers =new HashSet<FieldReference>(); 
+	public void prepare() {
+		E.log(1, "Scanning source for lock creation...");
+		Iterator<CGNode> bottomUpIterator = GraphBottomUp.bottomUpIterator(cg);
+		Iterator2List<CGNode> bottomUpList = 
+				new Iterator2List<CGNode>(bottomUpIterator, 
+				new ArrayList<CGNode>(cg.getNumberOfNodes()));
+	    for (CGNode n : bottomUpList ){
+			node = n;
+			/* Need to update these here */
+			du = null;
+			/* Null for JNI methods */
+			method = n.getMethod();
+			ir = n.getIR();
+			if (ir == null) continue;
+			//E.log(1, "Scanning for creation: " + n.getMethod().getSignature().toString());
+			for (SSAInstruction instr : ir.getInstructions()) {
+				scanInstruction(instr);
+			}
 		}
-		powerManagers.add(reference);	
-	}
-	
-	private HashSet<WakeLockInfo> getAllUnresolvedWakeLocks() {
-		if (mWakeLocks == null) {
-			mWakeLocks = new HashMap<WakeLockInstance, WakeLockInfo>();
-		}
-		HashSet<WakeLockInfo> result = new HashSet<WakeLockManager.WakeLockInfo>();
-		for (WakeLockInfo wl : mWakeLocks.values()) {
-			if (wl.getLockType() == null) {
-				result.add(wl);
+		E.log(1, "Scanning source for lock usage (acquire, release, etc.) ...");
+		bottomUpIterator = GraphBottomUp.bottomUpIterator(cg);
+	    for (CGNode n : bottomUpList) {
+			node = n;
+			/* Need to update these here */
+			ir = n.getIR();
+			du = null;
+			/* Null for JNI methods */
+			method = n.getMethod();
+			if (ir == null) continue;				
+			//E.log(1, "Scanning for interesting: " + n.getMethod().getSignature().toString());
+			for (SSAInstruction instr : ir.getInstructions()) {	
+				scanInteresting(instr);
 			}			
 		}
-		return result;
+		dumpWakeLockInfo();
+	}
+
+	public void associateFieldWithLock(FieldReference fr, WakeLockInstance wli) {
+		if (!isWakeLock(fr.getFieldType())) return;	//only interesting stuff 
+		if (mFieldRefs == null) {
+			mFieldRefs = new HashMap<FieldReference, WakeLockInstance>();
+		}
+		if (mFieldRefs.get(fr) == null) {	
+			//this is the first time we encounter this field
+			mFieldRefs.put(fr, wli);
+			wli.setField(fr);
+		}
 	}
 	
-	public  boolean isWakeLock(FieldReference fr) {		
-		FieldWakeLock fieldWakeLock = findOrCreateFieldWakeLock(fr);
-		return mWakeLocks.containsKey(fieldWakeLock);		
+	public WakeLockInstance findOrCreateWakeLock(FieldReference field) {
+		if (mFieldRefs == null) {
+			mFieldRefs = new HashMap<FieldReference, WakeLockManager.WakeLockInstance>();
+		}
+		WakeLockInstance wli = mFieldRefs.get(field);
+		if (wli == null) {
+			wli = new WakeLockInstance(field);
+			mFieldRefs.put(field, wli);
+		}
+		return wli;
 	}
- 
 	
-	public enum LockType {
-		// Values taken from here:
-		// http://developer.android.com/reference/android/os/PowerManager.html
-		ACQUIRE_CAUSES_WAKEUP	(0x10000000),
-		FULL_WAKE_LOCK 			(0x0000001a),
-		ON_AFTER_RELEASE 		(0x20000000),
-		PARTIAL_WAKE_LOCK 		(0x00000001),
-		SCREEN_BRIGHT_WAKE_LOCK (0x0000000a),
-		SCREEN_DIM_WAKE_LOCK 	(0x00000006),
-		UNKNOWN					(0xFFFFFFFF);
-				
-		private int code;
-	    
-		LockType(int value) {
-	        this.code = value;
-	    }
+	public WakeLockInstance findOrCreateWakeLock(SSAProgramPoint pp) {
+		WakeLockInstance wli = findWakeLock(pp);
+		if (wli != null) return wli;
+		//When all else fails, create a new WL instance.
+		wli = new WakeLockInstance(pp);
+		mCreationRefs.put(pp, wli);
+		return wli;
+	}
+
+	public WakeLockInstance findWakeLock(SSAProgramPoint pp) {
+		if (mCreationRefs == null) {
+			mCreationRefs = new HashMap<SSAProgramPoint, WakeLockInstance>();
+		}
+		//Check to see if this is a lock created in this method
+		WakeLockInstance wli = mCreationRefs.get(pp);
+		if (wli != null) {
+			return wli;
+		}
+		//Check if to see if it is returned by a function.
+		SSAInstruction instr = pp.getInstruction();
+		if (instr instanceof SSAInvokeInstruction) {
+			SSAInvokeInstruction inv = (SSAInvokeInstruction) instr;
+			wli = mMethodReturns.get(inv.getDeclaredTarget());
+			if (wli != null) {
+				return wli;
+			}			
+		}
+		return null;
+	}
+	
+	public void setAppCallGraph(AppCallGraph cg){
+		this.cg = cg;
+	}
+
+	public WakeLockInstance getWakeLockFromInstruction(SSAInstruction instr, MethodReference methodReference) {
+		Pair<MethodReference, SSAInstruction> pair = Pair.make(methodReference, instr);
+		return mInstrToWakeLock.get(pair);		
+	}
+
+	public WakeLockReport getWakeLockReport() {
+		if (report == null) {
+			E.log(1, "Creating new report");
+			return new WakeLockReport(this);
+		}  
+		return report;		
+	}
+	
+	public WakeLockInstance getMethodReturn(MethodReference mr) {
+		if (mMethodReturns != null) {
+			return mMethodReturns.get(mr);
+		}
+		return null;
+	}
+
+	private boolean isWakeLock(TypeReference tr) {
+		if (tr != null) {
+			return (tr.equals(TypeReference.ApplicationWakeLock) ||
+			tr.equals(TypeReference.PrimordialWakeLock));
+		}
+		return false;
 		
-	    public int getCode() {
-	        return code;
-	    }
-	} 
-	
+	}
 	
 	private Collection<LockType> getLockType(int i) {		
 		HashSet<LockType> result = new HashSet<LockType>();
 		for (LockType lt : LockType.values()) {
-			
 			if ((i & lt.getCode()) == lt.getCode() ) {
 				result.add(lt);
 			}
@@ -292,162 +400,157 @@ public class WakeLockManager {
 		return result;		
 	}
 	
-	
-	
 	private void scanInvokeInstruction(SSAInvokeInstruction inv) {
+		//Check newWakeLock
 		if (inv.toString().contains("newWakeLock")) {
-
-			E.log(2, method.getSignature().toString());						
-			E.log(2,inv.toString());						  
-			if (du == null) {
-				du = new DefUse(ir);
-			}
-			Collection<LockType> lockType = null;																		
-			lockType = resolveLockTypeFromVar(inv.getUse(1));
-			//The WakeLock is being assigned to the Def part of the instruction
-			int lockNum = inv.getDef();
-			//The use should be an instruction right next to the one creating the lock 
-			Iterator<SSAInstruction> uses = du.getUses(lockNum);						
-			//TODO: it does not have to be necessarily the next one ...
-			SSAInstruction useInstr = uses.next();
-			if (useInstr instanceof SSAPutInstruction) {
-			/*	This is the case that the lock is a field, so we expect a put 
-				instruction right after the creation of the wakelock.	*/ 							
-				SSAPutInstruction put = (SSAPutInstruction) useInstr;						
-				FieldReference field = put.getDeclaredField();							
-				//Assertions.productionAssertion(variousWakeLocks.containsKey(field));
-				WakeLockInfo wli = mWakeLocks.get(findOrCreateFieldWakeLock(field));
-				if(wli != null) {
-					wli.setLockType(lockType);
-				}
-				else {
-					wli = new WakeLockInfo(lockType, RefCount.UNSET);
-					//Wake locks are reference counted by default. 
-					mWakeLocks.put(new FieldWakeLock(field),wli);
-				}
-			}
-			else {
-			/**
-			 * This is the case of LOCAL VARIABLES used as WakeLocks, eg:
-			 * try {
-					...
-					} catch (FileNotFoundException localObject1)
-					{
-						...
-		          localObject1 = ((PowerManager)paramActivity.getSystemService("power")).newWakeLock(536870913, str2);
-		          ((PowerManager.WakeLock)localObject1).setReferenceCounted(false);
-		          ((PowerManager.WakeLock)localObject1).acquire(15000L);
-		          ...
-		          SystemClock.sleep(5000L);
-		          ((PowerManager.WakeLock)localObject1).release();
-		        } 
-			 */
-				if (du == null) {
-					du = new DefUse(ir);
-				}
-				SSAInstruction def = du.getDef(lockNum);
-				E.log(2, "Local WakeLock Variable: " + def.toString());
-				//Use the program point of the newWakeLock() to specify this
-				
-				SSAProgramPoint pp = new SSAProgramPoint(node, inv);
-				WakeLockInfo wli = mWakeLocks.get(findOrCreateLocalWakeLock(pp));
-				if(wli != null) {
-					wli.setLockType(lockType);
-				}
-				else {
-					//Wake locks are reference counted by default.
-					wli = new WakeLockInfo(lockType, RefCount.UNSET);
-					mWakeLocks.put(findOrCreateLocalWakeLock(pp),	wli);
-				}							
-			}						
+			scanNewWakeLock(inv);
 		}
 		//Check setReferenceCounted
 		else if (inv.toString().contains("setReferenceCounted")) {
-			if (du == null) {
-				du = new DefUse(ir);
-			}						
-			//E.log(1, n.getMethod().getSignature().toString());
-			//E.log(1, inv.toString());
-			FieldReference field = getFieldFromVar(inv.getUse(0));
-			int bit = inv.getUse(1);
-			boolean refCounted = ir.getSymbolTable().isTrue(bit);
-			//Is it a field?
-			if (field != null) {														
-				WakeLockInfo wli = mWakeLocks.get(new FieldWakeLock(field));							
-				if(wli != null) {
-					wli.setReferenceCounted(refCounted?RefCount.TRUE:RefCount.FALSE);
-				}
-				else {
-					mWakeLocks.put(new FieldWakeLock(field),
-						new WakeLockInfo(null, refCounted?RefCount.TRUE:RefCount.FALSE));
-				}
-			}
-			//Is is local?
-			else {
-				SSAInstruction def = du.getDef(inv.getUse(0));
-				SSAProgramPoint pp = new SSAProgramPoint(node, def);
-				LocalWakeLock localWakeLock = findOrCreateLocalWakeLock(pp);
-				WakeLockInfo wli = mWakeLocks.get(localWakeLock);
-				//TODO: this is not so precise... 
-				//the def of inv could be a checkcast
-				if(wli != null) {
-					wli.setReferenceCounted(refCounted?RefCount.TRUE:RefCount.FALSE);
-				}
-				else if (localWakeLock != null) {
-					mWakeLocks.put(localWakeLock,
-						new WakeLockInfo(null, refCounted?RefCount.TRUE:RefCount.FALSE));
-				}
-			}
+			scanReferenceCounted(inv);
+		}
+	}
+	
+	private void scanReferenceCounted(SSAInvokeInstruction inv) {
+		if (du == null) {
+			du = new DefUse(ir);
+		}						
+		int bit = inv.getUse(1);
+		boolean refCounted = ir.getSymbolTable().isTrue(bit);
+		int use = inv.getUse(0);
+		WakeLockInstance wli = traceWakeLockDef(use);
+		wli.getInfo().setReferenceCounted(refCounted?RefCount.TRUE:RefCount.FALSE);
+	}
+
+	/**
+	 * Despite the order in which we issue the scanning of newWakeLock and 
+	 * return statements, these can be executed in the other way, so we make 
+	 * sure we insert the necessary wakelock instances in the mapping. 
+	 * @param inv
+	 */
+	private void scanNewWakeLock(SSAInvokeInstruction inv) {
+		if (du == null) {
+			du = new DefUse(ir);
+		}
+		Collection<LockType> lockType = resolveLockTypeFromVar(inv.getUse(1));
+		SSAProgramPoint pp = new SSAProgramPoint(node, inv);
+		int defVar = inv.getDef();
+				
+		/**
+		 * This is the case of LOCAL VARIABLES used as WakeLocks, eg:
+		 * try {
+				...
+				} catch (FileNotFoundException localObject1)
+				{
+					...
+	          localObject1 = ((PowerManager)paramActivity.getSystemService("power")).newWakeLock(536870913, str2);
+	          ((PowerManager.WakeLock)localObject1).setReferenceCounted(false);
+	          ((PowerManager.WakeLock)localObject1).acquire(15000L);
+	          ...
+	          SystemClock.sleep(5000L);
+	          ((PowerManager.WakeLock)localObject1).release();
+	        } 
+		 */
+		
+		//Use the program point of the newWakeLock() to specify this
+		WakeLockInstance wli = findOrCreateWakeLock(pp);
+		wli.setLockType(lockType);
+		
+		E.log(DEBUG, "Creating WakeLock: " + wli.toString());
+		
+		//The use should be an instruction right next to the one creating the lock 
+		Iterator<SSAInstruction> uses = du.getUses(defVar);
+		if (!uses.hasNext()) return;
+		SSAInstruction useInstr = uses.next();
+		if (useInstr instanceof SSAPutInstruction) {
+		/*	This is the case that the lock is a field, so we expect a put
+			instruction right after the creation of the wakelock.	*/
+			FieldReference field = ((SSAPutInstruction) useInstr).getDeclaredField();
+			associateFieldWithLock(field, wli);
 		}
 	}
 
-	
 	private void scanInteresting(SSAInstruction instr) {
 		if (instr instanceof SSAInvokeInstruction ) {
 			SSAInvokeInstruction inv = (SSAInvokeInstruction) instr;
-			//Check if it is an interesting method using the wakelock
 			if (Interesting.sWakelockMethods.contains(inv.getDeclaredTarget())) {
+				E.log(DEBUG, "CALLER: " + method.getSignature());
+				E.log(DEBUG, "CALLEE: " + inv.getDeclaredTarget().getName().toString());
 				int use = inv.getUse(0);	//this should be the right argument
-				
-				
-				//Try PTA
-				/*
-				PointerAnalysis pointerAnalysis = cg.getPointerAnalysis();
-				LocalPointerKey lpk = new LocalPointerKey(node, use);
-				OrdinalSet<InstanceKey> pointsToSet = pointerAnalysis.getPointsToSet(lpk);
-				for(InstanceKey ik : pointsToSet) {
-					E.log(1, "&&&& " + ik.toString());
-				}
-				*/
-								
 				//CGNode node = bb.getNode();
 				if (du == null) {
 					du = new DefUse(ir);
 				}
-				SSAInstruction def = du.getDef(use);
-				E.log(1, method.getSignature());
-				if (def instanceof SSAGetInstruction) {
-					SSAGetInstruction get = (SSAGetInstruction) def;
-					FieldWakeLock fWL = findOrCreateFieldWakeLock(get.getDeclaredField());
-					E.log(1, fWL.toString());
-					mInstrToWakeLock.put(inv, fWL);
+				WakeLockInstance wli = traceWakeLockDef(use);
+				if (wli != null) {
+					Pair<MethodReference, SSAInstruction> p = Pair.make(method.getReference(), instr);
+					mInstrToWakeLock.put(p, wli);
 				}
-				else if (def instanceof SSAInvokeInstruction) {
-					MethodReference methRef = ((SSAInvokeInstruction) def).getDeclaredTarget();
-					WakeLockInstance wli = mMethodReturns.get(methRef);
-					
-					if (wli == null) {
-						SSAInvokeInstruction defInv = (SSAInvokeInstruction) def;
-						SSAProgramPoint pp = new SSAProgramPoint(node, defInv);				
-						wli = findOrCreateLocalWakeLock(pp); 
-					}
-					E.log(1, wli.toString());
-					mInstrToWakeLock.put(inv, wli);
+				else {
+					E.log(DEBUG, "Could not trace that.");
 				}
 			}
 		}
 	}
 	
+	/**
+	 * Trace a variable to a WakeLockInstance
+	 * @param var
+	 * @return
+	 */
+	private WakeLockInstance traceWakeLockDef(int var) {
+		SSAInstruction def = du.getDef(var);
+		if (def == null) return null;
+		if (def instanceof SSAGetInstruction) {
+			SSAGetInstruction get = (SSAGetInstruction) def;
+			WakeLockInstance wli = findOrCreateWakeLock(get.getDeclaredField());
+			return wli;
+		}
+		else if (def instanceof SSAInvokeInstruction) {
+			//Try to see if this is a creation site
+			WakeLockInstance wli = findOrCreateWakeLock(new SSAProgramPoint(node, def));
+			if (wli != null) {
+				return wli;
+			}
+			//If not, descend deeper
+			MethodReference methRef = ((SSAInvokeInstruction) def).getDeclaredTarget();
+			return getMethodReturn(methRef);
+		}
+		else if (def instanceof SSAPiInstruction) {
+			SSAPiInstruction phi = (SSAPiInstruction) def;
+			for (int i = 0 ; i < phi.getNumberOfUses(); i++) {
+				int use = phi.getUse(i);
+				WakeLockInstance wli = traceWakeLockDef(use);
+				//Return the first non null
+				if (wli != null) {
+					return wli;
+				}
+			}
+			return null;
+		}
+		else if (def instanceof SSAPhiInstruction) {
+			SSAPhiInstruction phi = (SSAPhiInstruction) def;
+			for (int i = 0 ; i < phi.getNumberOfUses(); i++) {
+				int use = phi.getUse(i);
+				WakeLockInstance wli = traceWakeLockDef(use);
+				//Return the first non null
+				if (wli != null) {
+					return wli;
+				}
+			}
+			return null;
+		}
+		else {
+			E.log(DEBUG, "COULD NOT MATCH: " + def.toString());			
+		}
+		return null;
+	}
+	
+	/**
+	 * Check the return instruction of each method and keep the info if it is 
+	 * of interesting type. 
+	 * @param ret
+	 */
 	private void scanReturnInstruction(SSAReturnInstruction ret) {
 		TypeReference returnType = method.getReturnType();
 		if (returnType.equals(TypeReference.PrimordialWakeLock) ||
@@ -456,18 +559,14 @@ public class WakeLockManager {
 			if (du == null) {
 				du = new DefUse(ir);
 			}
-			SSAInstruction def = du.getDef(returnedValue);
-			if (def instanceof SSAGetInstruction) {	//if we're lucky...
-				FieldWakeLock fwl = findOrCreateFieldWakeLock(((SSAGetInstruction) def).getDeclaredField());
-				E.log(1, "Adding: " + method.getSignature() + " :: " + fwl.toString());
-				mMethodReturns.put(method.getReference(), fwl);
+			WakeLockInstance wli = traceWakeLockDef(returnedValue);
+			if (wli != null) {
+				mMethodReturns.put(method.getReference(), wli);
+				E.log(DEBUG, "RETURN: " + method.getName() + " :: " + wli.toString());
 			}
-			else if(def instanceof SSAInvokeInstruction) {
-				
+			else {
+				E.log(1, "Could not resolve return for: " + method.getSignature());
 			}
-			else if(def instanceof SSAPhiInstruction) {
-				//TODO: this will make things more complicated...
-			}  
 		}
 	}
 
@@ -489,51 +588,11 @@ public class WakeLockManager {
 		}
 	} 
 	
-	public void prepare() {	
-		E.log(1, "Scanning source for lock creation...");
-		for (CGNode n : cg) {
-			node = n;
-			declaringClass = node.getMethod().getDeclaringClass();
-			/* Need to update these here */
-			ir = n.getIR();
-			du = null;
-			/* Null for JNI methods */
-			method = n.getMethod();
-			if (ir == null) {
-				E.log(2, "Skipping: " + method.toString());
-				continue;				
-			}			
-			//E.log(1, "Scanning: " + n.getMethod().getSignature().toString());
-			for (SSAInstruction instr : ir.getInstructions()) {	
-				scanInstruction(instr);
-			}			
-		}	
-		E.log(1, "Scanning source for lock usage...");
-		for (CGNode n : cg) {
-			node = n;
-			/* Need to update these here */
-			ir = n.getIR();
-			du = null;
-			/* Null for JNI methods */
-			method = n.getMethod();
-			if (ir == null) {
-				E.log(2, "Skipping: " + method.toString());
-				continue;				
-			}			
-			//E.log(1, "Scanning: " + n.getMethod().getSignature().toString());
-			for (SSAInstruction instr : ir.getInstructions()) {	
-				scanInteresting(instr);
-			}			
-		}
-		dumpWakeLockInfo();
-	}
-	
-	
 	private void dumpWakeLockInfo() {
 		E.log(1, "==========================================\n");
-		for (Entry<WakeLockInstance, WakeLockInfo> e : mWakeLocks.entrySet()) {
-			WakeLockInstance key = e.getKey();
-			WakeLockInfo value = e.getValue();
+		for (Entry<SSAProgramPoint, WakeLockInstance> e : mCreationRefs.entrySet()) {
+			SSAProgramPoint key = e.getKey();
+			WakeLockInstance value = e.getValue();
 			E.log(1, key.toString() + " :: " + value.toString());
 		}
 		E.log(1, "==========================================\n");
@@ -543,8 +602,8 @@ public class WakeLockManager {
 			E.log(1, key.toString() + " :: " + value.toString());
 		}
 		E.log(1, "==========================================\n");		
-		for (Entry<SSAInstruction, WakeLockInstance> e : mInstrToWakeLock.entrySet()) {
-			SSAInstruction key = e.getKey();
+		for (Entry<Pair<MethodReference, SSAInstruction>, WakeLockInstance> e : mInstrToWakeLock.entrySet()) {
+			Pair<MethodReference, SSAInstruction> key = e.getKey();
 			WakeLockInstance value = e.getValue();
 			E.log(1, key.toString() + " :: " + value.toString());
 		}
@@ -561,23 +620,6 @@ public class WakeLockManager {
 			return field;
 		}
 		return null;
-	}
-
-
-	private Boolean getReferenceCounted(int lockNum) {
-		Iterator<SSAInstruction> uses = du.getUses(lockNum);
-		while(uses.hasNext()) {
-			SSAInstruction instr = uses.next();
-			E.log(1, instr.toString());
-			if (instr instanceof SSAInvokeInstruction) {				
-				SSAInvokeInstruction inv = (SSAInvokeInstruction) instr;
-				
-				if (inv.toString().contains("setReferenceCounted")) {
-					E.log(1, inv.toString());
-				}
-			}		
-		}
-		return Boolean.FALSE;
 	}
 
 
@@ -600,12 +642,8 @@ public class WakeLockManager {
 				IOperator operator = bin.getOperator();
 				//Just tracks this easy case
 				if (operator == Operator.OR) {
-					int use0 = bin.getUse(0);
-					int use1 = bin.getUse(1);
-							
-					ret.addAll(resolveLockTypeFromVar(use0));
-					ret.addAll(resolveLockTypeFromVar(use1));
-									
+					ret.addAll(resolveLockTypeFromVar(bin.getUse(0)));
+					ret.addAll(resolveLockTypeFromVar(bin.getUse(1)));
 				}
 				else {
 					ret.add(LockType.UNKNOWN);
@@ -615,25 +653,7 @@ public class WakeLockManager {
 				ret.add(LockType.UNKNOWN);
 			}
 			return ret;
-				 
 		}
-		
-	}
-
-
-	public void setAppCallGraph(AppCallGraph cg){
-		this.cg = cg;
-	}
-
-
-	public void printAllWakeLocks() {		
-		for(Entry<WakeLockInstance, WakeLockInfo> e : mWakeLocks.entrySet()) {
-			E.log(1, e.getKey().toString() + "\n" + e.getValue().toString()); 
-		}
-	} 
-
-	public WakeLockInstance getWakeLockFromInstruction(SSAInstruction instr) {
-		return mInstrToWakeLock.get(instr);		
 	}
 	
 }

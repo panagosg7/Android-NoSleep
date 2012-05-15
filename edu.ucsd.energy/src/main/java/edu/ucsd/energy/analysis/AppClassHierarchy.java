@@ -8,7 +8,6 @@ import java.util.Properties;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.AnalysisScope;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
-import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.util.WalaException;
@@ -21,7 +20,7 @@ import com.ibm.wala.util.graph.impl.SlowSparseNumberedGraph;
 import com.ibm.wala.util.io.FileProvider;
 import com.ibm.wala.viz.DotUtil;
 
-import edu.ucsd.energy.util.Util;
+import edu.ucsd.energy.util.SystemUtil;
 
 public class AppClassHierarchy {
 
@@ -30,19 +29,22 @@ public class AppClassHierarchy {
   private String exclusionFileName;
 	
   
-  public AppClassHierarchy(String appJar, String exclusionFileName) throws IOException, ClassHierarchyException {
+  public AppClassHierarchy(String appJar, String exclusionFileName) throws IOException, WalaException {
 	  this.appJar = appJar;
 	  this.exclusionFileName = exclusionFileName;
 	  File exclusionFile        = FileProvider.getFile(exclusionFileName);
 	  AnalysisScope scope       = AnalysisScopeReader.makeJavaBinaryAnalysisScope(appJar, exclusionFile);    
 	  cha = ClassHierarchy.make(scope);
+	  if (Opts.OUTPUT_CLASS_HIERARCHY) {
+		  outputClassHierarchy();
+	  }
 	}
 
   
-  private void outputCHtoDot() throws WalaException {
+  private void outputClassHierarchy() throws WalaException {
 	Graph<IClass> g = typeHierarchy2Graph();
     g = pruneForAppLoader(g);
-    String dotFile = Util.getResultDirectory() + File.separatorChar + "ch.dot";    
+    String dotFile = SystemUtil.getResultDirectory() + File.separatorChar + "ch.dot";    
     DotUtil.writeDotFile(g, null, "Class Hierarchy", dotFile);	    
   }
 

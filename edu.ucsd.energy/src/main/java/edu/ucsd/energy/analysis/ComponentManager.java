@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Predicate;
@@ -36,6 +37,7 @@ import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.graph.traverse.DFSPathFinder;
 
 import edu.ucsd.energy.analysis.SpecialConditions.SpecialCondition;
+import edu.ucsd.energy.apk.ApkInstance;
 import edu.ucsd.energy.components.Activity;
 import edu.ucsd.energy.components.Application;
 import edu.ucsd.energy.components.AsyncTask;
@@ -60,16 +62,20 @@ import edu.ucsd.energy.components.TextView;
 import edu.ucsd.energy.components.View;
 import edu.ucsd.energy.components.WebViewClient;
 import edu.ucsd.energy.interproc.SensibleExplodedInterproceduralCFG;
+import edu.ucsd.energy.results.ApkBugReport;
+import edu.ucsd.energy.results.ProcessResults;
 import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.GraphBottomUp;
 import edu.ucsd.energy.util.SSAProgramPoint;
+import edu.ucsd.energy.util.SystemUtil;
 import edu.ucsd.energy.viz.GraphDotUtil;
 
-@SuppressWarnings("deprecation")
 public class ComponentManager {
 
   private  int DEBUG_LEVEL = 2;
 
+  private final static Logger LOGGER = Logger.getLogger(ApkInstance.class.getName());
+  
   private  HashMap<TypeReference, Component> componentMap;
 
   private  AppCallGraph originalCG;
@@ -78,10 +84,6 @@ public class ComponentManager {
 
   private int unresolvedInterestingCallBacks;
 
-  private ArrayList<Result> results;
-
-  private ProcessResults resultAnalysis;
-  
   public HashMap<TypeReference, Component> getComponents() {
     return componentMap;
   }
@@ -195,8 +197,6 @@ public class ComponentManager {
         totalCallBacks++;
       }
     }
-
-    
     if(! Opts.RUN_IN_PARALLEL) {
 	    System.out.println();
 	    System.out.println( "==========================================");
@@ -224,7 +224,6 @@ public class ComponentManager {
 	    System.out.println(fst);
 	    System.out.println("==========================================\n");
     }
-    
   }
 
   private  void outputUnresolvedInfo(CGNode root, List<CGNode> path) {
@@ -241,7 +240,6 @@ public class ComponentManager {
     for (CGNode n : path) {
       E.log(1, "---> " + n.getMethod().getSignature().toString());
     }   
-
   }
 
   /**
@@ -261,8 +259,7 @@ public class ComponentManager {
 
     Component comp = componentMap.get(reference);
     if (comp == null) {
-      /* We haven't met this component so far */
-      // find the super-classes until object
+      /* A class can only extend one class so order does not matter */
       ArrayList<IClass> classAncestors = getClassAncestors(klass);
       for (IClass anc : classAncestors) {
         String ancName = anc.getName().toString();
@@ -346,6 +343,10 @@ public class ComponentManager {
 
   /**
    * Find out if this class implements a known class. E.g. Runnable
+   * Since a class can implement multiple interfaces we should keep an order of 
+   * in which to decide on which one should be used. 
+   * The only restriction at this moment is Runnable, which should be tested
+   * on first. 
    * 
    * @param root
    * @return
@@ -356,64 +357,65 @@ public class ComponentManager {
     String methName = root.getMethod().getName().toString();
     Component comp = componentMap.get(reference);
     if (comp == null) {
-      Collection<IClass> allImplementedInterfaces = klass.getAllImplementedInterfaces();
-      for (IClass iI : allImplementedInterfaces) {
-        String implName = iI.getName().toString();
-    
-        if (implName.equals("Ljava/lang/Runnable")) {
-          comp = new RunnableThread(originalCG, klass, root);
+    	//Runnable needs to stay in the first place of the check.
+    	if (implementsInterface(klass, "Ljava/lang/Runnable")) {
+        	comp = new RunnableThread(originalCG, klass, root);
         }
-        if (implName.equals("Ljava/util/concurrent/Callable")) {
+        else if (implementsInterface(klass, "Ljava/util/concurrent/Callable")) {
             comp = new Callable(originalCG, klass, root);
-          }
-        if (implName.endsWith("ClickListener")) {
+        }
+        else if (implementsInterface(klass,"ClickListener")) {
         	comp = new ClickListener(originalCG, klass, root);
         }
-        if (implName.equals("Landroid/content/SharedPreferences$OnSharedPreferenceChangeListener")
-            || implName.equals("Landroid/preference/Preference$OnPreferenceChangeListener")) {
+        else if (implementsInterface(klass, "Landroid/content/SharedPreferences$OnSharedPreferenceChangeListener")
+            || implementsInterface(klass, "Landroid/preference/Preference$OnPreferenceChangeListener")) {
         	comp = new OnSharedPreferenceChangeListener(originalCG, klass, root);
         }
-        if (implName.equals("Landroid/location/LocationListener")) {
+        else if (implementsInterface(klass, "Landroid/location/LocationListener")) {
         	comp = new LocationListener(originalCG, klass, root);
         }
-        if (implName.startsWith("Landroid/widget/CompoundButton")) {
+        else if (implementsInterface(klass, "Landroid/widget/CompoundButton")) {
         	comp = new CompoundButton(originalCG, klass, root);
         }
-        if (implName.startsWith("Landroid/hardware/SensorEventListener")) {
+        else if (implementsInterface(klass, "Landroid/hardware/SensorEventListener")) {
         	comp = new SensorEventListener(originalCG, klass, root);
         }
-        if (implName.startsWith("Landroid/content/ServiceConnection")) {
+        else if (implementsInterface(klass, "Landroid/content/ServiceConnection")) {
         	comp = new ServiceConnection(originalCG, klass, root);
         }
-        if (implName.startsWith("Landroid/content/DialogInterface")) {
+        else if (implementsInterface(klass, "Landroid/content/DialogInterface")) {
         	comp = new DialogInterface(originalCG, klass, root);
         }
-        if (implName.startsWith("Landroid/widget/TextView")) {
+        else if (implementsInterface(klass, "Landroid/widget/TextView")) {
         	comp = new TextView(originalCG, klass, root);
-        }
-        
-        
-        
-        if (comp != null) break;
-      }
-      if (comp != null) {
-    	  E.log(2, "PASS: " + root.getMethod().getSignature().toString() + " -> " + comp.toString() );
-      }
-      else {
-    	  E.log(DEBUG_LEVEL, "FAIL: " + root.getMethod().getSignature().toString());
-      }      
-      return comp;
-    } else {
-      /**
-       * Existing component: just update the callback
-       */
-      E.log(2, "OLD:  " + root.getMethod().getSignature().toString() + " -> " + comp.toString() );
-      comp.registerCallback(methName, root);
-      return comp;
+        }    
+	    if (comp != null) {
+	    	E.log(2, "PASS: " + root.getMethod().getSignature().toString() + " -> " + comp.toString() );
+	    }
+	    else {
+	    	E.log(DEBUG_LEVEL, "FAIL: " + root.getMethod().getSignature().toString());
+	    }      
+	    return comp;
+    }
+    else {
+    //Existing component: just update the callback
+    	E.log(2, "OLD:  " + root.getMethod().getSignature().toString() + " -> " + comp.toString() );
+    	comp.registerCallback(methName, root);
+    	return comp;
     }
   }
 
-  /**
+  public boolean implementsInterface(IClass klass, String string) {
+	  for (IClass iI : klass.getAllImplementedInterfaces()) {
+		  String implName = iI.getName().toString();
+		  if (implName.endsWith(string)) {
+			  return true;
+		  }
+	  }
+	  return false;
+  }
+
+/**
    * Return the successors of Thread.start or null if its not found
    * 
    * @param cg
@@ -450,12 +452,8 @@ public class ComponentManager {
   
 	//getGlobalIntents();
 
-	//Initialize results
-	resultAnalysis = new ProcessResults(this);
-	  
     /* Build the constraints graph 
-     * (threads should be analyzed before their parents)
-     */
+     * (threads should be analyzed before their parents) */
     Collection<Component> components = componentMap.values();    
     Graph<Component> constraintGraph = constraintGraph(components);
     Iterator<Component> bottomUpIterator = GraphBottomUp.bottomUpIterator(constraintGraph);
@@ -581,13 +579,13 @@ public class ComponentManager {
    * 
    ****************************************************************************/
   
-  private IntentInvestigation intentCreation = null;
+  private IntentCalls intentCreation = null;
 
   
   //TODO: fix return statement
   private void getGlobalIntents() {
 	if (intentCreation == null) {
-		intentCreation = new IntentInvestigation(this);
+		intentCreation = new IntentCalls(this);
 	}
 	intentCreation.prepare();
 	
@@ -603,11 +601,11 @@ public class ComponentManager {
    * 
    ****************************************************************************/
   
-  private RunnableInvestigation threadCreation = null;
+  private RunnableCalls threadCreation = null;
 
   private HashMap<SSAProgramPoint,Component> getGlobalThreadInvocations() {
 	if (threadCreation == null) {
-		threadCreation = new RunnableInvestigation(this);
+		threadCreation = new RunnableCalls(this);
 	}
 	return threadCreation.getThreadInvocations();
   }
@@ -718,25 +716,19 @@ public class ComponentManager {
    * @return
    */
   public Graph<Component> constraintGraph(Collection<Component> cc) {
-	  
 	  final SparseNumberedGraph<Component> g = new SparseNumberedGraph<Component>(1);			
 	  for(Component c : cc) {
 			g.addNode(c);
-			E.log(2, "Adding: " + g.getNumber(c) + " : " + c ); 
 	  }
 	  for (Component src : cc) {
-		  
 		  Collection<Component> threadDependencies = getThreadConstraints(src);
 		  Assertions.productionAssertion(threadDependencies != null);
-		  
 		  for (Component dst : threadDependencies) {
 			  if ((src != null) && (dst != null)) {
-				E.log(2, src + " --> " + dst);
 				g.addEdge(src,dst);
 			}
 		  }
 	  }
-	
 	  /* Assert that there are no cycles in the component constraint graph. */
 	  com.ibm.wala.util.Predicate<Component> p = 
 				new com.ibm.wala.util.Predicate<Component>() {		
@@ -746,15 +738,10 @@ public class ComponentManager {
 			}
 	  };
 	  E.log(1, "Building constraint graph... " + GraphUtil.countEdges(g) + " edge(s).");
-	  
-	  boolean acyclic = com.ibm.wala.util.collections.Util.forAll(cc, p);
-	  dumpConstraintGraph(g);	  
-	  if (!acyclic) {
-		  Assertions.productionAssertion(acyclic, 
-		    "Cannot handle circular dependencies in thread calls. Dumping thread dependency graph");  
+	  dumpConstraintGraph(g);
+	  if (!com.ibm.wala.util.collections.Util.forAll(cc, p)) {
+		  Assertions.UNREACHABLE("Cannot handle circular dependencies in thread calls. ");  
 	  }
-			
-	  /* TODO: circular dependencies are just dropped */ 
 	  return g;
   }
 
@@ -764,8 +751,10 @@ public class ComponentManager {
 		Properties p = null;
 		p = WalaExamplesProperties.loadProperties();
 		p.putAll(WalaProperties.loadProperties());
-		String dotFile = edu.ucsd.energy.util.Util.getResultDirectory()
-				+ File.separatorChar + "thread_dependencies.dot";
+		String dotFile = 
+				SystemUtil.getResultDirectory() + 
+				File.separatorChar + 
+				"thread_dependencies.dot";
 		String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
 		GraphDotUtil.dotify(g, null, dotFile, null, dotExe);
 		return;
@@ -775,12 +764,8 @@ public class ComponentManager {
 	}
   }	
 
-	public ArrayList<Result> getAnalysisResults() {
-		return resultAnalysis.getResult();
+	public ApkBugReport getAnalysisResults() {
+		return new ProcessResults(this).processExitStates();
 	}
-	
-	public void processExitStates() {
-		resultAnalysis.processExitStates();		
-	}	  
 
 }
