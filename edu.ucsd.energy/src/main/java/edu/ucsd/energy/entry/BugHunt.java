@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import net.sf.json.JSONArray;
+import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import net.sf.json.JSONSerializer;
 
@@ -693,6 +694,7 @@ public class BugHunt {
 		options.addOption(new Option("i", "input", true, "specify the input json file"));
 		options.addOption(new Option("t", "threads", true, "run the analysis on t threads (works for pattern analysis only)"));
 		options.addOption(new Option("s", "small-set", false, "run the analysis on a small set"));
+		options.addOption(new Option("f", "run-on-failed", false, "run the analysis on the previously failing (needs -i)"));
 		
 		options.addOption(OptionBuilder.withLongOpt("create-json").hasArg()
 				   .withDescription("create a JSONObject from a file with a list of apps").create());
@@ -722,14 +724,35 @@ public class BugHunt {
 			if (line.hasOption("small-set")) {
 				theSet = new HashSet<String>();
 				/* The applications you specify here need to be in apk_collection !!! */
-				theSet.add("Bubble");
-				theSet.add("Remember_The_Milk");
+				theSet.add("WordPlayer_v3");
 			}
 			else {
 				FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 				JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 				theSet = acqrel_status.keySet();
 			}
+			
+			//TODO: Refine this - put it in a method 
+			if (line.hasOption("run-on-failed")) {
+				theSet = new HashSet<String>();
+				FileInputStream is = new FileInputStream(acqrelDatabaseFile);
+				JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
+				int i = 1;
+				for(String k : (Set<String>)acqrel_status.keySet()) {
+					try {
+						JSONObject o = acqrel_status.getJSONObject(k);
+						Object res = o.get("result");
+						if (res != null) {
+							System.out.println((i++) + ". " +  k);
+							theSet.add(k);
+						}
+					} 
+					catch(Exception e) {
+					}
+					
+				}
+			}
+			
     		if (line.hasOption("flush-phantoms")) {
     			flushPhantom(line.getOptionValue("flush-phantoms"));
     		} else if (line.hasOption("phantoms")) {

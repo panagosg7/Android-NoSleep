@@ -63,6 +63,7 @@ public class WakeLockManager {
 
 		public WakeLockInstance(FieldReference field2) {
 			this.field = field2;
+			this.info = new WakeLockInfo();
 		}
 
 		public int hashCode() {
@@ -162,12 +163,6 @@ public class WakeLockManager {
 			this.referenceCounted = RefCount.UNSET;
 		}
 
-		WakeLockInfo(Collection<LockType> t , RefCount r) {
-			//Assertions.productionAssertion(pp != null, "inserting WakeLockInfo without creation");
-			this.types = t;
-			this.referenceCounted = r;
-		}
-		
 		public Collection<LockType> getLockType() {
 			return types;
 		}
