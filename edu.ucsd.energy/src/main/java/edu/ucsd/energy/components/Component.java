@@ -44,7 +44,7 @@ import com.ibm.wala.viz.NodeDecorator;
 import edu.ucsd.energy.analysis.AppCallGraph;
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.analysis.SpecialConditions.SpecialCondition;
-import edu.ucsd.energy.analysis.WakeLockManager.WakeLockInstance;
+import edu.ucsd.energy.analysis.WakeLockInstance;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.CtxInsensLocking;
 import edu.ucsd.energy.interproc.CtxSensLocking;

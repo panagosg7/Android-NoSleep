@@ -1,188 +1,59 @@
 package edu.ucsd.energy.analysis;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import com.ibm.wala.classLoader.NewSiteReference;
-import com.ibm.wala.ipa.callgraph.CGNode;
-import com.ibm.wala.ssa.DefUse;
-import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.ssa.SSAPhiInstruction;
 import com.ibm.wala.ssa.SSAReturnInstruction;
 import com.ibm.wala.ssa.SymbolTable;
-import com.ibm.wala.ssa.Value;
+import com.ibm.wala.types.FieldReference;
+import com.ibm.wala.types.MethodReference;
+import com.ibm.wala.types.TypeReference;
 
 import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.SSAProgramPoint;
 
-public class IntentCalls {
+public class IntentCalls extends AbstractManager<IntentInstance>{
 	
-	private AppCallGraph cg;
-	private ComponentManager cm; 
+	private static int DEBUG = 1;
 	
-	public IntentCalls(ComponentManager componentManager) {
-		this.cg = componentManager.getCG();
-		this.cm = componentManager;
+	public IntentCalls(AppCallGraph cg) {
+		super(cg);
 	}
-	
-	
-	/**
-	 * _Context-insensitive_ notion of an intent
-	 * @author pvekris
-	 *
-	 */
-	public class Intent {
-		private SSAProgramPoint startIntent;
-		private SSANewInstruction newInstr;
-		
-		private String componentName;
-		
-		Intent(SSANewInstruction create) {
-			this.newInstr = create;
-			uses = new ArrayList<String>();
-		}
 
-		private ArrayList<String> uses;
-		
-		
-		//TODO: put extras...
-		
-		public String toString() {
-			StringBuffer sb = new StringBuffer();
-			//sb.append("Created: " + newInstr.toString() + "\n");
-			sb.append("SSAVar:  " + getSSAVar() + "\n");
-			
-			for (String i : uses) {
-				sb.append("\tUse: " + i + "\n");
-			}
-			return sb.toString();
-		}
-		
-		public void registerUser(SSAInstruction i) {
-			
-				
-				
-			
-		}
-		
-		public int hashCode() {
-			return newInstr.hashCode();
-		}
-		
-		public boolean equals(Object o) {
-			if (o instanceof Intent) {
-				Intent i = (Intent) o;
-				return newInstr.equals(i.getCreationInstruction());
-			}
-			return false;
-		} 
-		
-		public SSANewInstruction getCreationInstruction() {
-			return newInstr;
-		}
-		
-		public int getSSAVar() {
-			return newInstr.getDef(0);
-		}
+	String[] interestingStrings = {"setFlags(I)Landroid/content/Intent;",
+			"setAction(Ljava/lang/String;)Landroid/content/Intent;",
+			"setType(Ljava/lang/String;)Landroid/content/Intent;",
+			"setComponent(Landroid/content/ComponentName;)Landroid/content/Intent;"};
+	
+	Set interestingMethods = new HashSet(Arrays.asList(interestingStrings));
+	
+	private void registerIntent(SSAInstruction instruction, IntentInstance intent) {
+		// TODO Auto-generated method stub
 		
 	}
-	
-	HashMap<SSAProgramPoint, Intent> intents = null;
-	private IR ir;
-	private DefUse du;
-	
-	
-	
-	/**
-	 * Invoke this to fill up ...
-	 */
-	public void prepare() {
-		intents = new HashMap<SSAProgramPoint, Intent>();
-		for (CGNode n : cg) {
-			ir = n.getIR();			
-			printedST = false;
-			/* Null for JNI methods */
-			if (ir == null) {
-				E.log(2, "Skipping: " + n.getMethod().toString());
-				continue;				
-			}
-			
-			//E.log(1, n.getMethod().getSignature().toString());
-			
-			HashSet<SSAProgramPoint> newInsts = new HashSet<SSAProgramPoint>();
-			for (Iterator<NewSiteReference> it = ir.iterateNewSites(); //ir.iterateAllInstructions(); 
-					it.hasNext();) {				
-				SSANewInstruction newi = ir.getNew(it.next());
-				if (newi.getConcreteType().toString().equals("<Application,Landroid/content/Intent>")) {
-					SSAProgramPoint pp = new SSAProgramPoint(n, newi);
-					newInsts.add(pp);
-				}
-			}
-			
-			/* After the search is done, do the defuse only if there are interesting results */
-			if (newInsts.size() > 0) {
-				//System.out.println(ir);
-				du = new DefUse(ir);
-				for (SSAProgramPoint pp : newInsts) {
-					SSAInstruction instruction = pp.getInstruction();
-					if (instruction instanceof SSANewInstruction) {
-						SSANewInstruction newInstr = (SSANewInstruction) instruction;					
-						Intent intent = new Intent(newInstr);
-						int ssaVar = intent.getSSAVar();
-						for(Iterator<SSAInstruction> uses = du.getUses(ssaVar); uses.hasNext(); ) {
-							SSAInstruction user = uses.next();
-							if (user instanceof SSAInvokeInstruction) {
-								SSAInvokeInstruction inv = (SSAInvokeInstruction) user;
-								String atom = inv.getDeclaredTarget().getSelector().toString();
-								if (atom.equals(new String("setFlags(I)Landroid/content/Intent;"))) {
-									
-								}
-								else if (atom.equals(new String("setAction(Ljava/lang/String;)Landroid/content/Intent;"))) {
-									
-								}
-								else if (atom.equals(new String("setType(Ljava/lang/String;)Landroid/content/Intent;"))) {
-									
-								}
-								else if (atom.equals(new String("setComponent(Landroid/content/ComponentName;)Landroid/content/Intent;"))) {
-									//Make this generic - recursive	
-									E.log(1, n.getMethod().getSignature().toString());
-									//This should be the ComponentName - so it should not give a NPE
-									
-									int def = inv.getUse(1);
-									
-									
-									
-									E.log(1, "Looking for: " + def);
 
-									Collection<SSAInstruction> defFromVarInt = getDefFromVarInt(def);
-								}
-							}
-							else if (user instanceof SSAReturnInstruction) {
-								
-							}
-							else if (user instanceof SSAPhiInstruction) {
-								
-							}
-							else {
-								E.log(1, "Unable to register: " + user.toString());
-							}
-							
-							//E.log(1, "Adding intent use");	
-						}
-						intents.put(pp, intent);
-						
-
-					}
-				}
+	private HashSet<SSAProgramPoint> scanNewIntents() {
+		HashSet<SSAProgramPoint> newInsts = new HashSet<SSAProgramPoint>();
+		for (Iterator<NewSiteReference> it = ir.iterateNewSites(); //ir.iterateAllInstructions(); 
+				it.hasNext();) {				
+			SSANewInstruction newi = ir.getNew(it.next());
+			if (newi.getConcreteType().toString().equals("<Application,Landroid/content/Intent>")) {
+				SSAProgramPoint pp = new SSAProgramPoint(node, newi);
+				newInsts.add(pp);
 			}
-		}		
+		}	
+		return newInsts;
 	}
 	
 	
@@ -270,11 +141,54 @@ public class IntentCalls {
 	}
 	
 	
-	
-	public void printIntents() {
-		for (Entry<SSAProgramPoint, Intent> i : intents.entrySet()) {
-			E.log(1, i.toString());
+
+	public IntentInstance newInstance() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public boolean isInterestingType(TypeReference typeReference) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public void dumpInfo() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	boolean isInterestingMethod(MethodReference declaredTarget) {
+		String selector = declaredTarget.getSelector().toString();
+		return interestingMethods.contains(selector);
+	}
+
+	@Override
+	void visitInvokeInstruction(SSAInvokeInstruction instruction) {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+	@Override
+	IntentInstance newInstance(SSAProgramPoint pp) {
+		return new IntentInstance(pp);
+	}
+
+	@Override
+	IntentInstance newInstance(FieldReference field) {
+		return new IntentInstance(field);
+	}
+
+	@Override
+	boolean isNewInstruction(SSAInstruction instr) {
+		if (instr instanceof SSANewInstruction) {
+			SSANewInstruction newi = (SSANewInstruction) instr;
+			return newi.getConcreteType().toString().
+					equals("<Application,Landroid/content/Intent>");
 		}
+		return false;
 	}
 
 }

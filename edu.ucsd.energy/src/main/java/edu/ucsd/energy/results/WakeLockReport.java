@@ -13,7 +13,7 @@ public class WakeLockReport implements IReport {
 	}
 	
 	public JSONObject toJSON() {
-		return manager.getJSON();
+		return manager.toJSON();
 	}
 
 }

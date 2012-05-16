@@ -6,7 +6,8 @@ import java.util.Set;
 
 import org.json.JSONObject;
 
-import edu.ucsd.energy.analysis.WakeLockManager.WakeLockInstance;
+import edu.ucsd.energy.analysis.WakeLockInstance;
+
 
 public class CompoundLockState {
 	

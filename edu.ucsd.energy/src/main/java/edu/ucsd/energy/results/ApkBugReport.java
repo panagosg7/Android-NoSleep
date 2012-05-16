@@ -50,7 +50,7 @@ public class ApkBugReport implements IReport {
 		}
 		obj.put("components", jsonArray);
 		if (manager != null) {
-			obj.put("wakelocks", manager.getJSON());
+			obj.put("wakelocks", manager.toJSON());
 		}
 		return obj;
 	}

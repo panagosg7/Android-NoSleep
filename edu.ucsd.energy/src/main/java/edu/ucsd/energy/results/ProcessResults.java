@@ -23,7 +23,7 @@ import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.strings.Atom;
 
 import edu.ucsd.energy.analysis.ComponentManager;
-import edu.ucsd.energy.analysis.WakeLockManager.WakeLockInstance;
+import edu.ucsd.energy.analysis.WakeLockInstance;
 import edu.ucsd.energy.components.Component;
 import edu.ucsd.energy.components.Component.CallBack;
 import edu.ucsd.energy.interproc.CompoundLockState;

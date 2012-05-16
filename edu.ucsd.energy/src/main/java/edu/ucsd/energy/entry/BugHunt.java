@@ -26,7 +26,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import net.sf.json.JSONArray;
-import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import net.sf.json.JSONSerializer;
 
@@ -724,7 +723,7 @@ public class BugHunt {
 			if (line.hasOption("small-set")) {
 				theSet = new HashSet<String>();
 				/* The applications you specify here need to be in apk_collection !!! */
-				theSet.add("WordPlayer_v3");
+				theSet.add("NetCounter");
 			}
 			else {
 				FileInputStream is = new FileInputStream(acqrelDatabaseFile);

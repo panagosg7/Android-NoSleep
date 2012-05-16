@@ -17,7 +17,6 @@ import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.collections.Iterator2List;
 
-import edu.ucsd.energy.analysis.WakeLockManager.WakeLockInstance;
 import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.SSAProgramPoint;
 
@@ -28,7 +27,7 @@ import edu.ucsd.energy.util.SSAProgramPoint;
  */
 public class SpecialConditions {
 	
-	private final int DEBUG = 1;
+	private final int DEBUG = 2;
 	
 	private AppCallGraph cg;
 //	private ComponentManager cm;
@@ -213,7 +212,7 @@ public class SpecialConditions {
 			SSAGetInstruction get = (SSAGetInstruction) def;			
 			FieldReference field = get.getDeclaredField();
 			//Only interesting fields are going to be here
-			return cg.getWakeLockManager().findOrCreateWakeLock(field);
+			return cg.getWakeLockManager().findOrCreateInstance(field);
 		}
 		else if (def instanceof SSAInvokeInstruction) {
 			SSAInvokeInstruction inv = (SSAInvokeInstruction) def;

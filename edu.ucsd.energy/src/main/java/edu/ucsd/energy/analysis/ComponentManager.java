@@ -585,7 +585,7 @@ public class ComponentManager {
   //TODO: fix return statement
   private void getGlobalIntents() {
 	if (intentCreation == null) {
-		intentCreation = new IntentCalls(this);
+		//intentCreation = new IntentCalls(this);
 	}
 	intentCreation.prepare();
 	

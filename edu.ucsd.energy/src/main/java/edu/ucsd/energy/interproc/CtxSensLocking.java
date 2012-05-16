@@ -38,8 +38,8 @@ import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.analysis.SpecialConditions.IsHeldCondition;
 import edu.ucsd.energy.analysis.SpecialConditions.NullCondition;
 import edu.ucsd.energy.analysis.SpecialConditions.SpecialCondition;
+import edu.ucsd.energy.analysis.WakeLockInstance;
 import edu.ucsd.energy.analysis.WakeLockManager;
-import edu.ucsd.energy.analysis.WakeLockManager.WakeLockInstance;
 import edu.ucsd.energy.components.RunnableThread;
 import edu.ucsd.energy.interproc.LockingTabulationSolver.LockingResult;
 import edu.ucsd.energy.util.E;
@@ -134,7 +134,7 @@ public class CtxSensLocking {
 	private WakeLockInstance lockingCall(BasicBlockInContext<IExplodedBasicBlock> bb, Collection<String> acceptedSigs) {		
 		IExplodedBasicBlock ebb = bb.getDelegate();		
 		SSAInstruction instruction = ebb.getInstruction();
-		WakeLockInstance wli = wakeLockManager.getWakeLockFromInstruction(instruction, bb.getMethod().getReference());
+		WakeLockInstance wli = wakeLockManager.getInstance(instruction, bb.getMethod().getReference());
 		if (wli != null) {
 			if (instruction instanceof SSAInvokeInstruction) {
 				SSAInvokeInstruction inv = (SSAInvokeInstruction) instruction;
