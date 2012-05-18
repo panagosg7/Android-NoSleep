@@ -8,7 +8,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import org.apache.commons.collections.CollectionUtils;
@@ -17,12 +19,12 @@ import org.apache.commons.collections.Predicate;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.examples.properties.WalaExamplesProperties;
 import com.ibm.wala.ipa.callgraph.CGNode;
-import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.properties.WalaProperties;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
+import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
@@ -88,6 +90,11 @@ public class ComponentManager {
     return componentMap;
   }
 
+  
+  private IntentManager im;
+  
+  private WakeLockManager wm;
+  
   public ComponentManager(AppCallGraph cg) {
     originalCG = cg;
     componentMap = new HashMap<TypeReference, Component>();
@@ -98,10 +105,6 @@ public class ComponentManager {
   
   public Component getComponent(TypeReference c) {
 	  return componentMap.get(c);
-  }
-  
-  public Component getComponent(CGNode n) {
-	  return componentMap.get(n.getMethod().getDeclaringClass().getReference());
   }
   
   public int getNUnresInterestingCBs() {
@@ -143,46 +146,37 @@ public class ComponentManager {
     unresolvedInterestingCallBacks = 0;
     List<String>  unresolvedSB = new ArrayList<String>();
     Collection<CGNode>  roots = GraphUtil.inferRoots(originalCG);
-    
+    Component component;
     for (CGNode root : roots) {
       /* Ignore the stand-alone target method nodes */
       if (!originalCG.isTargetMethod(root)) {
-               
-        /* Get known components, e.g. Activity */
-        Component component = resolveComponent(root);        
-        IClass declaringClass = root.getMethod().getDeclaringClass();        
-        
+        component = resolveComponent(root);        
         if (component != null) {
-          E.log(DEBUG_LEVEL, component.toString());
-          registerComponent(declaringClass.getReference(), component);
-
-          if (component instanceof Initializer) {
-            resolvedConstructors++;
-          } else {
-            resolvedComponentCount++;
-          }
         } else {
-          /* Get known implementors. e.g. Runnable */
-          Component knownImpl = resolveKnownImplementors(root);
-
-          if (knownImpl != null) {
-            registerComponent(declaringClass.getReference(), knownImpl);
-            E.log(DEBUG_LEVEL, knownImpl.toString());
+          component = resolveKnownImplementors(root);
+        }
+        if (component != null) {
+        	if (component instanceof Initializer) {
+                resolvedConstructors++;
+            } else {
+            	resolvedComponentCount++;
+            }
+        	IClass declaringClass = root.getMethod().getDeclaringClass();
+            registerComponent(declaringClass.getReference(), component);
+            E.log(DEBUG_LEVEL, component.toString());
             resolvedImplementorCount++;
-          } else {
-            /* Unresolved */
+        } else {
+        	/* Unresolved */
             unresolvedCallBacks++;
             unresolvedSB.add(root.getMethod().getSignature().toString());
             /* We can check now if we should actually care about this callback. */
             if (graphReachability.getReachableSet(root).size() > 0) {
-              
               /* Get a path from the node to the target function */
               Filter<CGNode> filter = new Filter<CGNode>() {
                 public boolean accepts(CGNode o) { 
                   return originalCG.isTargetMethod(o);
                 }
               };
-              
               //TODO: replace reachability with this?
               DFSPathFinder<CGNode> pf = new DFSPathFinder<CGNode>(originalCG, root, filter);
               List<CGNode> path = pf.find();
@@ -192,8 +186,7 @@ public class ComponentManager {
               
               unresolvedInterestingCallBacks++; // for which we care
             }                
-          }
-        }
+        }        
         totalCallBacks++;
       }
     }
@@ -224,13 +217,38 @@ public class ComponentManager {
 	    System.out.println(fst);
 	    System.out.println("==========================================\n");
     }
+    
+    fillMethod2Component();
+    
   }
 
+  private Map<MethodReference, Set<Component>> method2Component = 
+		  new HashMap<MethodReference, Set<Component>>();
+  
+  private void fillMethod2Component() {
+	for (Component comp : getComponents().values()) {
+		for (Iterator<CGNode> it = comp.getCallgraph().iterator(); it.hasNext(); ) {
+			CGNode node = it.next();
+			MethodReference mr = node.getMethod().getReference();
+			Set<Component> sComponents = method2Component.get(mr);
+			if (sComponents == null) {
+				sComponents = new HashSet<Component>();
+			}
+			sComponents.add(comp);
+		}
+	}  
+  }
+
+  public Set<Component> getContainingComponents(MethodReference mr) {
+	  return method2Component.get(mr);
+  }
+  
+  
   private  void outputUnresolvedInfo(CGNode root, List<CGNode> path) {
     IClass declaringClass = root.getMethod().getDeclaringClass();
     Collection<IClass> allImplementedInterfaces = declaringClass.getAllImplementedInterfaces();
     E.log(1, "#### UnResolved: " + root.getMethod().getSignature().toString());
-    for (IClass c : getClassAncestors(declaringClass)) {
+    for (IClass c :  originalCG.getAppClassHierarchy().getClassAncestors(declaringClass)) {
       E.log(1, "#### CL: " + c.getName().toString());
     }
     for (IClass c : allImplementedInterfaces) {
@@ -260,7 +278,7 @@ public class ComponentManager {
     Component comp = componentMap.get(reference);
     if (comp == null) {
       /* A class can only extend one class so order does not matter */
-      ArrayList<IClass> classAncestors = getClassAncestors(klass);
+      ArrayList<IClass> classAncestors = originalCG.getAppClassHierarchy().getClassAncestors(klass);
       for (IClass anc : classAncestors) {
         String ancName = anc.getName().toString();
         if (ancName.equals("Landroid/app/Activity")) {
@@ -322,23 +340,6 @@ public class ComponentManager {
       // update the callgraph node set
       return comp;
     }
-  }
-
-  /**
-   * Compute the class ancestors until Object
-   * 
-   * @param klass
-   * @return
-   */
-  private  ArrayList<IClass> getClassAncestors(IClass klass) {
-    ArrayList<IClass> classList = new ArrayList<IClass>();
-    IClass currentClass = klass;
-    IClass superClass;
-    while ((superClass = currentClass.getSuperclass()) != null) {
-      classList.add(superClass);
-      currentClass = superClass;
-    }
-    return classList;
   }
 
   /**
@@ -415,30 +416,6 @@ public class ComponentManager {
 	  return false;
   }
 
-/**
-   * Return the successors of Thread.start or null if its not found
-   * 
-   * @param cg
-   * @return
-   */
-  @SuppressWarnings("unused")
-  private  HashSet<CGNode> getThreadStartSuccessors(CallGraph cg) {
-    Iterator<CGNode> iterator = cg.iterator();
-    while (iterator.hasNext()) {
-      CGNode node = iterator.next();
-      String name = node.getMethod().getSignature().toString();
-      if (name.contains("Thread.start")) {
-        HashSet<CGNode> roots = new HashSet<CGNode>();
-        Iterator<CGNode> itr = cg.getSuccNodes(node);
-        while (itr.hasNext()) {
-          roots.add(itr.next());
-        }
-        return roots;
-      }
-    }
-    return null;
-  }
-
 
   /****************************************************************************
    * 
@@ -450,8 +427,6 @@ public class ComponentManager {
    */
   public void solveComponents() {
   
-	//getGlobalIntents();
-
     /* Build the constraints graph 
      * (threads should be analyzed before their parents) */
     Collection<Component> components = componentMap.values();    
@@ -557,6 +532,7 @@ public class ComponentManager {
 	  return originalCG;
   }
 
+
   
   /****************************************************************************
    * 
@@ -572,28 +548,6 @@ public class ComponentManager {
 	return specialConditions.getSpecialConditions();
   }
 
-  
-  /****************************************************************************
-   * 
-   * 						INTENT STUFF
-   * 
-   ****************************************************************************/
-  
-  private IntentCalls intentCreation = null;
-
-  
-  //TODO: fix return statement
-  private void getGlobalIntents() {
-	if (intentCreation == null) {
-		//intentCreation = new IntentCalls(this);
-	}
-	intentCreation.prepare();
-	
-	//intentCreation.printIntents();
-	
-  }
-
-  
   
   /****************************************************************************
    * 
@@ -767,5 +721,21 @@ public class ComponentManager {
 	public ApkBugReport getAnalysisResults() {
 		return new ProcessResults(this).processExitStates();
 	}
+	public IntentManager getIntentManager() {
+		return im;
+	}
+	public void setIntentManager(IntentManager im) {
+		this.im = im;
+	}
+	public WakeLockManager getWakeLockManager() {
+		return wm;
+	}
+	public void setWakeLockManager(WakeLockManager wm) {
+		this.wm = wm;
+	}
 
+	
+	
+	
+	
 }

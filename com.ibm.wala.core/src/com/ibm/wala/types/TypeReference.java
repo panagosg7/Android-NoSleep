@@ -332,7 +332,7 @@ public final class TypeReference implements Serializable {
   
   
   /*********************************************************************************************************************
-   * WakeLock stuff *
+   * Android stuff *
    ********************************************************************************************************************/
 
   private final static TypeName WakeLockName = TypeName.string2TypeName("Landroid/os/PowerManager$WakeLock");
@@ -342,9 +342,14 @@ public final class TypeReference implements Serializable {
   
   private final static TypeName PowerManagerName = TypeName.string2TypeName("Landroid/os/PowerManager");
 
-  public final static TypeReference PrimordialPowerManager = findOrCreate(ClassLoaderReference.Primordial, PowerManagerName);
-  public final static TypeReference ApplicationPowerManager = findOrCreate(ClassLoaderReference.Application, PowerManagerName);
-    
+  public final static TypeReference PrimordialPowerManagerType = findOrCreate(ClassLoaderReference.Primordial, PowerManagerName);
+  public final static TypeReference ApplicationPowerManagerType = findOrCreate(ClassLoaderReference.Application, PowerManagerName);
+
+  private final static TypeName IntentName = TypeName.string2TypeName("Landroid/content/Intent");
+
+  public final static TypeReference IntentType = findOrCreate(ClassLoaderReference.Primordial, WakeLockName);
+
+  
   /*********************************************************************************************************************
    * Methods *
    ********************************************************************************************************************/

@@ -1,6 +1,8 @@
 TODO:
 
-Insert context information in wakelock creation
+Use AbstractManager for ThreadCreation as well.
+
+Insert calling-context information in wakelock creation
 
 ThreadInvestigation: A thread should be called here.
 

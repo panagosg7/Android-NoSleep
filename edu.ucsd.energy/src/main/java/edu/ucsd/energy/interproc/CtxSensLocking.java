@@ -86,7 +86,7 @@ public class CtxSensLocking {
 		AnalysisCache cache = new AnalysisCache();
 		this.icfg = icfg;
 		this.supergraph = new SensibleICFGSupergraph(icfg, cache);
-		this.wakeLockManager = icfg.getApplicationCG().getWakeLockManager();
+		//this.wakeLockManager = icfg.getApplicationCG().getWakeLockManager();	//TODO: fix this
 	}
 
 	/**

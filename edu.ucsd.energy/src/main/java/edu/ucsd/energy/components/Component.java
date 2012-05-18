@@ -127,9 +127,9 @@ public abstract class Component extends NodeWithNumber {
    * sensible graph */
   protected HashSet<Pair<String, String>> callbackEdges;
   
-  protected CallGraph 				componentCallgraph;
+  protected CallGraph componentCallgraph;
 
-  protected AppCallGraph	originalCallgraph;
+  protected AppCallGraph originalCallgraph;
 
   /**
    * Contains a call graph regarding the callbacks for this component that makes

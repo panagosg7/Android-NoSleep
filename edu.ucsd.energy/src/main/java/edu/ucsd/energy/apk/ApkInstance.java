@@ -623,7 +623,7 @@ public class ApkInstance {
 		
 		Set<MethodReference> interestingMethods = interestingFunctionSet();
 		
-		for (MethodReference ref: Interesting.sWakelockMethods) {
+		for (MethodReference ref: Interesting.mWakelockMethods.keySet()) {
 			if (interestingMethods.contains(ref)) {
 				return true;
 			}

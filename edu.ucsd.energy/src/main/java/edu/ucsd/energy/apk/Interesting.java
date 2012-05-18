@@ -1,15 +1,20 @@
 package edu.ucsd.energy.apk;
 //Author: John C. McCullough
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import com.ibm.wala.types.MethodReference;
+import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.strings.StringStuff;
 
 public class Interesting {
 	public static Set<MethodReference> sInterestingMethods = new HashSet<MethodReference>();
-	public static Set<MethodReference> sWakelockMethods = new HashSet<MethodReference>();
-	
+	//MethodReference and interesting argument index
+	//WARNING: need to use the selecotr here 
+	public static Map<Selector, Integer> mIntentMethods = new HashMap<Selector, Integer>();
+	public static Map<MethodReference, Integer> mWakelockMethods = new HashMap<MethodReference, Integer>();
 	public static Set<String> activityEntryMethods = new HashSet<String>();
 	public static Set<String> serviceEntryMethods = new HashSet<String>();
 	public static Set<String> broadcastReceiverEntryMethods = new HashSet<String>();
@@ -30,15 +35,23 @@ public class Interesting {
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.media.MediaPlayer.release()V"));
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.media.MediaPlayer.start()V"));
 		
-		sWakelockMethods.add(StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.acquire()V"));
-		sWakelockMethods.add(StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.release()V"));
-		sWakelockMethods.add(StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.acquire(J)V"));
+		mWakelockMethods.put(StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.acquire()V"), new Integer(0));
+		mWakelockMethods.put(StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.release()V"), new Integer(0));
+		mWakelockMethods.put(StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.acquire(J)V"), new Integer(0));
 		
-		//TODO : add the newWakeLock...
+		/*
+		 * Needed a selector for the Intents because the class appearing in the signature of
+		 * the method is not always in the android namespace  
+		 */
+		//mIntentMethods.put(Selector.make(), 0);
+		mIntentMethods.put(Selector.make("startActivity(Landroid/content/Intent;)V"), new Integer(1));
+		mIntentMethods.put(Selector.make("startService(Landroid/content/Intent;)Landroid/content/ComponentName;"), new Integer(1));
+		mIntentMethods.put(Selector.make("startActivityForResult(Landroid/content/Intent;I)V"), new Integer(1));
+		mIntentMethods.put(Selector.make("sendBroadcast(Landroid/content/Intent;)V"), new Integer(1));
+		//TODO: may have to extend this list with more calls
 		
 		
-		sInterestingMethods.addAll(sWakelockMethods);
-		
+		sInterestingMethods.addAll(mWakelockMethods.keySet());		
 		
 		activityEntryMethods.add("<init>()V");
 		activityEntryMethods.add("onPause()V");

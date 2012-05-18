@@ -723,7 +723,9 @@ public class BugHunt {
 			if (line.hasOption("small-set")) {
 				theSet = new HashSet<String>();
 				/* The applications you specify here need to be in apk_collection !!! */
-				theSet.add("NetCounter");
+//				theSet.add("NetCounter");
+				theSet.add("SpeakWrite");
+				theSet.add("imo");
 			}
 			else {
 				FileInputStream is = new FileInputStream(acqrelDatabaseFile);

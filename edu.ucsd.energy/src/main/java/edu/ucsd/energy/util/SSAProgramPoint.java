@@ -53,9 +53,10 @@ public class SSAProgramPoint {
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
 		sb.append("[");
-		sb.append(method.getDeclaringClass().getName().toString());
-		sb.append(".");
-		sb.append(method.getName().toString());
+		//sb.append(method.getDeclaringClass().getName().toString());
+		//sb.append(".");
+		//sb.append(method.getName().toString());
+		sb.append(method.getSignature());
 		sb.append(", ");
 		sb.append("(bb) " + bb.getNumber()+"]");
 		return sb.toString();

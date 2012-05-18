@@ -2,7 +2,6 @@ package edu.ucsd.energy.analysis;
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map.Entry;
 
 import net.sf.json.JSONObject;
@@ -13,8 +12,6 @@ import com.ibm.wala.ssa.DefUse;
 import com.ibm.wala.ssa.SSABinaryOpInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
-import com.ibm.wala.ssa.SSANewInstruction;
-import com.ibm.wala.ssa.SSAPutInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeReference;
@@ -38,10 +35,9 @@ public class WakeLockManager extends AbstractManager<WakeLockInstance> {
 		FALSE;		
 	}
 
-	public WakeLockManager(AppCallGraph appCallGraph) {
-		super(appCallGraph);
+	public WakeLockManager(ComponentManager cm) {
+		super(cm);
 	}
-
 
 	public JSONObject toJSON() {
 		JSONObject result = new JSONObject();
@@ -62,9 +58,9 @@ public class WakeLockManager extends AbstractManager<WakeLockInstance> {
 		E.log(1, "Adding creation");
 		result.put("creation_sites", obj);
 		obj = new JSONObject();
-		if (mInstrToInstance != null) {
+		if (mInstruction2Instance != null) {
 			int i = 1;
-			for (Entry<Pair<MethodReference, SSAInstruction>, WakeLockInstance> e : mInstrToInstance.entrySet()) {
+			for (Entry<Pair<MethodReference, SSAInstruction>, WakeLockInstance> e : mInstruction2Instance.entrySet()) {
 				MethodReference methRef = e.getKey().fst;
 				SSAInstruction instr = e.getKey().snd;
 				WakeLockInstance wli = e.getValue();
@@ -111,41 +107,17 @@ public class WakeLockManager extends AbstractManager<WakeLockInstance> {
 
 
 	@Override
-	public void dumpInfo() {
-		E.log(1, "==========================================\n");
-		for (Entry<SSAProgramPoint, WakeLockInstance> e : mCreationRefs.entrySet()) {
-			SSAProgramPoint key = e.getKey();
-			WakeLockInstance value = e.getValue();
-			E.log(1, key.toString() + " :: " + value.toString());
-		}
-		E.log(1, "==========================================\n");
-		for (Entry<MethodReference, WakeLockInstance> e : mMethodReturns.entrySet()) {
-			MethodReference key = e.getKey();
-			WakeLockInstance value = e.getValue();
-			E.log(1, key.toString() + " :: " + value.toString());
-		}
-		E.log(1, "==========================================\n");		
-		for (Entry<Pair<MethodReference, SSAInstruction>, WakeLockInstance> e : mInstrToInstance.entrySet()) {
-			Pair<MethodReference, SSAInstruction> key = e.getKey();
-			WakeLockInstance value = e.getValue();
-			E.log(1, key.toString() + " :: " + value.toString());
-		}
-		E.log(1, "==========================================\n");		
-	}
-
-
-	@Override
-	boolean isInterestingMethod(MethodReference declaredTarget) {
-		return Interesting.sWakelockMethods.contains(declaredTarget);
+	Integer interestingMethod(MethodReference declaredTarget) {
+		return Interesting.mWakelockMethods.get(declaredTarget);
 	}
 
 	@Override
-	WakeLockInstance newInstance(SSAProgramPoint pp) {
+	public	WakeLockInstance newInstance(SSAProgramPoint pp) {
 		return new WakeLockInstance(pp);
 	}
 
 	@Override
-	WakeLockInstance newInstance(FieldReference field) {
+	public WakeLockInstance newInstance(FieldReference field) {
 		return new WakeLockInstance(field);
 	}
 
@@ -156,6 +128,9 @@ public class WakeLockManager extends AbstractManager<WakeLockInstance> {
 //			visitNewWakeLock(inv);
 //		}
 		//TODO: setLockType()
+		//Collection<LockType> lockType = resolveLockTypeFromVar(inv.getUse(1));
+		//wli.setLockType(lockType);
+	
 		
 		 if (inv.toString().contains("setReferenceCounted")) {
 			 visitReferenceCounted(inv);
@@ -169,7 +144,7 @@ public class WakeLockManager extends AbstractManager<WakeLockInstance> {
 		int bit = inv.getUse(1);
 		boolean refCounted = ir.getSymbolTable().isTrue(bit);
 		int use = inv.getUse(0);
-		WakeLockInstance wli = traceWakeLockDef(use);
+		WakeLockInstance wli = traceInstance(use);
 		wli.getInfo().setReferenceCounted(refCounted?RefCount.TRUE:RefCount.FALSE);
 	}
 
@@ -220,7 +195,14 @@ public class WakeLockManager extends AbstractManager<WakeLockInstance> {
 
 	@Override
 	boolean isNewInstruction(SSAInstruction instr) {
-		return instr.toString().contains("newWakeLock");
+		if (instr instanceof SSAInvokeInstruction) {
+			return instr.toString().contains("newWakeLock");
+		}
+		return false;
+	}
+
+	public void dumpInfo() {
+		//super.dumpInfo();
 	}
 	
 }

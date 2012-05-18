@@ -30,12 +30,12 @@ public class SpecialConditions {
 	private final int DEBUG = 2;
 	
 	private AppCallGraph cg;
-//	private ComponentManager cm;
+	private ComponentManager cm;
 //	private ClassHierarchy ch; 
 
 	public SpecialConditions(ComponentManager componentManager) {
 		this.cg = componentManager.getCG();
-//		this.cm = componentManager;
+		this.cm = componentManager;
 	}
 
 	private HashMap<SSAProgramPoint,SpecialCondition> ppToSpecCondition = null;
@@ -212,13 +212,13 @@ public class SpecialConditions {
 			SSAGetInstruction get = (SSAGetInstruction) def;			
 			FieldReference field = get.getDeclaredField();
 			//Only interesting fields are going to be here
-			return cg.getWakeLockManager().findOrCreateInstance(field);
+			return cm.getWakeLockManager().findOrCreateInstance(field);
 		}
 		else if (def instanceof SSAInvokeInstruction) {
 			SSAInvokeInstruction inv = (SSAInvokeInstruction) def;
 			MethodReference mr = inv.getDeclaredTarget();
 			//Only interesting method returns are here
-			return cg.getWakeLockManager().getMethodReturn(mr);
+			return cm.getWakeLockManager().getMethodReturn(mr);
 		}
 		return null;
 	}

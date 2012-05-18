@@ -907,16 +907,9 @@ public class AppCallGraph implements CallGraph {
 	}
 	
 	WakeLockManager wlm = null;
+	IntentManager 	im	= null;
 	
-	public WakeLockManager getWakeLockManager() {
-		if (wlm == null) {
-			wlm = new WakeLockManager(this);
-			//wlm.scanDefinitions(); //We only account for the locks that are created
-			wlm.prepare();
-		}
-		return wlm;
-	}
-
+	
 	public PointerAnalysis getPointerAnalysis() {
 		return pointerAnalysis;
 	}

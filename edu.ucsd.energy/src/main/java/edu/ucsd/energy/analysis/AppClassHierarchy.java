@@ -2,6 +2,7 @@ package edu.ucsd.energy.analysis;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Properties;
 
@@ -69,6 +70,25 @@ public class AppClassHierarchy {
     }
     return result;
   }
+  
+
+  /**
+   * Compute the class ancestors until Object
+   * 
+   * @param klass
+   * @return
+   */
+  public ArrayList<IClass> getClassAncestors(IClass klass) {
+    ArrayList<IClass> classList = new ArrayList<IClass>();
+    IClass currentClass = klass;
+    IClass superClass;
+    while ((superClass = currentClass.getSuperclass()) != null) {
+      classList.add(superClass);
+      currentClass = superClass;
+    }
+    return classList;
+  }
+
   
   
   public  void validateCommandLine(Properties p) {

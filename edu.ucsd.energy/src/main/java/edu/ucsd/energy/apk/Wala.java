@@ -77,8 +77,8 @@ import com.ibm.wala.util.config.AnalysisScopeReader;
 import edu.ucsd.energy.analysis.AppCallGraph;
 import edu.ucsd.energy.analysis.AppClassHierarchy;
 import edu.ucsd.energy.analysis.ComponentManager;
+import edu.ucsd.energy.analysis.IntentManager;
 import edu.ucsd.energy.analysis.Opts;
-import edu.ucsd.energy.analysis.WakeLockManager;
 import edu.ucsd.energy.entry.ApkException;
 import edu.ucsd.energy.entry.RetargetException;
 import edu.ucsd.energy.results.ApkBugReport;
@@ -614,10 +614,28 @@ public class Wala {
 		if(!Opts.RUN_IN_PARALLEL) {
 			edu.ucsd.energy.util.Util.printLabel(mPath.getAbsolutePath());	
 		}
-		AppClassHierarchy	ch = new AppClassHierarchy(appJar, exclusionFile);
-		AppCallGraph 		cg = new AppCallGraph(ch);
-		WakeLockManager wakeLockManager = cg.getWakeLockManager();
-		return wakeLockManager.getWakeLockReport();
+		
+		AppClassHierarchy ch = new AppClassHierarchy(appJar, exclusionFile);
+		AppCallGraph cg = new AppCallGraph(ch);
+		
+		ComponentManager cm = new ComponentManager(cg);
+		
+		//System.out.println("\nGETTING WAKELOCK MANAGER\n");
+		//WakeLockManager wakeLockManager = cg.getWakeLockManager();
+		System.out.println("\nGETTING INTENT MANAGER\n");
+		IntentManager im = new IntentManager(cm); 
+				
+				cm.getIntentManager();
+		
+		
+		cm.prepareReachability();
+		cm.resolveComponents();
+		
+		
+		
+		//componentManager.solveComponents();
+		
+		return null; //wakeLockManager.getWakeLockReport();
 	}
 
 	
@@ -634,13 +652,13 @@ public class Wala {
 		AppClassHierarchy ch = new AppClassHierarchy(appJar, exclusionFile);		
 		AppCallGraph cg = new AppCallGraph(ch);		
 		if (Opts.PROCESS_ANDROID_COMPONENTS) {
-			ComponentManager componentManager = new ComponentManager(cg);
-			componentManager.prepareReachability();
-			componentManager.resolveComponents();
-			componentManager.solveComponents();
+			ComponentManager cm = new ComponentManager(cg);
+			cm.prepareReachability();
+			cm.resolveComponents();
+			cm.solveComponents();
 			
-			ApkBugReport bugReport = componentManager.getAnalysisResults();
-			bugReport.setWakeLockManager(cg.getWakeLockManager());
+			ApkBugReport bugReport = cm.getAnalysisResults();
+			bugReport.setWakeLockManager(cm.getWakeLockManager());
 			return bugReport;
 		}
 		result = new FailReport(ResultType.DID_NOT_PROCESS);
