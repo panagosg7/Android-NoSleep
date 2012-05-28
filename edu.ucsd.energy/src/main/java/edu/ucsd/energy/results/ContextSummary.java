@@ -47,6 +47,17 @@ public class ContextSummary  {
 		return allExitStates.get(node);
 	}
 
+	//Nothing important is done here (callbacks have clean exit states)
+	public boolean isEmpty() {
+		for (CompoundLockState cbState : callBackExitStates.values()) {				
+			if ((cbState != null) && (!cbState.isEmpty())) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	
 	public String toString () {
 		StringBuffer sb = new StringBuffer();
 		sb.append("Methods:\n");

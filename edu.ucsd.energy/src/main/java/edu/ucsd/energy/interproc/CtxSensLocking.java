@@ -570,7 +570,7 @@ public class CtxSensLocking {
 			for (BasicBlockInContext<IExplodedBasicBlock> bb : supergraph) {
 				WakeLockInstance acquiredWL = acquire(bb);
 				if (acquiredWL != null) {
-					E.log(1, "Adding seeds (acq): " + bb.toShortString());
+					E.log(2, "Adding seeds (acq): " + bb.toShortString());
 					SingleLockState sls = new SingleLockState(true, true, false, false);					
 					Pair<WakeLockInstance, SingleLockState> fact = Pair.make(acquiredWL, sls);					
 					int factNum = domain.add(fact);
@@ -584,7 +584,7 @@ public class CtxSensLocking {
 
 				WakeLockInstance releasedWL = release(bb);
 				if (releasedWL != null)  {					
-					E.log(1, "Adding seeds (rel): " + bb.toShortString());
+					E.log(2, "Adding seeds (rel): " + bb.toShortString());
 					SingleLockState sls = new SingleLockState(false, false, true, true);					
 					Pair<WakeLockInstance, SingleLockState> fact = Pair.make(releasedWL, sls);
 					int factNum = domain.add(fact);

@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.ISSABasicBlock;
@@ -24,7 +23,6 @@ import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.managers.ComponentManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
-import edu.ucsd.energy.policy.ActivityPolicy;
 import edu.ucsd.energy.policy.IPolicy;
 import edu.ucsd.energy.policy.Policy;
 import edu.ucsd.energy.util.E;
@@ -109,11 +107,14 @@ public class ProcessResults {
 				new HashMap<LockUsage, Set<Pair<Context, CGNode>>>();
 
 		for (Context context : componentManager.getComponents()) {
-			
+			//Focus just on activities, services, BcastRcv...
 			if (context instanceof Component) {
+				E.log(1, "Gathering results for: " + context.toString());
 				ContextSummary cSummary = summarize(context);
+				if (cSummary.isEmpty()) continue;
+				
 				Component c = (Component) context;
-				E.log(1, "Results for: " + c.toString());
+				
 				E.log(1, cSummary.toString());
 				IPolicy policy = c.makePolicy();
 

@@ -5,8 +5,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
-import org.eclipse.core.runtime.content.IContentTypeManager.ISelectionPolicy;
-
 import com.ibm.wala.dataflow.IFDS.TabulationDomain;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
@@ -24,7 +22,6 @@ import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.OrdinalSet;
 
 import edu.ucsd.energy.analysis.AppCallGraph;
-import edu.ucsd.energy.contexts.Component;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.CtxSensLocking;
 import edu.ucsd.energy.interproc.InterproceduralCFG;
