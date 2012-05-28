@@ -13,11 +13,12 @@ import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSANewInstruction;
-import com.ibm.wala.types.TypeReference;
+import com.ibm.wala.types.TypeName;
 import com.ibm.wala.util.collections.Pair;
 
-import edu.ucsd.energy.components.Component;
-import edu.ucsd.energy.components.RunnableThread;
+import edu.ucsd.energy.contexts.Context;
+import edu.ucsd.energy.contexts.RunnableThread;
+import edu.ucsd.energy.managers.ComponentManager;
 import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.SSAProgramPoint;
 
@@ -27,7 +28,7 @@ public class RunnableCalls {
 	private ComponentManager cm; 
 	
 	public RunnableCalls(ComponentManager componentManager) {
-		this.cg = componentManager.getCG();
+		//this.cg = componentManager.getCG();
 		this.cm = componentManager;
 	}
 	
@@ -47,15 +48,15 @@ public class RunnableCalls {
 	/**
 	 * This will map the point where a thread is spawned to the threads class reference 
 	 */
-	private HashMap<SSAProgramPoint,Component> siteToClass = null;
-	private Collection<Pair<SSANewInstruction, Component>> iSet ;
+	private HashMap<SSAProgramPoint,Context> siteToClass = null;
+	private Collection<Pair<SSANewInstruction, Context>> iSet ;
 	
 	/**
 	 * Invoke this to fill up the ProgPoint to runnable mapping
 	 */
 	private void prepare() {
-		siteToClass = new HashMap<SSAProgramPoint, Component>();
-		iSet = new HashSet<Pair<SSANewInstruction, Component>>();
+		siteToClass = new HashMap<SSAProgramPoint, Context>();
+		iSet = new HashSet<Pair<SSANewInstruction, Context>>();
 		for (CGNode n : cg) {
 			iSet.clear();
 			IR ir = n.getIR();
@@ -65,26 +66,26 @@ public class RunnableCalls {
 			}			
 			for (Iterator<NewSiteReference> it = ir.iterateNewSites(); it.hasNext(); ) {
 				SSANewInstruction newi = ir.getNew(it.next());
-				TypeReference concreteType = newi.getConcreteType();
-				Component targetComponent = cm.getComponent(concreteType);
+				TypeName concreteType = newi.getConcreteType().getName();
+				Context targetComponent = cm.getComponent(concreteType);
 				if (targetComponent instanceof RunnableThread) {
-					String file = cm.getCG().getAppClassHierarchy().getAppJar();
+					//String file = cm.getCG().getAppClassHierarchy().getAppJar();
 					//System.out.println(n.getMethod().getSignature().toString());
 					//System.out.println(targetComponent.toString());
 					//Assertions.productionAssertion(targetComponent instanceof RunnableThread, 
 					//		file + " : A Runnable should be called here.");
-					Pair<SSANewInstruction, Component> p = Pair.make(newi, targetComponent);
+					Pair<SSANewInstruction, Context> p = Pair.make(newi, targetComponent);
 					iSet.add(p);
 				}
 			}
 			/* After the search is done, do the defuse only if there are interesting results */
 			if (iSet.size() > 0) {				
 				DefUse du = new DefUse(ir);
-				for (Pair<SSANewInstruction, Component> i : iSet) {
+				for (Pair<SSANewInstruction, Context> i : iSet) {
 					//E.log(1, n.getMethod().getSignature().toString() + " :: " + i.toString());					
 					SSAProgramPoint pp = null;
 					SSANewInstruction newi = i.fst;
-					Component targetComponent = i.snd;
+					Context targetComponent = i.snd;
 					for(Iterator<SSAInstruction> uses = du.getUses(newi.getDef()); uses.hasNext(); ) {
 						SSAInstruction user = uses.next();
 						if (user instanceof SSAInvokeInstruction) {
@@ -108,7 +109,7 @@ public class RunnableCalls {
 		}		
 	}
 
-	public HashMap<SSAProgramPoint,Component> getThreadInvocations() {				
+	public HashMap<SSAProgramPoint,Context> getThreadInvocations() {				
 		if (siteToClass == null) {
 			prepare();
 		}		

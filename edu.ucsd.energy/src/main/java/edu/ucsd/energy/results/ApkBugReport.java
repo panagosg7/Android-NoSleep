@@ -6,20 +6,17 @@ import java.util.HashSet;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
-import edu.ucsd.energy.analysis.WakeLockManager;
-import edu.ucsd.energy.components.Component;
-import edu.ucsd.energy.results.ProcessResults.ComponentPolicyCheck;
+import edu.ucsd.energy.contexts.Context;
+import edu.ucsd.energy.policy.IPolicy;
 
 public class ApkBugReport implements IReport {
 	
-	private HashMap<Component,ComponentPolicyCheck> map; 
+	private HashMap<Context, IPolicy> map; 
 	
 	private HashSet<BugResult> set;
 
-	private WakeLockManager manager;
-	
 	public ApkBugReport() {
-		map = new HashMap<Component, ProcessResults.ComponentPolicyCheck>();
+		map = new HashMap<Context, IPolicy>();
 		set = new HashSet<BugResult>();		
 	}
 	
@@ -27,7 +24,7 @@ public class ApkBugReport implements IReport {
 		set.add(r);
 	}
 	
-	public void insertFact(Component c, ComponentPolicyCheck policy) {
+	public void insertFact(Context c, IPolicy policy) {
 		map.put(c,policy);
 	}
 	
@@ -42,16 +39,13 @@ public class ApkBugReport implements IReport {
 		//TODO: maybe arrange by type of bug ?
 		//Get component reports
 		jsonArray = new JSONArray();
-		for (ComponentPolicyCheck e : map.values()) {
+		for (IPolicy e : map.values()) {
 			JSONArray json = e.toJSON();
 			for(int i = 0; i < json.size(); i++) {
 				jsonArray.add(json.get(i));
 			}
 		}
 		obj.put("components", jsonArray);
-		if (manager != null) {
-			obj.put("wakelocks", manager.toJSON());
-		}
 		return obj;
 	}
 	
@@ -63,8 +57,8 @@ public class ApkBugReport implements IReport {
 		}
 	}
 
-	public void setWakeLockManager(WakeLockManager man) {
-		manager = man;
+	public String getTag() {
+		return "BugReport";
 	}
 
 }

@@ -70,8 +70,10 @@ import com.ibm.wala.viz.NodeDecorator;
 import com.ibm.wala.viz.PDFViewUtil;
 
 import edu.ucsd.energy.intraproc.IntraProcAnalysis;
+import edu.ucsd.energy.managers.IntentManager;
+import edu.ucsd.energy.managers.WakeLockManager;
 import edu.ucsd.energy.util.E;
-import edu.ucsd.energy.util.GraphBottomUp;
+import edu.ucsd.energy.util.GraphUtils;
 import edu.ucsd.energy.util.SystemUtil;
 import edu.ucsd.energy.viz.GraphDotUtil;
 
@@ -638,7 +640,7 @@ public class AppCallGraph implements CallGraph {
 		/* Filter that filters non-target methods */
 		CollectionFilter<CGNode> targetFilter = new CollectionFilter<CGNode>(
 				targetCGNodeHash.values());
-		Iterator<CGNode> bottomUpIterator = GraphBottomUp.bottomUpIterator(
+		Iterator<CGNode> bottomUpIterator = GraphUtils.bottomUpIterator(
 				this, targetFilter);
 		while (bottomUpIterator.hasNext()
 				&& (methodCount < 0 || methodCount-- > 0)) {

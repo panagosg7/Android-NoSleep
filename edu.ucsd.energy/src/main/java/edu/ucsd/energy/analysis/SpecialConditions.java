@@ -10,36 +10,35 @@ import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSACFG;
 import com.ibm.wala.ssa.SSAConditionalBranchInstruction;
-import com.ibm.wala.ssa.SSAGetInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
-import com.ibm.wala.types.FieldReference;
-import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.collections.Iterator2List;
 
+import edu.ucsd.energy.managers.GlobalManager;
+import edu.ucsd.energy.managers.WakeLockInstance;
+import edu.ucsd.energy.managers.WakeLockManager;
 import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.SSAProgramPoint;
 
 /**
- * Need to run LockInvestigation before invoking this
+ * Need to run WakeLockManager before invoking this
  * @author pvekris
  *
  */
 public class SpecialConditions {
 	
 	private final int DEBUG = 2;
-	
-	private AppCallGraph cg;
-	private ComponentManager cm;
-//	private ClassHierarchy ch; 
 
-	public SpecialConditions(ComponentManager componentManager) {
-		this.cg = componentManager.getCG();
-		this.cm = componentManager;
+	private GlobalManager global;
+	
+	public SpecialConditions(GlobalManager gm) {
+		this.global = gm;
 	}
 
-	private HashMap<SSAProgramPoint,SpecialCondition> ppToSpecCondition = null;
-
+	//private HashMap<SSAProgramPoint,SpecialCondition> mSpecCond = null;
+	private HashMap<SSAInstruction,SpecialCondition> mSpecCond = null;
+	
+	private CGNode node;
 	private DefUse du;
 	private IR ir;
 	
@@ -58,7 +57,7 @@ public class SpecialConditions {
 		public ISSABasicBlock getFalseSucc() {
 			return falseSucc;
 		}
-		//TODO: use WakeLockInstance instead
+
 		public WakeLockInstance getField() {
 			return field;
 		}
@@ -122,13 +121,12 @@ public class SpecialConditions {
 		}
 	}
 	
-	
-	
 	public void prepare() {
 		
-		ppToSpecCondition = new HashMap<SSAProgramPoint, SpecialCondition>();
-		for (CGNode n : cg) {
+		mSpecCond = new HashMap<SSAInstruction, SpecialCondition>();
+		for (CGNode n : global.getAppCallGraph()) {
 			//WARNING: this needs to be done here!!!
+			node = n;
 			du = null;
 			ir = n.getIR();
 			/* Null for JNI methods */
@@ -171,7 +169,7 @@ public class SpecialConditions {
 							ISSABasicBlock falseSucc = succNodesArray.get(1);									
 							NullCondition c = new NullCondition(pp.getBasicBlock(), ins, trueSucc, falseSucc);
 							E.log(DEBUG, c.toString());										
-							ppToSpecCondition.put(pp, c);
+							mSpecCond.put(instr, c);
 							continue;
 						}
 						
@@ -188,7 +186,7 @@ public class SpecialConditions {
 							ISSABasicBlock trueSucc = succNodesArray.get(0);
 							ISSABasicBlock falseSucc = succNodesArray.get(1);
 							IsHeldCondition c = new IsHeldCondition(pp.getBasicBlock(), field, falseSucc, trueSucc);
-							ppToSpecCondition.put(pp,c);
+							mSpecCond.put(instr,c);
 							E.log(DEBUG, c.toString());
 							continue;
 						}
@@ -206,21 +204,8 @@ public class SpecialConditions {
 	 * @return null if the value is not associated with a wakelock
 	 */
 	private WakeLockInstance findInterestingInstance(int val) {
-		//TODO: use traceWakeLockInstance
-		SSAInstruction def = du.getDef(val);
-		if (def instanceof SSAGetInstruction) {
-			SSAGetInstruction get = (SSAGetInstruction) def;			
-			FieldReference field = get.getDeclaredField();
-			//Only interesting fields are going to be here
-			return cm.getWakeLockManager().findOrCreateInstance(field);
-		}
-		else if (def instanceof SSAInvokeInstruction) {
-			SSAInvokeInstruction inv = (SSAInvokeInstruction) def;
-			MethodReference mr = inv.getDeclaredTarget();
-			//Only interesting method returns are here
-			return cm.getWakeLockManager().getMethodReturn(mr);
-		}
-		return null;
+		WakeLockManager wakeLockManager = global.getWakeLockManager();
+		return wakeLockManager.traceInstance(node, val);
 	}
 		
 	/**
@@ -239,16 +224,8 @@ public class SpecialConditions {
 		};
 		return null;
 	}
-	
-	public void setAppCallGraph(AppCallGraph cg){
-		this.cg = cg;
-	} 	
-	
-	public HashMap<SSAProgramPoint, SpecialCondition> getSpecialConditions() {
-		if (ppToSpecCondition == null) {
-			prepare();			
-		}		
-		return ppToSpecCondition;
+
+	public SpecialCondition get(SSAInstruction ssaInstruction) {
+		return mSpecCond.get(ssaInstruction);
 	}
-	
 }

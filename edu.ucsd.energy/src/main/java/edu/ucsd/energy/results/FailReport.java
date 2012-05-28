@@ -18,4 +18,8 @@ public class FailReport implements IReport {
 		return obj;
 	}
 
+	public String getTag() {
+		return "Fail";
+	}
+
 }

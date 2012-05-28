@@ -1,7 +1,6 @@
 package edu.ucsd.energy.util;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -12,9 +11,6 @@ import com.ibm.wala.util.intset.IntIterator;
 
 public class Util {
 
-  
-   
-  
   public static <T> Set<T> iteratorToSet(Iterator<T> itr) {
     HashSet<T> hashSet = new HashSet<T>();
     while (itr.hasNext()) {

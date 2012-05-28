@@ -212,7 +212,10 @@ public class BugHunt {
 				LOGGER.info("Starting: " + apk.getName());
 				if (apk.successfullyOptimized()) {
 					try {
-						json = apk.wakelockAnalyze().toJSON();
+						IReport wakelockAnalyze = apk.wakelockAnalyze();
+						if (wakelockAnalyze != null) {
+							json = wakelockAnalyze.toJSON();
+						}
 					} catch(Exception e) {
 						json.put("result", ResultType.ANALYSIS_FAILURE.toString());
 						System.err.println(apk.getName());
@@ -270,8 +273,8 @@ public class BugHunt {
 		TimeUnit unit = TimeUnit.SECONDS;
 		LinkedBlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<Runnable>(1000);
 		
-		LOGGER.info("Thread pool size: " + numberOfThreads) ;
-		LOGGER.info("Input set size: " + theSet.size()) ;
+		System.out.println("Thread pool size: " + numberOfThreads) ;
+		System.out.println("Input set size: " + theSet.size()) ;
 		ThreadPoolExecutor tPoolExec = 
 				new ThreadPoolExecutor(numberOfThreads, numberOfThreads,
 				keepAliveTime, unit, workQueue);
@@ -723,9 +726,14 @@ public class BugHunt {
 			if (line.hasOption("small-set")) {
 				theSet = new HashSet<String>();
 				/* The applications you specify here need to be in apk_collection !!! */
-//				theSet.add("NetCounter");
-				theSet.add("SpeakWrite");
-				theSet.add("imo");
+				theSet.add("NetCounter");
+//				theSet.add("TrafficDroid");
+//				theSet.add("SimpleTime");
+//				theSet.add("SpeakWrite");
+//				theSet.add("imo");
+//				theSet.add("Azan_Alarm");
+//				theSet.add("XDA");
+//				theSet.add("UEFA.com");
 			}
 			else {
 				FileInputStream is = new FileInputStream(acqrelDatabaseFile);

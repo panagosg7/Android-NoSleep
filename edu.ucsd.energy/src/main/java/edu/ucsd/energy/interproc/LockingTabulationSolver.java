@@ -18,7 +18,7 @@ import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 
-import edu.ucsd.energy.analysis.WakeLockInstance;
+import edu.ucsd.energy.managers.WakeLockInstance;
 
 
 public class LockingTabulationSolver  extends PartiallyBalancedTabulationSolver<

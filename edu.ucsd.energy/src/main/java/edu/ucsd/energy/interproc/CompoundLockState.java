@@ -1,12 +1,14 @@
 package edu.ucsd.energy.interproc;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
 import org.json.JSONObject;
 
-import edu.ucsd.energy.analysis.WakeLockInstance;
+import edu.ucsd.energy.managers.WakeLockInstance;
 
 
 public class CompoundLockState {
@@ -21,6 +23,32 @@ public class CompoundLockState {
 	public CompoundLockState(Map<WakeLockInstance, Set<SingleLockState>> m) {	
 		this.map = m;
 	}
+	
+	public CompoundLockState() {
+		this.map = new HashMap<WakeLockInstance, Set<SingleLockState>>();
+	}
+	
+	public void register(WakeLockInstance wli, SingleLockState ls) {
+		Set<SingleLockState> set = map.get(wli);
+		if (set == null) {
+			set = new HashSet<SingleLockState>();
+		}
+		set.add(ls);
+		map.put(wli,set);
+	}
+	
+	public static CompoundLockState merge(Set<CompoundLockState> set) {
+		CompoundLockState result = new CompoundLockState();
+		for (CompoundLockState cls : set) {
+			for(Entry<WakeLockInstance, Set<SingleLockState>> ls : cls.getLockStateMap().entrySet()) {
+				for(SingleLockState sls : ls.getValue()) {
+					result.register(ls.getKey(), sls);	
+				}
+			}
+		}
+		return result;
+	}
+	
 	
 	/**
 	 * Add a state for the first time
@@ -46,6 +74,19 @@ public class CompoundLockState {
 		return result;
 	} 	
 	
+	public static SingleLockState simplify(Set<SingleLockState> set) {
+		SingleLockState result = null;
+		for(SingleLockState s : set)  {
+			if (result != null) {
+				result = result.merge(s);
+			}
+			else {
+				result = s;				
+			}
+		}
+		return result;
+	} 	
+	
 	public Set<SingleLockState> getLockState(WakeLockInstance f) {		
 		Set<SingleLockState> pair = map.get(f);
 		return pair;		
@@ -58,7 +99,15 @@ public class CompoundLockState {
 	public String toString(){
 		StringBuffer sb = new StringBuffer();
 		for (Entry<WakeLockInstance, Set<SingleLockState>> e : map.entrySet()) {
-			sb.append(e.getKey().toString() + " :: " + e.getValue().toString());			
+			sb.append(e.getKey().toString() + " :: " + e.getValue().toString() + "\n");			
+		}
+		return sb.toString();
+	}
+	
+	public String toShortString(){
+		StringBuffer sb = new StringBuffer();
+		for (Entry<WakeLockInstance, Set<SingleLockState>> e : map.entrySet()) {
+			sb.append(e.getKey().toShortString() + " :: " + e.getValue().toString() + "\n");			
 		}
 		return sb.toString();
 	}
@@ -72,6 +121,10 @@ public class CompoundLockState {
 		}
 		*/
 		return compObj;
+	}
+
+	public boolean isEmpty() {
+		return map.isEmpty();
 	}
 	
 }

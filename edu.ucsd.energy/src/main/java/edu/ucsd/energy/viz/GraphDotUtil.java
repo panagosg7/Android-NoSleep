@@ -27,7 +27,7 @@ import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.viz.NodeDecorator;
 
 import edu.ucsd.energy.analysis.Opts;
-import edu.ucsd.energy.interproc.SingleLockState;
+import edu.ucsd.energy.interproc.SingleLockState.LockStateColor;
 
 /**
  * utilities for interfacing with DOT
@@ -365,19 +365,19 @@ public class GraphDotUtil {
   
   
   
-  public static String concatStringsWSep(Set<SingleLockState> cols, String separator) {
+  public static String concatStringsWSep(Set<LockStateColor> cols, String separator) {
 	    StringBuilder sb = new StringBuilder();	    	    
 	    if (cols.size() == 0) {	    
 	    	return "";
 	    }
 	    if (cols.size() == 1) {
-	    	return cols.iterator().next().getColor();
+	    	return cols.iterator().next().toString();
 	    }	    
 	    
-	    Iterator<SingleLockState> iterator = cols.iterator();
-	    sb.append(iterator.next().getColor());
+	    Iterator<LockStateColor> iterator = cols.iterator();
+	    sb.append(iterator.next());
 	    while(iterator.hasNext()) {
-	        sb.append(separator).append(iterator.next().getColor());	        
+	        sb.append(separator).append(iterator.next());	        
 	    }
 	    return sb.toString();                           
 	}
@@ -393,15 +393,13 @@ public class GraphDotUtil {
   private static String decorateNode(Object n, NodeDecorator d) throws WalaException {
     StringBuffer result = new StringBuffer();
     
-    if (d instanceof ColorNodeDecorator) {
-      //result.append(" [color="+ ((ColorNodeDecorator) d).getFillColor(n)+", style=filled]\n");
-    	Set<SingleLockState> cols = ((ColorNodeDecorator) d).getFillColors(n);    	
+    if (d instanceof IColorNodeDecorator) {
+    	Set<LockStateColor> cols = ((IColorNodeDecorator) d).getFillColors(n);    	
 		String concatCols = concatStringsWSep(cols, ":");      
 		if (concatCols.equals("")) {
 			concatCols = "grey";
 		}
 		result.append(" [style=filled, fillcolor=\"" + concatCols + "\"]\n");
-		//result.append(" [fontcolor="+ ((ColorNodeDecorator) d).getFontColor(n)+"]\n");
     }
     else {
       result.append(" [ ]\n");

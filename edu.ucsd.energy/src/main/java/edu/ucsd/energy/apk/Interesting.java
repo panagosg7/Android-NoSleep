@@ -7,17 +7,55 @@ import java.util.Set;
 
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.Selector;
+import com.ibm.wala.types.TypeName;
 import com.ibm.wala.util.strings.StringStuff;
 
 public class Interesting {
+	
 	public static Set<MethodReference> sInterestingMethods = new HashSet<MethodReference>();
 	//MethodReference and interesting argument index
-	//WARNING: need to use the selecotr here 
+	//WARNING: need to use the selector here 
 	public static Map<Selector, Integer> mIntentMethods = new HashMap<Selector, Integer>();
 	public static Map<MethodReference, Integer> mWakelockMethods = new HashMap<MethodReference, Integer>();
-	public static Set<String> activityEntryMethods = new HashSet<String>();
-	public static Set<String> serviceEntryMethods = new HashSet<String>();
-	public static Set<String> broadcastReceiverEntryMethods = new HashSet<String>();
+	
+	public static Set<Selector> activityCallbackMethods = new HashSet<Selector>();
+	public static Set<Selector> activityEntryMethods = new HashSet<Selector>();
+	
+	public static Set<Selector> serviceCallbackMethods = new HashSet<Selector>();
+	public static Set<Selector> serviceEntryMethods = new HashSet<Selector>();
+	
+	public static Set<Selector> runnableEntryMethods = new HashSet<Selector>();
+	
+	
+	public static Set<Selector> broadcastReceiverCallbackMethods = new HashSet<Selector>();
+	public static Set<Selector> broadcastReceiverEntryMethods = new HashSet<Selector>();
+	
+	public static Map<Selector, Integer> mRunnableMethods = new HashMap<Selector, Integer>();
+	
+
+	public final static TypeName WakeLockType = TypeName.string2TypeName("Landroid/os/PowerManager$WakeLock");
+	
+	public final static TypeName PowerManagerName = TypeName.string2TypeName("Landroid/os/PowerManager");
+	
+	public  final static TypeName IntentType = TypeName.string2TypeName("Landroid/content/Intent");
+	
+	public  final static TypeName RunnableType = TypeName.string2TypeName("Ljava/lang/Runnable");
+
+	
+	//Method Selectors
+	public final static Selector ThreadRun = Selector.make("run()V");
+	
+	public static final Selector ActivityOnCreate = Selector.make("onCreate(Landroid/os/Bundle;)V");
+	public static final Selector ActivityOnDestroy = Selector.make("onDestroy()V");
+	public static final Selector ActivityOnPause = Selector.make("onPause()V");
+	public static final Selector ActivityOnResume = Selector.make("onResume()V");
+	public static final Selector ActivityOnStart = Selector.make("onStart()V");
+	public static final Selector ActivityOnStop = Selector.make("onStop()V");
+	public static final Selector ActivityOnRestart = Selector.make("onRestart()V");
+
+	public final static Selector ThreadCall = Selector.make("call()V");
+	
+	
 	
 	static {
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.app.AlarmManager.set(IJLandroid/app/PendingIntent;)V"));
@@ -48,37 +86,58 @@ public class Interesting {
 		mIntentMethods.put(Selector.make("startService(Landroid/content/Intent;)Landroid/content/ComponentName;"), new Integer(1));
 		mIntentMethods.put(Selector.make("startActivityForResult(Landroid/content/Intent;I)V"), new Integer(1));
 		mIntentMethods.put(Selector.make("sendBroadcast(Landroid/content/Intent;)V"), new Integer(1));
+		//TODO: may have to extend this list with more calls:
+		//bindService
+
+		mRunnableMethods.put(Selector.make("start(Ljava/lang/Runnable;)V"), new Integer(1));
+		mRunnableMethods.put(Selector.make("start(Ljava/lang/Thread;)V"), new Integer(1));
+		mRunnableMethods.put(Selector.make("post(Ljava/lang/Runnable;)Z"), new Integer(1));
+		mRunnableMethods.put(Selector.make("runOnUiThread(Ljava/lang/Runnable;)V"), new Integer(1));
+		mRunnableMethods.put(Selector.make("start(Ljava/lang/Thread;)V"), new Integer(1));
+		mRunnableMethods.put(Selector.make("schedule(Ljava/util/TimerTask;JJ)V"), new Integer(1));
+		mRunnableMethods.put(Selector.make("start()V"), new Integer(0));
+		mRunnableMethods.put(Selector.make("postDelayed(Ljava/lang/Runnable;J)Z"), new Integer(1));
 		//TODO: may have to extend this list with more calls
 		
-		
 		sInterestingMethods.addAll(mWakelockMethods.keySet());		
+	//Activities
+		activityCallbackMethods.add(Selector.make("<init>()V"));
+		activityCallbackMethods.add(ActivityOnPause);
+		activityCallbackMethods.add(ActivityOnResume);
+		activityCallbackMethods.add(ActivityOnCreate);
+		activityCallbackMethods.add(ActivityOnDestroy);
+		activityCallbackMethods.add(ActivityOnStart);
+		activityCallbackMethods.add(ActivityOnStop);
 		
-		activityEntryMethods.add("<init>()V");
-		activityEntryMethods.add("onPause()V");
-		activityEntryMethods.add("onResume()V");
-		activityEntryMethods.add("onCreate(Landroid/os/Bundle;)V");
-		activityEntryMethods.add("onDestroy()V");
-		activityEntryMethods.add("onStart()V");
-		activityEntryMethods.add("onStop()V");
+		activityEntryMethods.add(ActivityOnCreate);
 		
+	//Services
+		serviceCallbackMethods.add(Selector.make("<init>()V"));
+		serviceCallbackMethods.add(Selector.make("onBind(Landroid/content/Intent;)Landroid.os.IBinder;"));
+		serviceCallbackMethods.add(Selector.make("onDestroy()V"));
+		serviceCallbackMethods.add(Selector.make("onCreate()V"));
+		serviceCallbackMethods.add(Selector.make("onLowMemory()V"));
+		serviceCallbackMethods.add(Selector.make("onRebind(Landroid/content/Intent;)V"));
+		serviceCallbackMethods.add(Selector.make("onStart(Landroid/content/Intent;I)V"));
+		serviceCallbackMethods.add(Selector.make("onStartCommand(Landroid/content/Intent;II)V"));
+		serviceCallbackMethods.add(Selector.make("onTaskRemoved(Landroid/content/Intent;)V"));
+		serviceCallbackMethods.add(Selector.make("onTrimMemory(I)V"));
+		serviceCallbackMethods.add(Selector.make("onUnbind(Landroid/content/Intent;)B"));
+		serviceCallbackMethods.add(Selector.make("startForeground(ILandroid/app/Notification;)V"));
+		serviceCallbackMethods.add(Selector.make("stopForeground(B;)V"));
+		serviceCallbackMethods.add(Selector.make("stopSelf()V"));
+		serviceCallbackMethods.add(Selector.make("stopSelf(I)V"));
+		serviceCallbackMethods.add(Selector.make("stopSelfResult(I)B"));
 		
-		serviceEntryMethods.add("<init>()V");
-		serviceEntryMethods.add("onBind(Landroid/content/Intent;)Landroid.os.IBinder;");
-		serviceEntryMethods.add("onDestroy()V");
-		serviceEntryMethods.add("onCreate()V");
-		serviceEntryMethods.add("onLowMemory()V");
-		serviceEntryMethods.add("onRebind(Landroid/content/Intent;)V");
-		serviceEntryMethods.add("onStart(Landroid/content/Intent;I)V");
-		serviceEntryMethods.add("onStartCommand(Landroid/content/Intent;II)V");
-		serviceEntryMethods.add("onTaskRemoved(Landroid/content/Intent;)V");
-		serviceEntryMethods.add("onTrimMemory(I)V");
-		serviceEntryMethods.add("onUnbind(Landroid/content/Intent;)B");
-		serviceEntryMethods.add("startForeground(ILandroid/app/Notification;)V");
-		serviceEntryMethods.add("stopForeground(B;)V");
-		serviceEntryMethods.add("stopSelf()V");
-		serviceEntryMethods.add("stopSelf(I)V");
-		serviceEntryMethods.add("stopSelfResult(I)B");
+		serviceEntryMethods.add(Selector.make("onCreate()V"));
+		serviceEntryMethods.add(Selector.make("onStart(Landroid/content/Intent;I)V"));
+		serviceEntryMethods.add(Selector.make("onStartCommand(Landroid/content/Intent;II)V"));
 		
-		broadcastReceiverEntryMethods.add("onReceive(Landroid/content/Context;Landroid/content/Intent;)V");
+		runnableEntryMethods.add(ThreadRun);
+		
+	//BroadcastReceivers
+		broadcastReceiverEntryMethods.add(Selector.make("onReceive(Landroid/content/Context;Landroid/content/Intent;)V"));
+		broadcastReceiverCallbackMethods.add(Selector.make("onReceive(Landroid/content/Context;Landroid/content/Intent;)V"));
 	}
 }
+

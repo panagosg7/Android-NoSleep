@@ -100,8 +100,6 @@ public class Opts {
   
   public static final boolean OUTPUT_COMPONENT_CALLGRAPH  = true;
   
-  public static final boolean DO_CS_ANALYSIS      = true;
-
   /**
    * Output CFGs for each component method 
    */

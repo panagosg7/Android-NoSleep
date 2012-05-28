@@ -1,25 +1,37 @@
 package edu.ucsd.energy.interproc;
 
 import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.graph.impl.NodeWithNumber;
 
-
 public class SensibleCGNode extends NodeWithNumber {
-  private String name = null;
+  private Selector name = null;
   private CGNode realNode = null;
   
-  public SensibleCGNode(String name, CGNode node) {
-   this.name = name;
-   this.setRealNode(node);     
+  public static SensibleCGNode makeNonEmpty(CGNode n) {
+	  return new SensibleCGNode(n);
+  }
+  
+  public static SensibleCGNode makeEmpty(Selector s) {
+	  return new SensibleCGNode(s);
+  }
+  
+  private SensibleCGNode(CGNode node) {
+   this.setRealNode(node);
+   this.name = node.getMethod().getSelector();
   }        
+  
+  private SensibleCGNode(Selector s) {
+	  this.name = s;
+  }
 
-  public String getName() {
+public Selector getSelector() {
     return this.name;
   } 
   
   @Override
   public String toString() {
-    return name;    
+    return name.toString();    
   }
 
   public boolean isEmpty() {

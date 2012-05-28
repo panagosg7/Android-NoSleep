@@ -74,17 +74,12 @@ import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.config.AnalysisScopeReader;
 
-import edu.ucsd.energy.analysis.AppCallGraph;
-import edu.ucsd.energy.analysis.AppClassHierarchy;
-import edu.ucsd.energy.analysis.ComponentManager;
-import edu.ucsd.energy.analysis.IntentManager;
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.entry.ApkException;
 import edu.ucsd.energy.entry.RetargetException;
-import edu.ucsd.energy.results.ApkBugReport;
-import edu.ucsd.energy.results.FailReport;
+import edu.ucsd.energy.managers.GlobalManager;
+import edu.ucsd.energy.results.CompoundReport;
 import edu.ucsd.energy.results.IReport;
-import edu.ucsd.energy.results.ProcessResults.ResultType;
 import edu.ucsd.energy.util.SystemUtil;
 
 public class Wala {
@@ -206,40 +201,31 @@ public class Wala {
 		IClass activityClass = cha.lookupClass(TypeReference.findOrCreate(ClassLoaderReference.Application, "Landroid/app/Activity"));
 		IClass serviceClass = cha.lookupClass(TypeReference.findOrCreate(ClassLoaderReference.Application, "Landroid/app/Service"));
 		IClass broadcastReceiverClass = cha.lookupClass(TypeReference.findOrCreate(ClassLoaderReference.Application, "Landroid/content/BroadcastReceiver"));
-
 		Set<Entrypoint> entryPoints = new HashSet<Entrypoint>();
-
 		for (IClass cls: cha) {
-//			if (!cls.getClassLoader().getReference().equals(ClassLoaderReference.Application)) continue;
-			
 			if (cls.getClassHierarchy().isSubclassOf(cls, activityClass)) {
-				
-				
-				for (String methodName: Interesting.activityEntryMethods) {
-					IMethod method = cls.getMethod(Selector.make(methodName));
+				for (Selector methodName: Interesting.activityCallbackMethods) {
+					IMethod method = cls.getMethod(methodName);
 					if (method == null) continue;
 					entryPoints.add(new DefaultEntrypoint(method, cha));
 				}
 			}
-			
 			if (cls.getClassHierarchy().isSubclassOf(cls, serviceClass)) {
-				for (String methodName: Interesting.serviceEntryMethods) {
-					IMethod method = cls.getMethod(Selector.make(methodName));
+				for (Selector methodName: Interesting.serviceCallbackMethods) {
+					IMethod method = cls.getMethod(methodName);
 					if (method == null) continue;
 					entryPoints.add(new DefaultEntrypoint(method, cha));
 				}
 			}
-			
 			if (cls.getClassHierarchy().isSubclassOf(cls, broadcastReceiverClass)) {
-				for (String methodName: Interesting.broadcastReceiverEntryMethods) {
-					IMethod method = cls.getMethod(Selector.make(methodName));
+				for (Selector methodName: Interesting.broadcastReceiverEntryMethods) {
+					IMethod method = cls.getMethod(methodName);
 					
 					if (method == null) continue;
 					entryPoints.add(new DefaultEntrypoint(method, cha));
 				}
 			}
 		}
-		
 		List<Entrypoint> points = new ArrayList<Entrypoint>();
 		points.addAll(entryPoints);
 		return points;
@@ -575,8 +561,8 @@ public class Wala {
 			CacheOMite cache = new CacheOMite();
 			UsageType result = UsageType.FAILURE;
 			
-			final int ver = Interesting.activityEntryMethods.hashCode() +
-							Interesting.serviceEntryMethods.hashCode() +
+			final int ver = Interesting.activityCallbackMethods.hashCode() +
+							Interesting.serviceCallbackMethods.hashCode() +
 							Interesting.broadcastReceiverEntryMethods.hashCode() + 3;
 			
 			InterestingReachabilityStringResult interestingStr = cache.get("interesting", ver);
@@ -614,34 +600,25 @@ public class Wala {
 		if(!Opts.RUN_IN_PARALLEL) {
 			edu.ucsd.energy.util.Util.printLabel(mPath.getAbsolutePath());	
 		}
+		GlobalManager gm = new GlobalManager(appJar, exclusionFile);
+		gm.createClassHierarchy();
+		gm.createAppCallGraph();
+		gm.createComponentManager();
 		
-		AppClassHierarchy ch = new AppClassHierarchy(appJar, exclusionFile);
-		AppCallGraph cg = new AppCallGraph(ch);
+		gm.createWakeLockManager();
+		gm.createIntentManager();
+		gm.createRunnableManager();
 		
-		ComponentManager cm = new ComponentManager(cg);
-		
-		//System.out.println("\nGETTING WAKELOCK MANAGER\n");
-		//WakeLockManager wakeLockManager = cg.getWakeLockManager();
-		System.out.println("\nGETTING INTENT MANAGER\n");
-		IntentManager im = new IntentManager(cm); 
-				
-				cm.getIntentManager();
-		
-		
-		cm.prepareReachability();
-		cm.resolveComponents();
-		
-		
-		
-		//componentManager.solveComponents();
-		
-		return null; //wakeLockManager.getWakeLockReport();
+		CompoundReport report = new CompoundReport();
+		report.register(gm.getIntentReport());
+		report.register(gm.getRunnableReport());
+		report.register(gm.getWakeLockReport());
+		return report;
 	}
 
 	
 	public IReport analyzeFull() throws IOException, WalaException, CancelException, ApkException {
 		String appJar = mPath.getAbsolutePath();
-		IReport result; 
 		//TODO: Put this somewhere else
 		String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/" +
 				"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";						
@@ -649,19 +626,26 @@ public class Wala {
 		if(!Opts.RUN_IN_PARALLEL) {
 			edu.ucsd.energy.util.Util.printLabel(mPath.getAbsolutePath());	
 		}
-		AppClassHierarchy ch = new AppClassHierarchy(appJar, exclusionFile);		
-		AppCallGraph cg = new AppCallGraph(ch);		
-		if (Opts.PROCESS_ANDROID_COMPONENTS) {
-			ComponentManager cm = new ComponentManager(cg);
-			cm.prepareReachability();
-			cm.resolveComponents();
-			cm.solveComponents();
-			
-			ApkBugReport bugReport = cm.getAnalysisResults();
-			bugReport.setWakeLockManager(cm.getWakeLockManager());
-			return bugReport;
-		}
-		result = new FailReport(ResultType.DID_NOT_PROCESS);
-		return result;
+		GlobalManager gm = new GlobalManager(appJar, exclusionFile);
+		gm.createClassHierarchy();
+		gm.createAppCallGraph();
+		gm.createComponentManager();
+		
+		gm.createWakeLockManager();
+		gm.createSpecialConditions();
+		
+		//Component Manager stuff
+		
+		gm.createIntentManager();
+		gm.createRunnableManager();
+
+		gm.solveComponents();
+		
+		CompoundReport report = new CompoundReport();
+		report.register(gm.getIntentReport());
+		report.register(gm.getRunnableReport());
+		report.register(gm.getWakeLockReport());
+		report.register(gm.getAnalysisReport());
+		return report;
 	}
 }
