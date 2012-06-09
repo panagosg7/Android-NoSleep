@@ -22,4 +22,10 @@ public class FailReport implements IReport {
 		return "Fail";
 	}
 
+	public String toShortDescription() {
+		return "";
+	}
+
+	
+	
 }

@@ -1,38 +1,44 @@
 TODO:
 
-Use AbstractManager for ThreadCreation as well.
+A class extends an abstract class and some of the callbacks are not visible in 
+the concrete class, but they should be - the missing callbacks could be doing
+something nasty.
 
-Insert calling-context information in wakelock creation
+Add edges from finsish() to the end of the lifecycle.
 
-ThreadInvestigation: A thread should be called here.
+Create Manager for SpecialConditions. 
 
 Put result directories in ApkPaths.java
 
 Look at intent creation while a WakeLock is held.
 
-Treat cases where getLock is used (aLogCat, Foursquare, NetCounter)
-
 Sanitize CFG (check out exceptional edges, etc.)
 
 Circular dependencies (check again ?)
 
-Check what king of operations are called with the WakeLock held (Intents, Services, Handlers, etc.)
+Check what king of operations are called with the WakeLock held (Intents, 
+Services, Handlers, etc.)
    
-There are cases where a class belongs to multiple components (eg. Service implements Runnable)
+There are cases where a class belongs to multiple components (eg. Service 
+implements Runnable)
    
 Check cases that are not flagged at all.    
 
-Account for all kinds of WakeLocks (Screen, Full, Partial) - and create a more fine grained domain, following the scheme in Pathak pg.4.
+Account for all kinds of WakeLocks (Screen, Full, Partial) - and create a more
+fine grained domain, following the scheme in Pathak pg.4.
 
-Unresolved Callbacks can have wakelock info too: propagate thread info for them as well?
+Unresolved Callbacks can have wakelock info too: propagate thread info for 
+them as well?
 
-Get rid of JNI methods from CG construction - or just ignore them (as with native and abstract).
+Get rid of JNI methods from CG construction - or just ignore them (as with 
+native and abstract).
 
 Like WakeLocks, we can have "exotic" components, e.g. camera on/off.
 
 --------------------------------------------------------------------------------------------------
 
 Just did:
-1. every wakelock object is treated as different (identified by its Binder object) - So do continue to treat them separately based on 
+1. every wakelock object is treated as different (identified by its Binder
+ object) - So do continue to treat them separately based on 
 abstract representation. 
   

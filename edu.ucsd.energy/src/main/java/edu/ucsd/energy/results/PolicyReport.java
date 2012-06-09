@@ -9,13 +9,13 @@ import net.sf.json.JSONObject;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.policy.IPolicy;
 
-public class ApkBugReport implements IReport {
+public class PolicyReport implements IReport {
 	
 	private HashMap<Context, IPolicy> map; 
 	
 	private HashSet<BugResult> set;
 
-	public ApkBugReport() {
+	public PolicyReport() {
 		map = new HashMap<Context, IPolicy>();
 		set = new HashSet<BugResult>();		
 	}
@@ -24,7 +24,7 @@ public class ApkBugReport implements IReport {
 		set.add(r);
 	}
 	
-	public void insertFact(Context c, IPolicy policy) {
+	public void insertPolicy(Context c, IPolicy policy) {
 		map.put(c,policy);
 	}
 	
@@ -59,6 +59,10 @@ public class ApkBugReport implements IReport {
 
 	public String getTag() {
 		return "BugReport";
+	}
+
+	public String toShortDescription() {
+		return "";
 	}
 
 }

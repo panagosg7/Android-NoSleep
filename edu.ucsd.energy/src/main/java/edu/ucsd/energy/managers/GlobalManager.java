@@ -8,7 +8,7 @@ import com.ibm.wala.util.WalaException;
 import edu.ucsd.energy.analysis.AppCallGraph;
 import edu.ucsd.energy.analysis.AppClassHierarchy;
 import edu.ucsd.energy.analysis.SpecialConditions;
-import edu.ucsd.energy.results.ApkBugReport;
+import edu.ucsd.energy.results.PolicyReport;
 import edu.ucsd.energy.results.IReport;
 
 public class GlobalManager {
@@ -84,7 +84,7 @@ public class GlobalManager {
 		return intentManager.getReport();
 	}
 
-	public ApkBugReport getAnalysisReport() {
+	public IReport[] getAnalysisReport() {
 		return cm.getAnalysisResults();
 	}
 

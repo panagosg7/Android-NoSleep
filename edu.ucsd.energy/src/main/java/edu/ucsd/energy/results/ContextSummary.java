@@ -1,6 +1,7 @@
 package edu.ucsd.energy.results;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import net.sf.json.JSONException;
@@ -13,54 +14,74 @@ import com.ibm.wala.util.strings.Atom;
 import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.interproc.CompoundLockState;
+import edu.ucsd.energy.interproc.SingleLockState;
+import edu.ucsd.energy.interproc.SingleLockState.LockStateDescription;
+import edu.ucsd.energy.managers.WakeLockInstance;
+import edu.ucsd.energy.policy.Policy;
+import edu.ucsd.energy.results.ProcessResults.ComponentState;
+import edu.ucsd.energy.results.ProcessResults.LockUsage;
+import edu.ucsd.energy.results.ProcessResults.SingleLockUsage;
 
 public class ContextSummary  {
 
 	private Context context;
 
-	private HashMap<CallBack, CompoundLockState> callBackExitStates;
+	private ComponentState callBackExitStates;
 
 	private HashMap<CGNode, CompoundLockState> allExitStates;
 
 	public ContextSummary(Context c) {
-		this.context = c;
+		this.setContext(c);
 		allExitStates = new HashMap<CGNode, CompoundLockState>();
-		callBackExitStates = new HashMap<CallBack, CompoundLockState>();			
+		callBackExitStates = new ComponentState();			
 	}	
 
 	public HashMap<CGNode, CompoundLockState> getAllExitStates() {
 		return allExitStates;
 	}
+	
+	public ComponentState getCallBackUsage() {
+		return callBackExitStates;
+	}
 
 	public void registerNodeState(CGNode n, CompoundLockState st) {
 		allExitStates.put(n,st);
-		if (context.isCallBack(n)){
+		if (getContext().isCallBack(n)){
 			registerCallBackState(CallBack.findOrCreateCallBack(n), st);
 		}
 	}
 
 	private void registerCallBackState(CallBack cb, CompoundLockState st) {
-		callBackExitStates.put(cb,st);
+		LockUsage map = new LockUsage();
+		for(Entry<WakeLockInstance, SingleLockState> e : st.getLockStateMap().entrySet()) {
+			WakeLockInstance wli = e.getKey();
+			SingleLockState sls = e.getValue();
+			map.put(wli, sls);
+		}
+		//Putting only non-empty exit states
+		if (!map.isEmpty()) {
+			callBackExitStates.put(cb,map);
+		}
 	}
 
 	public CompoundLockState getState(CGNode node) {
 		return allExitStates.get(node);
 	}
 
-	//Nothing important is done here (callbacks have clean exit states)
+	//TODO: may have to fix this
 	public boolean isEmpty() {
-		for (CompoundLockState cbState : callBackExitStates.values()) {				
+		for (LockUsage cbState : callBackExitStates.values()) {				
 			if ((cbState != null) && (!cbState.isEmpty())) {
-				return true;
+				return false;
 			}
 		}
-		return false;
+		return true;
 	}
 	
 	
 	public String toString () {
 		StringBuffer sb = new StringBuffer();
-		sb.append("Methods:\n");
+		/*sb.append("Methods:\n");
 		for (Entry<CGNode, CompoundLockState> e : allExitStates.entrySet()) {
 			CompoundLockState stateForMethod = e.getValue();
 			if ((stateForMethod != null) && (!stateForMethod.isEmpty())) {
@@ -68,12 +89,15 @@ public class ContextSummary  {
 						+ ":\n" + stateForMethod.toShortString());
 			}
 		}
+		*/
 		sb.append("Callbacks:\n");
-		for (Entry<CallBack, CompoundLockState> cb : callBackExitStates.entrySet()) {				
-			String name = cb.getKey().getName();
-			CompoundLockState stateForMethod = cb.getValue();
+		for (Entry<CallBack, LockUsage> cb : callBackExitStates.entrySet()) {				
+			sb.append("   " + cb.getKey().getName() + "\n"); 
+			LockUsage stateForMethod = cb.getValue();
 			if ((stateForMethod != null) && (!stateForMethod.isEmpty())) {
-				sb.append("   " + name + ":\n" + stateForMethod.toShortString());
+				for(Entry<WakeLockInstance, SingleLockState> e : stateForMethod.entrySet()) {
+					sb.append("\t" + e.getKey().toShortString() + " : " + e.getValue().toString() + "\n");
+				}
 			}				
 		}
 		return sb.toString();
@@ -98,5 +122,13 @@ public class ContextSummary  {
 			e.printStackTrace();
 		}
 		return null;			
+	}
+
+	public Context getContext() {
+		return context;
+	}
+
+	public void setContext(Context context) {
+		this.context = context;
 	} 
 }

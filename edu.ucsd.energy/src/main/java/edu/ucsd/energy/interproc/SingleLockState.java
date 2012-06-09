@@ -1,8 +1,6 @@
 package edu.ucsd.energy.interproc;
 
 import java.util.Set;
-
-import com.ibm.wala.util.collections.Quartet;
 /**
  * State of a program point - very simple at the moment
  * @author pvekris
@@ -12,23 +10,26 @@ public class SingleLockState  {
 
 	SingleLockState UNDEFINED;
 
+	/** state */	
+	private boolean acquired;
+	private boolean timed;
+	private boolean async;
 
-	/** state */
-	private boolean maybeAcquired ;
-	private boolean mustbeAcquired;
-	private boolean maybeReleased ;
-	private boolean mustbeReleased ;
-
-	private LockStateColor lockStateColor;
+	private LockStateDescription lockStateColor;
 
 
-	public enum LockStateColor {
-		MUSTBERELEASED("blue"),
-		MAYBERELEASED("green"),
-		MUSTBEACQUIRED("red"),
-		MAYBEACQUIRED("yellow"),
-		NOLOCKS("grey"),
-		UNDEFINED("black") ;		
+	public enum LockStateDescription {
+		ACQUIRED("red"),
+		TIMED_ACQUIRED("yellow"),
+		ASYNC_TIMED_ACQUIRED("khaki1"),
+		ASYNC_ACQUIRED("pink1"),
+		
+		RELEASED("green"),
+		//(ASYNC_)TIMED_RELEASED does not make sense
+		ASYNC_RELEASED("greenyellow"),
+		
+		NO_LOCKS("grey"),
+		UNDEFINED("black");		
 
 		public String color;
 
@@ -36,112 +37,87 @@ public class SingleLockState  {
 			return color;
 		}
 
-		private LockStateColor(String c) { color = c; }
+		private LockStateDescription(String c) { color = c; }
 	}
 
-	public SingleLockState(boolean a, boolean b, boolean c, boolean d) {		
-		maybeAcquired = a;
-		mustbeAcquired = b;
-		maybeReleased = c;
-		mustbeReleased = d;
-		if (mustbeReleased) {	      
-			lockStateColor = LockStateColor.MUSTBERELEASED;
-		} else if (maybeReleased) {	      
-			lockStateColor = LockStateColor.MAYBERELEASED;
-		} else if (mustbeAcquired) {	      
-			lockStateColor = LockStateColor.MUSTBEACQUIRED;
-		} else if (maybeAcquired) {	      
-			lockStateColor = LockStateColor.MAYBEACQUIRED;
-		} else {	      
-			lockStateColor = LockStateColor.NOLOCKS;
-		}	    
-	}
-
-	public SingleLockState(Quartet<Boolean, Boolean, Boolean, Boolean> q) {
-		this(q.fst.booleanValue(),q.snd.booleanValue(),
-				q.thr.booleanValue(),q.frt.booleanValue());
-	}
-
-	public SingleLockState() {
-
+	public SingleLockState(boolean a, boolean t, boolean as) {
+		acquired = a;
+		timed = t;
+		async = as;   
 	}
 
 	@Override
 	public int hashCode() {
-		return 1 * (maybeAcquired?1:0) +  2 * (mustbeAcquired?1:0) + 
-				4 * (maybeReleased?1:0) + 8 * (mustbeReleased?1:0);
+		return 1 * (timed?1:0) +  2 * (acquired?1:0) + 4 * (async?1:0);
 	}
-
 
 	@Override
 	public boolean equals(Object o) {
 		if (o instanceof SingleLockState) {
 			SingleLockState l = (SingleLockState) o;			
-			return (
-					(maybeAcquired == l.isMaybeAcquired()) &&
-					(mustbeAcquired == l.isMustbeAcquired()) &&
-					(maybeReleased == l.isMaybeReleased()) &&
-					(mustbeReleased == l.isMustbeReleased())
-					);			
+			return (hashCode() == l.hashCode());	//this should work			
 		}
 		return false;		
 	}
 
 	public String toString () {
-		if (isReached()) {
-			StringBuffer sb = new StringBuffer();
-			sb.append("WA:"); sb.append(maybeAcquired?"T":"F"); 
-			sb.append(" SA:"); sb.append(mustbeAcquired?"T":"F");
-			sb.append(" WR:"); sb.append(maybeReleased?"T":"F"); 
-			sb.append(" SR:"); sb.append(mustbeReleased?"T":"F");
-			return sb.toString();
-		}
-		else {
-			return "empty";
-		}
-	}
-
-
-	public boolean isReached () {
-		return (maybeAcquired || maybeReleased);
+		StringBuffer sb = new StringBuffer();
+		sb.append(async?"ASYNC_":""); 
+		sb.append(timed?"TIMED_":"");
+		sb.append(acquired?"ACQUIRED":"RELEASED");
+		return sb.toString();
 	}
 
 	public SingleLockState merge(SingleLockState l) {		
 		if (l == null) {
 			return this;
 		}		
-		return new SingleLockState(	maybeAcquired || l.isMaybeAcquired(), //may
-				mustbeAcquired	&& l.isMustbeAcquired(), // must	  
-				maybeReleased 	|| l.isMaybeReleased(), // may
-				mustbeReleased	&& l.isMustbeReleased()); // must	  
+		//Obviously we need a may analysis here
+		return new SingleLockState(	
+			acquired || l.acquired(), timed && l.timed(), async || l.async());
 	}
 
 
-	public boolean isMaybeAcquired() {
-		return maybeAcquired;
+	public boolean acquired() {
+		return acquired;
 	}
 
-	public boolean isMustbeAcquired() {
-		return mustbeAcquired;
+	public boolean timed() {
+		return timed;
 	}
 
-	public boolean isMaybeReleased() {
-		return maybeReleased;
+	public boolean async() {
+		return async;
 	}
 
-	public boolean isMustbeReleased() {
-		return mustbeReleased;
-	}
 
-	public LockStateColor getLockStateColor() {
-		return lockStateColor;
+	public LockStateDescription getLockStateDescription() {
+		if (async && timed && acquired) {
+			return LockStateDescription.ASYNC_TIMED_ACQUIRED;
+		}
+		if (async && (!timed) && (!acquired)) {
+			return LockStateDescription.ASYNC_RELEASED;
+		}
+		if ((!async) && timed && acquired) {
+			return LockStateDescription.TIMED_ACQUIRED;
+		}
+		if ((!async) && (!timed) && acquired) {
+			return LockStateDescription.ACQUIRED;
+		}
+		if ((!async) && (!timed) && (!acquired)) {
+			return LockStateDescription.RELEASED;
+		}
+		if (async && (!timed) && (!acquired)) {
+			return LockStateDescription.ASYNC_RELEASED;
+		}
+		return LockStateDescription.UNDEFINED;	//the rest of the cases are bogus
 	}
 
 	public String getColor() {
 		return lockStateColor.toString();
 	}
 
-	public static SingleLockState mergeSingleLockStates(Set<SingleLockState> set) {
+	public static SingleLockState merge(Set<SingleLockState> set) {
 		SingleLockState result = null;
 		for(SingleLockState s : set)  {
 			if (result == null) {
@@ -152,6 +128,11 @@ public class SingleLockState  {
 			}
 		}
 		return result;
+	}
+	
+	public static SingleLockState merge(SingleLockState a, SingleLockState b) {
+		if (a == null) return b;
+		return a.merge(b);
 	}
 
 

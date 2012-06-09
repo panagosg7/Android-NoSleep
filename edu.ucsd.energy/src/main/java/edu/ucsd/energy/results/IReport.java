@@ -7,5 +7,7 @@ public interface IReport {
 	public String getTag();
 	
 	public JSONObject toJSON();
+
+	public String toShortDescription();
 	
 }

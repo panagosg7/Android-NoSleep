@@ -3,6 +3,7 @@ package edu.ucsd.energy.contexts;
 import com.ibm.wala.ipa.callgraph.CGNode;
 
 import edu.ucsd.energy.managers.GlobalManager;
+import edu.ucsd.energy.policy.IPolicy;
 
 
 /**
@@ -16,7 +17,7 @@ import edu.ucsd.energy.managers.GlobalManager;
  * @author pvekris
  *
  */
-public class Application extends Context {
+public class Application extends Component {
 
 	public Application(GlobalManager gm, CGNode root) {
 	    super(gm, root);
@@ -28,5 +29,11 @@ public class Application extends Context {
 		    b.append(getKlass().getName().toString());
 		    return b.toString();
 		  }
+
+	@Override
+	public IPolicy makePolicy() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 
 }

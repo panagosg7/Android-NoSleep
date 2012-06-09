@@ -18,11 +18,17 @@ public class Interesting {
 	public static Map<Selector, Integer> mIntentMethods = new HashMap<Selector, Integer>();
 	public static Map<MethodReference, Integer> mWakelockMethods = new HashMap<MethodReference, Integer>();
 	
+	public static MethodReference wakelockAcquire;
+	public static MethodReference wakelockRelease;
+	public static MethodReference wakelockTimedAcquire;
+	
+	
 	public static Set<Selector> activityCallbackMethods = new HashSet<Selector>();
 	public static Set<Selector> activityEntryMethods = new HashSet<Selector>();
 	
 	public static Set<Selector> serviceCallbackMethods = new HashSet<Selector>();
 	public static Set<Selector> serviceEntryMethods = new HashSet<Selector>();
+	public static Set<Selector> ignoreSelectors = new HashSet<Selector>();
 	
 	public static Set<Selector> runnableEntryMethods = new HashSet<Selector>();
 	
@@ -31,6 +37,7 @@ public class Interesting {
 	public static Set<Selector> broadcastReceiverEntryMethods = new HashSet<Selector>();
 	
 	public static Map<Selector, Integer> mRunnableMethods = new HashMap<Selector, Integer>();
+	
 	
 
 	public final static TypeName WakeLockType = TypeName.string2TypeName("Landroid/os/PowerManager$WakeLock");
@@ -55,6 +62,10 @@ public class Interesting {
 
 	public final static Selector ThreadCall = Selector.make("call()V");
 	
+	public static final Selector ServiceOnCreate = Selector.make("onCreate()V");
+	public static final Selector ServiceOnStart = Selector.make("onStartCommand(Landroid/content/Intent;II)V");
+	public static final Selector ServiceOnDestroy = Selector.make("onDestroy()V");
+	
 	
 	
 	static {
@@ -73,9 +84,13 @@ public class Interesting {
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.media.MediaPlayer.release()V"));
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.media.MediaPlayer.start()V"));
 		
-		mWakelockMethods.put(StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.acquire()V"), new Integer(0));
-		mWakelockMethods.put(StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.release()V"), new Integer(0));
-		mWakelockMethods.put(StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.acquire(J)V"), new Integer(0));
+		wakelockAcquire = StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.acquire()V");
+		wakelockTimedAcquire = StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.acquire(J)V");
+		wakelockRelease = StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.release()V");
+		
+		mWakelockMethods.put(wakelockAcquire, new Integer(0));
+		mWakelockMethods.put(wakelockRelease, new Integer(0));
+		mWakelockMethods.put(wakelockTimedAcquire, new Integer(0));
 		
 		/*
 		 * Needed a selector for the Intents because the class appearing in the signature of
@@ -86,7 +101,9 @@ public class Interesting {
 		mIntentMethods.put(Selector.make("startService(Landroid/content/Intent;)Landroid/content/ComponentName;"), new Integer(1));
 		mIntentMethods.put(Selector.make("startActivityForResult(Landroid/content/Intent;I)V"), new Integer(1));
 		mIntentMethods.put(Selector.make("sendBroadcast(Landroid/content/Intent;)V"), new Integer(1));
-		//TODO: may have to extend this list with more calls:
+		mIntentMethods.put(Selector.make("getBroadcast(Landroid/content/Context;ILandroid/content/Intent;I)Landroid/app/PendingIntent;"), new Integer(1));
+		mIntentMethods.put(Selector.make("getActivity(Landroid/content/Context;ILandroid/content/Intent;I)Landroid/app/PendingIntent;"), new Integer(1));
+		
 		//bindService
 
 		mRunnableMethods.put(Selector.make("start(Ljava/lang/Runnable;)V"), new Integer(1));
@@ -110,6 +127,9 @@ public class Interesting {
 		activityCallbackMethods.add(ActivityOnStop);
 		
 		activityEntryMethods.add(ActivityOnCreate);
+		activityEntryMethods.add(ActivityOnStart);
+		activityEntryMethods.add(ActivityOnResume);
+		activityEntryMethods.add(ActivityOnRestart);
 		
 	//Services
 		serviceCallbackMethods.add(Selector.make("<init>()V"));
@@ -129,10 +149,16 @@ public class Interesting {
 		serviceCallbackMethods.add(Selector.make("stopSelf(I)V"));
 		serviceCallbackMethods.add(Selector.make("stopSelfResult(I)B"));
 		
+		
+		ignoreSelectors.add(Selector.make("putExtra(Ljava/lang/String;I)Landroid/content/Intent;"));
+		ignoreSelectors.add(Selector.make("setFlags(I)Landroid/content/Intent;"));
+		ignoreSelectors.add(Selector.make("putExtra(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;"));
+		ignoreSelectors.add(Selector.make("setData(Landroid/net/Uri;)Landroid/content/Intent;"));
+		
 		serviceEntryMethods.add(Selector.make("onCreate()V"));
 		serviceEntryMethods.add(Selector.make("onStart(Landroid/content/Intent;I)V"));
 		serviceEntryMethods.add(Selector.make("onStartCommand(Landroid/content/Intent;II)V"));
-		
+		serviceEntryMethods.add(Selector.make("bindService(Landroid/content/Intent;Landroid/content/ServiceConnection;I)Z"));
 		runnableEntryMethods.add(ThreadRun);
 		
 	//BroadcastReceivers

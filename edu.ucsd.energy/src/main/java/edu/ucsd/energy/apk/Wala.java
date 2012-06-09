@@ -645,7 +645,45 @@ public class Wala {
 		report.register(gm.getIntentReport());
 		report.register(gm.getRunnableReport());
 		report.register(gm.getWakeLockReport());
-		report.register(gm.getAnalysisReport());
+		IReport[] analysisReport = gm.getAnalysisReport();	//meh
+		for(int i = 0; i < analysisReport.length; i++) {
+			report.register(analysisReport[i]);	
+		}
 		return report;
 	}
+	
+	public IReport analyzeUsage() throws IOException, WalaException, CancelException, ApkException {
+		String appJar = mPath.getAbsolutePath();
+		//TODO: Put this somewhere else
+		String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/" +
+				"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";						
+		SystemUtil.setResultDirectory(mPath.getAbsolutePath());
+		if(!Opts.RUN_IN_PARALLEL) {
+			edu.ucsd.energy.util.Util.printLabel(mPath.getAbsolutePath());	
+		}
+		GlobalManager gm = new GlobalManager(appJar, exclusionFile);
+		gm.createClassHierarchy();
+		gm.createAppCallGraph();
+		gm.createComponentManager();
+		
+		gm.createWakeLockManager();
+		gm.createSpecialConditions();
+		
+		//Component Manager stuff
+
+		gm.solveComponents();
+		
+		CompoundReport report = new CompoundReport();
+		//report.register(gm.getWakeLockReport());
+		
+		/*
+		//Disabling cause I am not solving anything
+		IReport[] analysisReport = gm.getAnalysisReport();	//meh
+		for(int i = 0; i < analysisReport.length; i++) {
+			report.register(analysisReport[i]);	
+		}
+		*/
+		return report;
+	}
+	
 }

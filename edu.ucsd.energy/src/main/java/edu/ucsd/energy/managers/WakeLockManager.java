@@ -24,6 +24,15 @@ import edu.ucsd.energy.results.ManagerReport;
 import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.SSAProgramPoint;
 
+
+/**
+ * Interesting methods for this class are the wakelock operations
+ * So after this module has run, mInstruction2Instance should have 
+ * the acquire/release operations to instance mappings.  
+ * @author pvekris
+ *
+ */
+
 public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 	
 	private static int DEBUG = 2;

@@ -32,4 +32,12 @@ public class CompoundReport implements IReport {
 		return "Compound";
 	}
 
+	public String toShortDescription() {
+		StringBuffer sb = new StringBuffer();
+		for(IReport r : list) {
+			sb.append(r.toShortDescription());
+		}
+		return sb.toString();
+	}
+
 }

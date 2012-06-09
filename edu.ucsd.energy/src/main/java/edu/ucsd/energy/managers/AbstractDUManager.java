@@ -29,6 +29,7 @@ import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.intset.MutableSparseIntSet;
 
 import edu.ucsd.energy.analysis.AppCallGraph;
+import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.GraphUtils;
 import edu.ucsd.energy.util.SSAProgramPoint;
@@ -194,21 +195,29 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 			//Gather interesting methods
 			for(int i = 0 ; i < inv.getNumberOfUses(); i++) {
 				V vi = traceInstanceNoCreate(inv.getUse(i));
+				//This is an interesting method for which we don't know anything yet
 				if ((vi != null) &&	(interestingMethod(inv.getDeclaredTarget()) == null)
-						&& (!(inv.toString().contains("<init>")))) {
+						&& (!(inv.toString().contains("<init>")))
+						&& (!Interesting.ignoreSelectors.contains(inv.getDeclaredTarget().getSelector()))) {
 					E.log(1, "MISSING: " + inv.getDeclaredTarget().getSignature() + " | " + i);
 				}
+				
 			}
 			
 			//Is this an interesting method?
 			Integer arg = interestingMethod(inv.getDeclaredTarget());
 			if (arg != null) {
-				int use = inv.getUse(arg);	//this should be the right argument
-				V vi = traceInstanceNoCreate(use);
-				if (vi != null) {
-					E.log(DEBUG, "GOT INTERESTING (" + method.getName().toString() + ") : " + inv.toString());
-					Pair<MethodReference, SSAInstruction> p = Pair.make(method.getReference(), instr);
-					mInstruction2Instance.put(p, vi);
+				try {
+					int use = inv.getUse(arg);	//this should be the right argument
+					V vi = traceInstanceNoCreate(use);
+					if (vi != null) {
+						E.log(DEBUG, "GOT INTERESTING (" + method.getName().toString() + ") : " + inv.toString());
+						Pair<MethodReference, SSAInstruction> p = Pair.make(method.getReference(), instr);
+						mInstruction2Instance.put(p, vi);
+					}
+				}
+				catch (ArrayIndexOutOfBoundsException e) {
+					//but if it's not, don't sweat it.
 				}
 			}
 		}
@@ -265,7 +274,11 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		if (du==null) {
 			du = new DefUse(ir);
 		}
-		SSAInstruction def = du.getDef(var);
+		SSAInstruction def = null;
+		try {
+			def = du.getDef(var);
+		}
+		catch (ArrayIndexOutOfBoundsException e) { }	//TODO: fix this	
 		if (def == null) return null;
 		if (def instanceof SSAGetInstruction) {
 			SSAGetInstruction get = (SSAGetInstruction) def;
@@ -359,14 +372,14 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 	}
 	
 	protected void associate(FieldReference fr, V vi) {
-		E.log(1, "Trying to associate: " + fr.getFieldType().getName().toString() + " with " + interestingTypes.toString()); 
+		E.log(DEBUG, "Trying to associate: " + fr.getFieldType().getName().toString() + " with " + interestingTypes.toString()); 
 		if (!isInterestingType(fr.getFieldType().getName())) return;	//associate only interesting stuff 
 		if (mFieldRefs == null) {
 			mFieldRefs = new HashMap<FieldReference, V>();
 		}
 		
 		vi.setField(fr);
-		E.log(1, "Indeed associating");
+		E.log(DEBUG, "Indeed associating");
 		//mCreationRefs.put(vi.getPP(), vi);	//it's in mCreationRefs already
 		mFieldRefs.put(fr, vi);
 	}
@@ -424,8 +437,9 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		return null;
 	}
 	
-	public V getInstance(SSAInstruction instr, MethodReference methodReference) {
-		Pair<MethodReference, SSAInstruction> pair = Pair.make(methodReference, instr);
+	public V getInstance(SSAInstruction instr, CGNode node) {
+		MethodReference reference = node.getMethod().getReference();		
+		Pair<MethodReference, SSAInstruction> pair = Pair.make(reference, instr);
 		return mInstruction2Instance.get(pair);		
 	}
 	

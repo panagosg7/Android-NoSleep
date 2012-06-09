@@ -27,7 +27,7 @@ import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.viz.NodeDecorator;
 
 import edu.ucsd.energy.analysis.Opts;
-import edu.ucsd.energy.interproc.SingleLockState.LockStateColor;
+import edu.ucsd.energy.interproc.SingleLockState.LockStateDescription;
 
 /**
  * utilities for interfacing with DOT
@@ -363,26 +363,24 @@ public class GraphDotUtil {
     return null;
   }
   
-  
-  
-  public static String concatStringsWSep(Set<LockStateColor> cols, String separator) {
+  public static String concatStringsWSep(Set<LockStateDescription> cols, String separator) {
 	    StringBuilder sb = new StringBuilder();	    	    
 	    if (cols.size() == 0) {	    
 	    	return "";
 	    }
 	    if (cols.size() == 1) {
-	    	return cols.iterator().next().toString();
+	    	return cols.
+	    			iterator().
+	    			next().
+	    			toString();
 	    }	    
-	    
-	    Iterator<LockStateColor> iterator = cols.iterator();
+	    Iterator<LockStateDescription> iterator = cols.iterator();
 	    sb.append(iterator.next());
 	    while(iterator.hasNext()) {
 	        sb.append(separator).append(iterator.next());	        
 	    }
 	    return sb.toString();                           
 	}
-  
-  
 
   /**
    * @param n
@@ -394,7 +392,7 @@ public class GraphDotUtil {
     StringBuffer result = new StringBuffer();
     
     if (d instanceof IColorNodeDecorator) {
-    	Set<LockStateColor> cols = ((IColorNodeDecorator) d).getFillColors(n);    	
+    	Set<LockStateDescription> cols = ((IColorNodeDecorator) d).getFillColors(n);    	
 		String concatCols = concatStringsWSep(cols, ":");      
 		if (concatCols.equals("")) {
 			concatCols = "grey";

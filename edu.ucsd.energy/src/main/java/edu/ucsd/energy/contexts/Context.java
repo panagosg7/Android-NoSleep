@@ -19,7 +19,7 @@ import com.ibm.wala.util.collections.Pair;
 import edu.ucsd.energy.analysis.SpecialConditions.SpecialCondition;
 import edu.ucsd.energy.component.AbstractComponent;
 import edu.ucsd.energy.component.CallBack;
-import edu.ucsd.energy.interproc.InterproceduralCFG;
+import edu.ucsd.energy.interproc.SingleContextCFG;
 import edu.ucsd.energy.interproc.LifecycleGraph;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.util.E;
@@ -117,14 +117,8 @@ public abstract class Context extends AbstractComponent {
 		return packedEdges;
 	}
 
-	/**
-	 * 	Create a sensible exploded inter-procedural CFG analysis on it.
-	 * 
-	 * @param component
-	 * @return
-	 */
-  	public InterproceduralCFG makeInterproceduralCFG() {
-	    return new InterproceduralCFG(this, getImplicitEdges());
+  	public SingleContextCFG makeCFG() {
+	    return new SingleContextCFG(this, getImplicitEdges());
   	}
 
   	public void setSpecialConditions(HashMap<BasicBlockInContext<IExplodedBasicBlock>, SpecialCondition> compCond) {

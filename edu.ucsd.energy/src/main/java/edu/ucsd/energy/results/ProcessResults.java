@@ -2,21 +2,14 @@ package edu.ucsd.energy.results;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
+
+import net.sf.json.JSONObject;
 
 import com.ibm.wala.ipa.callgraph.CGNode;
-import com.ibm.wala.ssa.IR;
-import com.ibm.wala.ssa.ISSABasicBlock;
-import com.ibm.wala.ssa.SSACFG;
-import com.ibm.wala.ssa.SSAInstruction;
-import com.ibm.wala.ssa.SSAInvokeInstruction;
-import com.ibm.wala.types.MethodReference;
-import com.ibm.wala.util.collections.Pair;
 
+import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.contexts.Component;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.interproc.CompoundLockState;
@@ -24,35 +17,82 @@ import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.managers.ComponentManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.policy.IPolicy;
-import edu.ucsd.energy.policy.Policy;
 import edu.ucsd.energy.util.E;
 
 public class ProcessResults {
 
-	public enum LockUsage {
-		LOCKING,
-		UNLOCKING,	
-		NOLOCKING,
-		LOCKUNLOCK, 
-		EMPTY,
-		UNKNOWN_STATE, 
-		FULL_UNLOCKING;
+	public static class LockUsage extends HashMap<WakeLockInstance, SingleLockState> {
+
+		private static final long serialVersionUID = -6164699487290522725L;
+
+		public LockUsage() {
+			super();
+		}
+		
+		public String toString() {
+			StringBuffer sb = new StringBuffer();
+			for(java.util.Map.Entry<WakeLockInstance, SingleLockState> e : entrySet()) {
+				sb.append(e.getKey().toShortString() + " - " +
+			e.getValue().toString() + "\n");
+			}
+			return sb.toString();
+		}
+
+		public JSONObject toJSON() {
+			JSONObject obj = new JSONObject();
+			for(java.util.Map.Entry<WakeLockInstance, SingleLockState> e : entrySet()) {
+				obj.put(e.getKey().toShortString(), e.getValue().toString());
+			}
+			return null;
+		}
+		
+	}
+	
+	public static class ComponentState extends HashMap<CallBack, LockUsage> {
+		private static final long serialVersionUID = -3391906027956899103L;
+	
+		public JSONObject toJSON() {
+			JSONObject obj = new JSONObject();
+			for (Entry<CallBack, LockUsage> e : entrySet()) {
+				obj.put(e.getKey().toString(), e.getValue().toJSON());
+			}
+			return obj;
+		}
+		
+		public String toString() {
+			StringBuffer sb = new StringBuffer();
+			for (Entry<CallBack, LockUsage> e : entrySet()) {
+				sb.append(e.getKey().getName() + " :: " + e.getValue().toString() + "\n");
+			}	
+			return sb.toString();
+		}
+	}
+	
+	
+	public enum SingleLockUsage {
+		ACQUIRED,
+		RELEASED,
+		TIMED_ACQUIRED,
+		ASYNC_ACQUIRED,
+		ASYNC_RELEASED,
+		EMPTY,	//No lock operation was performed
+		UNKNOWN; //Error state
 	}
 
 	public enum ResultType {
-		UNRESOLVED_INTERESTING_CALLBACKS,		
+		UNRESOLVED_INTERESTING_CALLBACKS,
+		//Activity
 		LOCKING_ON_CREATE,
+		LOCKING_ON_START,
+		LOCKING_ON_RESTART,
 		START_DESTROY,
-		SERVICE_DESTROY,
 		THREAD_RUN,
 		HANDLE_MESSAGE,
 		BROADCAST_RECEIVER_ON_RECEIVE, 
-		LOCKING_ON_START,
-		LOCKING_ON_RESTART, 
-		STRONG_PAUSE_RESUME, 
-		WEAK_PAUSE_RESUME, 
-		WEAK_SERVICE_DESTROY, 
-		STRONG_SERVICE_DESTROY, 
+		 
+		PAUSE_RESUME, 
+		SERVICE_START,
+		SERVICE_DESTROY, 
 		DID_NOT_PROCESS,
 
 		OPTIMIZATION_FAILURE,
@@ -81,80 +121,60 @@ public class ProcessResults {
 		}
 	}
 
-
 	/**
 	 * Main structures that hold the analysis results for every component
 	 */
 	private ComponentManager componentManager;
-	private ApkBugReport result;
-
+	
+	
 	public ProcessResults(ComponentManager componentManager) {
 		this.componentManager = componentManager;
 	}
 
 
-	public ApkBugReport processExitStates() {
-
+	public IReport[] processExitStates() {
 		System.out.println();
-
-		ApkBugReport report = new ApkBugReport();
+		PolicyReport policyRep = new PolicyReport();
+		LockUsageReport usageRep = new LockUsageReport();
 		//Account for unresolved Callbacks
 		if (componentManager.getNUnresInterestingCBs() > 0) {
-			report.insertFact(new BugResult(ResultType.UNRESOLVED_INTERESTING_CALLBACKS, ""));
+			policyRep.insertFact(new BugResult(ResultType.UNRESOLVED_INTERESTING_CALLBACKS, ""));
 		}
-
-		HashMap<LockUsage, Set<Pair<Context, CGNode>>> usageMap = 
-				new HashMap<LockUsage, Set<Pair<Context, CGNode>>>();
-
 		for (Context context : componentManager.getComponents()) {
 			//Focus just on activities, services, BcastRcv...
+			//if (!(context instanceof Component)) continue;
+			E.log(2, "Gathering results for: " + context.toString());
+			ContextSummary cSummary = summarize(context);
+			if (cSummary.isEmpty()) continue;
+			
+			//Avoid empty components
 			if (context instanceof Component) {
-				E.log(1, "Gathering results for: " + context.toString());
-				ContextSummary cSummary = summarize(context);
-				if (cSummary.isEmpty()) continue;
-				
 				Component c = (Component) context;
-				
-				E.log(1, cSummary.toString());
+				E.log(2, cSummary.toString());
 				IPolicy policy = c.makePolicy();
-
-				for(Entry<CGNode, CompoundLockState> e : cSummary.getAllExitStates().entrySet()) {
-					CGNode node = e.getKey();
-					//E.log(1, "\tExit of: " + node.getMethod().getSelector().toString());
-					HashMap<WakeLockInstance,LockUsage> lockUsages = new HashMap<WakeLockInstance, LockUsage>();
-					CompoundLockState compLS = e.getValue();
-					Map<WakeLockInstance, Set<SingleLockState>> allLockStates = compLS.getLockStateMap();
-					for (Entry<WakeLockInstance, Set<SingleLockState>>  fs : allLockStates.entrySet()) {
-						WakeLockInstance wli = fs.getKey();		//TODO: make this better
-						SingleLockState sls = SingleLockState.mergeSingleLockStates(fs.getValue());
-						LockUsage lockUsage = Policy.getLockUsage(sls);
-						lockUsages.put(wli, lockUsage);
-					}
-					HashSet<SingleLockState> tempState = new HashSet<SingleLockState>();	
-					for ( Entry<WakeLockInstance, Set<SingleLockState>>  fs : compLS.getLockStateMap().entrySet()) {
-						tempState.add(SingleLockState.mergeSingleLockStates(fs.getValue()));	//TODO: super ugly, fix
-					}
-					SingleLockState mergedLS = SingleLockState.mergeSingleLockStates(tempState);
-					//We have the aggregate lock usage for a single node
-					LockUsage lu = Policy.getLockUsage(mergedLS);
-					if (context.isCallBack(node)) {
-						if (usageMap.containsKey(lu)) {
-							usageMap.get(lu).add(Pair.make(context,node));
-						} else {
-							HashSet<Pair<Context, CGNode>> set = 
-									new HashSet<Pair<Context,CGNode>>();
-							set.add(Pair.make(context,node));
-							usageMap.put(lu, set);
-						}
-						//Add the fact to the policy module
-						policy.addFact(node, mergedLS);
-					}
+	
+				for(Entry<CallBack, LockUsage> e : cSummary.getCallBackUsage().entrySet()) {
+					CGNode node = e.getKey().getNode();
+					LockUsage lu = e.getValue();
+					
+					//TODO: fix this !!!					
+					//policy.addFact(node, lu);
 				}
-				policy.solveFacts();
-				report.insertFact(context, policy);
+				policy.solveFacts();		//Do this here!
+				policyRep.insertPolicy(context, policy);
 			}
-		}	//endfor Component
-		return report;
+			usageRep.insert(cSummary);
+		}
+		
+		//Return them all
+		IReport[] rep = new IReport[2];
+		rep[0] = policyRep;
+		rep[1] = usageRep;
+		
+		//Test Usage report
+		System.out.println(usageRep.toShortDescription());
+		
+		return rep;
 	}
 
 	private ContextSummary summarize(Context component) {
@@ -163,8 +183,9 @@ public class ProcessResults {
 			CGNode node = it.next();
 			if (node.getMethod().isNative()) continue;
 			CompoundLockState exitState = component.getReturnState(node);
-			E.log(1, node.getMethod().getReference().toString());
+			//E.log(1, "\t" + node.getMethod().getReference().toString());
 			if (exitState != null) {
+				//E.log(1, "\tNONEMPTY");
 				ctxSum.registerNodeState(node, exitState);
 			}
 			//collectCallsWhileAcquired(node);
@@ -173,6 +194,7 @@ public class ProcessResults {
 	}
 
 
+	/*
 	private Set<MethodReference> collectCallsWhileAcquired(Context ctx, CGNode node) {
 		IR ir = node.getIR();
 		Set<MethodReference> result = new HashSet<MethodReference>();
@@ -193,6 +215,6 @@ public class ProcessResults {
 		}
 		return result;
 	}
-
+	 */
 }
 

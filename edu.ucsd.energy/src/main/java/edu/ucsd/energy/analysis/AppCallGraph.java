@@ -248,11 +248,7 @@ public class AppCallGraph implements CallGraph {
 
 		while (iterator.hasNext()) {
 			CGNode node = iterator.next();
-			if (isAppNode(node) || isTargetMethod(node)
-			// Toggling this will make it difficult to
-			// resolve most thread classes
-			// || isThreadStart(node)
-			) {
+			if (isAppNode(node) /*|| isTargetMethod(node)*/) {
 				keepers.add(node);
 				E.log(2, "Keep: " + node.getMethod().toString());
 			} else {

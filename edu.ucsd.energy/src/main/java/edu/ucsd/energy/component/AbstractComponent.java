@@ -22,9 +22,9 @@ import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.OrdinalSet;
 
 import edu.ucsd.energy.analysis.AppCallGraph;
+import edu.ucsd.energy.interproc.AbstractContextCFG;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.CtxSensLocking;
-import edu.ucsd.energy.interproc.InterproceduralCFG;
 import edu.ucsd.energy.interproc.LockingTabulationSolver.LockingResult;
 import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.managers.GlobalManager;
@@ -67,11 +67,11 @@ public abstract class AbstractComponent extends NodeWithNumber implements ICompo
 	}
 
 
-	protected InterproceduralCFG icfg = null;
+	protected AbstractContextCFG icfg = null;
 
-	public InterproceduralCFG getICFG() {
+	public AbstractContextCFG getICFG() {
 		if (icfg == null) {
-			icfg = makeInterproceduralCFG();
+			icfg = makeCFG();
 		}
 		return icfg;
 	}

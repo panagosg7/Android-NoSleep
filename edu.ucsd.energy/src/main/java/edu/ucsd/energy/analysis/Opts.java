@@ -101,11 +101,6 @@ public class Opts {
   public static final boolean OUTPUT_COMPONENT_CALLGRAPH  = true;
   
   /**
-   * Output CFGs for each component method 
-   */
-  public static final boolean OUTPUT_CFG_DOT = true;
-  
-  /**
    * Output colored CFGs for each function of the interesting components
    */  
   public static final boolean OUTPUT_COLOR_CFG_DOT        = true;
@@ -113,8 +108,7 @@ public class Opts {
   /*
    * This will generally be too big to display 
    */
-  public static final boolean OUTPUT_SOLVED_EICFG         = false;
-  public static final boolean CHECK_LOCKING_POLICY        = true;
+  public static final boolean OUTPUT_COLORED_SUPERGRAPHS = true;
   
   
   /*******************************************
@@ -155,33 +149,17 @@ public class Opts {
    */
   public static final boolean PRUNE_EXCEPTION_EDGES_IN_GFG = false;
 
-
-
   public static final boolean OUTPUT_PLAIN_CFGS = false;
-
-
 
   public static final boolean OUTPUT_CLASS_HIERARCHY = true;
 
-
-
-public static final boolean ENFORCE_SPECIAL_CONDITIONS = true;
-
-
-
-public static final boolean DATAFLOW_IGNORE_EXCEPTIONAL = true;
-
-
-
-public static final boolean PRINT_HIGH_STATE = false;
-
-
-
-public static final boolean OUTPUT_ALL_NODE_INFO = false;
-
-
-
-public static boolean RUN_IN_PARALLEL = false;
+  public static final boolean ENFORCE_SPECIAL_CONDITIONS = true;
+	
+  public static final boolean DATAFLOW_IGNORE_EXCEPTIONAL = true;
+	
+  public static final boolean FAIL_AT_DEPENDENCY_CYCLES = false;
+	
+  public static boolean RUN_IN_PARALLEL = false;
 
 
 

@@ -6,11 +6,11 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 
 import edu.ucsd.energy.interproc.CompoundLockState;
-import edu.ucsd.energy.interproc.InterproceduralCFG;
+import edu.ucsd.energy.interproc.AbstractContextCFG;
 
 public interface IComponent {
 
-	public InterproceduralCFG makeInterproceduralCFG();
+	public AbstractContextCFG makeCFG();
 	
 	public CallGraph getCallGraph();
 	

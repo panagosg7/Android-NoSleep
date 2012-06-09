@@ -18,6 +18,10 @@ public class ManagerReport<V extends AbstractDUManager<?>> implements IReport {
 	
 	public JSONObject toJSON() throws JSONException {
 		return manager.toJSON();
+	}
+
+	public String toShortDescription() {
+		return "";
 	};
 	
 }

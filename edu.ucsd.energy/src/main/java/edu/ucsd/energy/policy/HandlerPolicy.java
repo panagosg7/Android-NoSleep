@@ -1,8 +1,11 @@
 package edu.ucsd.energy.policy;
 
+import java.util.Map;
+
 import edu.ucsd.energy.contexts.Handler;
-import edu.ucsd.energy.interproc.SingleLockState;
+import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.results.BugResult;
+import edu.ucsd.energy.results.ProcessResults.SingleLockUsage;
 import edu.ucsd.energy.results.ProcessResults.ResultType;
 
 public class HandlerPolicy extends Policy<Handler>{
@@ -12,11 +15,13 @@ public class HandlerPolicy extends Policy<Handler>{
 	}
 
 	public void solveFacts() {
-		SingleLockState handleState = map.get("handleMessage");
-		if (unlocking(handleState) && (!strongUnlocking(handleState))) {
-			trackResult(new BugResult(ResultType.WEAK_SERVICE_DESTROY, component.toString()));
+		Map<WakeLockInstance, SingleLockUsage> handleMessageState = map.get("handleMessage");
+		for(WakeLockInstance wli : instances) {
+			if (locking(handleMessageState, wli)) {
+				trackResult(new BugResult(ResultType.BROADCAST_RECEIVER_ON_RECEIVE, component.toString()));					
+			}				
 		}
-		
 	}
-
+	
+	
 }

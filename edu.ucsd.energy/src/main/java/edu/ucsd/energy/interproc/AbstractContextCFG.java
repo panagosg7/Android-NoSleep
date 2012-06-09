@@ -32,67 +32,40 @@ import edu.ucsd.energy.util.Util;
 /**
  * This is an exploded inter-procedural CFG with extra edges connecting 
  * methods specified at the creation. 
- * @author pvekris
- *
  */
-public class InterproceduralCFG extends ExplodedInterproceduralCFG {
+abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
   
   private static final int DEBUG = 1;
 
-  AbstractComponent component;
+  protected AbstractComponent component;
   
-  CallGraph callgraph;
+  protected CallGraph callgraph;
   
-  private Map<String,CGNode> callbacks;
+  protected Map<String,CGNode> callbacks;
   
   //Keep a map to all thread calls 
-  private HashMap<BasicBlockInContext<IExplodedBasicBlock>, Context> mThreadCalls = null;
+  protected HashMap<BasicBlockInContext<IExplodedBasicBlock>, Context> mThreadCalls = null;
   
   //Also, keep a map to any special conditions: null checks, isHeld()
-  private HashMap<BasicBlockInContext<IExplodedBasicBlock>, SpecialCondition> mSpecCond = null;
+  protected HashMap<BasicBlockInContext<IExplodedBasicBlock>, SpecialCondition> mSpecCond = null;
   
-
-  /**
-   * Constructor that the component and the pairs of methods (Signatures) that need to 
-   * be connected.
-   */
-  public InterproceduralCFG(AbstractComponent component, Set<Pair<CGNode, CGNode>> packedEdges) {
-	  super(component.getCallGraph());
-	  this.component = component;
-	  this.callgraph = component.getCallGraph();
-	  /* Will only work like this - loses laziness. */
-	  constructFullGraph();
-	  addReturnToEntryEdge(packedEdges);  
-	  cacheCallbacks(packedEdges);
-  }
-  
-  
-  public InterproceduralCFG(AbstractComponent component,
-		  Set<Pair<CGNode, CGNode>> packedEdges, Map<SSAInstruction, Context> interProc) {
-	  super(component.getCallGraph());
-	  this.component = component;
-	  this.callgraph = component.getCallGraph();
-	  /* Will only work like this - loses laziness. */
-	  constructFullGraph();
-	  addReturnToEntryEdge(packedEdges);
-	  cacheCallbacks(packedEdges);
-	  //Add edges from Intent calls etc
-	  //Using as packed edges the total of the edges for every component
-	  E.log(DEBUG, "Adding packed edges for " + component.toString());
-	  addCallToEntryEdges(interProc);
+  public AbstractContextCFG(CallGraph cg) {
+	super(cg);
   }
 
 
-  /**
+/**
    * This method adds edges that refer to Intent, Thread and Handler posts etc.
    * @param map
    */
-  private void addCallToEntryEdges(Map<SSAInstruction, Context> map) {
+  protected void addCallToEntryEdges(Map<SSAInstruction, Context> map) {
 	  Iterator<BasicBlockInContext<IExplodedBasicBlock>> iterator = iterator();
 	  while(iterator.hasNext()) {
 		  BasicBlockInContext<IExplodedBasicBlock> src = iterator.next();
 		  SSAInstruction instr = src.getDelegate().getInstruction();
+		  
 		  Context targetComp = map.get(instr);
+		  
 		  if (targetComp != null) {
 			  Set<Selector> entryPoints = targetComp.getEntryPoints();
 			  E.log(DEBUG, "\tTarget: " + targetComp.toString());
@@ -118,7 +91,7 @@ public class InterproceduralCFG extends ExplodedInterproceduralCFG {
    * @param packedEdges 
    * @param cg 
    */
- private void cacheCallbacks(Set<Pair<CGNode, CGNode>> packedEdges) {
+  protected  void cacheCallbacks(Set<Pair<CGNode, CGNode>> packedEdges) {
    callbacks = new HashMap<String, CGNode>();
    for (Pair<CGNode, CGNode> e : packedEdges) {
      getCallbacks().put(e.fst.getMethod().getName().toString(), e.fst);
@@ -126,7 +99,7 @@ public class InterproceduralCFG extends ExplodedInterproceduralCFG {
    }
  }
   
- private void addReturnToEntryEdge(Set<Pair<CGNode, CGNode>> packedEdges) {
+  protected  void addReturnToEntryEdge(Set<Pair<CGNode, CGNode>> packedEdges) {
    Set<CGNode> nodeset = Util.iteratorToSet(callgraph.iterator());
    HashMap<String, CGNode> cgNodeSet = new HashMap<String, CGNode>();
    

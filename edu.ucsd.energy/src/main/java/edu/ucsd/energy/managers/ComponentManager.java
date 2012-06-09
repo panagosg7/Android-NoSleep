@@ -30,7 +30,9 @@ import com.ibm.wala.util.graph.traverse.DFSPathFinder;
 import edu.ucsd.energy.analysis.AppCallGraph;
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.apk.ApkInstance;
+import edu.ucsd.energy.component.AbstractComponent;
 import edu.ucsd.energy.component.ComponentPrinter;
+import edu.ucsd.energy.component.SuperComponent;
 import edu.ucsd.energy.contexts.Activity;
 import edu.ucsd.energy.contexts.Application;
 import edu.ucsd.energy.contexts.AsyncTask;
@@ -54,7 +56,7 @@ import edu.ucsd.energy.contexts.ServiceConnection;
 import edu.ucsd.energy.contexts.View;
 import edu.ucsd.energy.contexts.WebViewClient;
 import edu.ucsd.energy.contexts.Widget;
-import edu.ucsd.energy.results.ApkBugReport;
+import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ProcessResults;
 import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.GraphUtils;
@@ -63,7 +65,9 @@ public class ComponentManager {
 
 	private final static Logger LOGGER = Logger.getLogger(ApkInstance.class.getName());
 
-	private static final int DEBUG = 1;
+	private static final int DEBUG = 2;
+
+	private static final int UNRES = 2;
 
 	private  HashMap<TypeName, Context> componentMap;
 
@@ -123,7 +127,7 @@ public class ComponentManager {
 	 * 2. Resolve components based on the root methods of the call graph (Callbacks)
 	 */
 	public void resolveComponents() {
-		E.log(DEBUG, "Number of nodes: " + originalCG.getNumberOfNodes());
+		E.log(1, "Number of nodes: " + originalCG.getNumberOfNodes());
 		// Counts
 		int resolvedComponentCount = 0;
 		int resolvedImplementorCount = 0;
@@ -267,17 +271,17 @@ public class ComponentManager {
 	private  void outputUnresolvedInfo(CGNode root, List<CGNode> path) {
 		IClass declaringClass = root.getMethod().getDeclaringClass();
 		Collection<IClass> allImplementedInterfaces = declaringClass.getAllImplementedInterfaces();
-		E.log(1, "#### UnResolved: " + root.getMethod().getSignature().toString());
+		E.log(UNRES, "#### UnResolved: " + root.getMethod().getSignature().toString());
 		for (IClass c :  originalCG.getAppClassHierarchy().getClassAncestors(declaringClass)) {
-			E.log(1, "#### CL: " + c.getName().toString());
+			E.log(UNRES, "#### CL: " + c.getName().toString());
 		}
 		for (IClass c : allImplementedInterfaces) {
-			E.log(1, "#### IF: " + c.getName().toString());
+			E.log(UNRES, "#### IF: " + c.getName().toString());
 		}
 		if(path != null) {
 			E.log(1, "==== Path to target:");
 			for (CGNode n : path) {
-				E.log(1, "---> " + n.getMethod().getSignature().toString());
+				E.log(UNRES, "---> " + n.getMethod().getSignature().toString());
 			}
 		}
 	}
@@ -456,34 +460,35 @@ public class ComponentManager {
 		SparseNumberedGraph<Context> constraintGraph = GraphUtils.merge(rCG,iCG);
 		GraphUtils.dumpConstraintGraph(constraintGraph, "constraints");
 
+		/*
 		//Components
 		Iterator<Context> bottomUpIterator = GraphUtils.topDownIterator(constraintGraph);
 		// Analyze the components based on this graph in bottom up order
 		while (bottomUpIterator.hasNext()) {
 			solveComponent(bottomUpIterator.next());
 		}
-
-		/*
+		*/
+		
 		//SuperComponents
-		Iterator<Set<Component>> scItr = GraphUtils.connectedComponentIterator(constraintGraph);
+		Iterator<Set<Context>> scItr = GraphUtils.connectedComponentIterator(constraintGraph);
 		//SuperComponents: the sequence does not matter
 		while(scItr.hasNext()) {
-			SuperComponent superComponent = new SuperComponent(global, scItr.next());
+			Set<Context> next = scItr.next();	//The set of components that construct this supercomponent
+			SuperComponent superComponent = new SuperComponent(global, next);
 			superComponent.dumpContainingComponents();
-			ComponentPrinter<SuperComponent> printer = 
-					new ComponentPrinter<SuperComponent>(superComponent);
-			printer.outputNormalCallGraph();
+			ComponentPrinter<SuperComponent> printer = new ComponentPrinter<SuperComponent>(superComponent);
+			printer.outputSupergraph();
+			solveComponent(superComponent);
 		}
-		 */
-
+		
 	}
 
 
-	private void solveComponent(Context component) {
+	private <T extends AbstractComponent> void solveComponent(T component) {
 		if (component instanceof Component) {
-			E.log(1, "Solving: " + component.toString());
+			E.log(2, "Solving: " + component.toString());
 		}
-		ComponentPrinter<Context> componentPrinter = new ComponentPrinter<Context>(component);
+		ComponentPrinter<T> componentPrinter = new ComponentPrinter<T>(component);
 		if (Opts.OUTPUT_COMPONENT_CALLGRAPH) {			
 			componentPrinter.outputNormalCallGraph();
 		}
@@ -496,22 +501,23 @@ public class ComponentManager {
 					return (graphReachability.getReachableSet(n).size() > 0);    
 				}
 			};
-			boolean isInteresting = CollectionUtils.exists(component.getCallbacks(), predicate);
-			if (!isInteresting) {
-				return;
+			if (component instanceof Context) {
+				Context context = (Context) component;
+				if (!CollectionUtils.exists(context.getCallbacks(), predicate))
+					return;
 			}
 		}
 		component.solve();
 		if(Opts.OUTPUT_COLOR_CFG_DOT) {
 			componentPrinter.outputColoredCFGs();
 		}      
-		if(Opts.OUTPUT_SOLVED_EICFG) {
-			componentPrinter.outputSolvedICFG();
+		if(Opts.OUTPUT_COLORED_SUPERGRAPHS) {
+			componentPrinter.outputColoredSupergraph();
 		}
 	}
 
 	
-	public ApkBugReport getAnalysisResults() {
+	public IReport[] getAnalysisResults() {
 		return new ProcessResults(this).processExitStates();
 	}
 

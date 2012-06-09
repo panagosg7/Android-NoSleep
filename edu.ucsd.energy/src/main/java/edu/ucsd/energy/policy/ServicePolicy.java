@@ -1,9 +1,12 @@
 package edu.ucsd.energy.policy;
 
+import java.util.Map;
+
 import edu.ucsd.energy.contexts.Service;
-import edu.ucsd.energy.interproc.SingleLockState;
+import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.results.BugResult;
 import edu.ucsd.energy.results.ProcessResults.ResultType;
+import edu.ucsd.energy.results.ProcessResults.SingleLockUsage;
 
 public class ServicePolicy extends Policy<Service> {
 
@@ -11,9 +14,9 @@ public class ServicePolicy extends Policy<Service> {
 		super(service);
 	}
 	
-	private SingleLockState getServiceOnStart() {
-		SingleLockState onStart = map.get("onStart");			//deprecated version
-		SingleLockState onStartCommand = map.get("onStartCommand");	
+	private Map<WakeLockInstance, SingleLockUsage> getServiceOnStart() {
+		Map<WakeLockInstance, SingleLockUsage> onStart = map.get("onStart");			//deprecated version
+		Map<WakeLockInstance, SingleLockUsage> onStartCommand = map.get("onStartCommand");	
 		if (onStartCommand == null) {
 			return onStart;				
 		}
@@ -23,15 +26,19 @@ public class ServicePolicy extends Policy<Service> {
 	}
 	
 	public void solveFacts() {
-		SingleLockState onStartState = getServiceOnStart();
-		SingleLockState onDestroyState = map.get("onDestroy");		//FIX THIS
-		if (locking(onStartState) && (!unlocking(onDestroyState))) {
-			trackResult(new BugResult(ResultType.STRONG_SERVICE_DESTROY, component.toString()));
-		}
-		if (weakUnlocking(onDestroyState) && (!strongUnlocking(onDestroyState))) {
-			trackResult(new BugResult(ResultType.WEAK_SERVICE_DESTROY, component.toString()));
+		Map<WakeLockInstance, SingleLockUsage> onStartState = getServiceOnStart();
+		Map<WakeLockInstance, SingleLockUsage> onDestroyState = map.get("onDestroy");
+		for(WakeLockInstance wli : instances) {
+			if (locking(onStartState, wli)) {
+				trackResult(new BugResult(ResultType.SERVICE_START, component.toString()));
+			}
+			if (locking(onDestroyState, wli)) {
+				trackResult(new BugResult(ResultType.SERVICE_DESTROY, component.toString()));
+			}
 		}
 	}
+
+	
 
 
 }

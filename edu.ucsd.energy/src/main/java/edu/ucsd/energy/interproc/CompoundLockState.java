@@ -1,75 +1,59 @@
 package edu.ucsd.energy.interproc;
 
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.json.JSONObject;
-
+import net.sf.json.JSONObject;
 import edu.ucsd.energy.managers.WakeLockInstance;
 
-
+/**
+ * Lockstate accounting for multiple locks 
+ * The state associated with this is the result of merging all possible states
+ * for each lock separately.
+ */
 public class CompoundLockState {
 	
-	
 	/** This is the main content of the compound lock state */
-	private Map<WakeLockInstance, Set<SingleLockState>> map = null;	
+	private Map<WakeLockInstance, SingleLockState> map = null;	
 	
 	/**
 	 * Constructors
 	 */
-	public CompoundLockState(Map<WakeLockInstance, Set<SingleLockState>> m) {	
+	public CompoundLockState(Map<WakeLockInstance, SingleLockState> m) {	
 		this.map = m;
 	}
 	
 	public CompoundLockState() {
-		this.map = new HashMap<WakeLockInstance, Set<SingleLockState>>();
+		this.map = new HashMap<WakeLockInstance, SingleLockState>();
 	}
 	
 	public void register(WakeLockInstance wli, SingleLockState ls) {
-		Set<SingleLockState> set = map.get(wli);
-		if (set == null) {
-			set = new HashSet<SingleLockState>();
+		SingleLockState oldSt = map.get(wli);
+		if (oldSt == null) {
+			map.put(wli,ls);
 		}
-		set.add(ls);
-		map.put(wli,set);
+		else {
+			map.put(wli,SingleLockState.merge(oldSt, ls));
+		}
 	}
 	
 	public static CompoundLockState merge(Set<CompoundLockState> set) {
 		CompoundLockState result = new CompoundLockState();
 		for (CompoundLockState cls : set) {
-			for(Entry<WakeLockInstance, Set<SingleLockState>> ls : cls.getLockStateMap().entrySet()) {
-				for(SingleLockState sls : ls.getValue()) {
-					result.register(ls.getKey(), sls);	
-				}
+			for(Entry<WakeLockInstance, SingleLockState> ls : cls.getLockStateMap().entrySet()) {
+				result.register(ls.getKey(), ls.getValue());
 			}
 		}
 		return result;
 	}
 	
-	
-	/**
-	 * Add a state for the first time
-	 * @param field
-	 * @param lockState
-	 */
-	public void addLockState(WakeLockInstance wli, Set<SingleLockState> lockState) {
-		map.put(wli, lockState);
-	}
-	
 	public SingleLockState simplify() {
 		SingleLockState result = null;
-		for (Set<SingleLockState> e : map.values()) {
-			for(SingleLockState s : e)  {
-				if (result != null) {
-					result = result.merge(s);
-				}
-				else {
-					result = s;
-				}
-			}
+		for (SingleLockState e : map.values()) {
+			result = SingleLockState.merge(result, e);
 		}
 		return result;
 	} 	
@@ -87,18 +71,21 @@ public class CompoundLockState {
 		return result;
 	} 	
 	
-	public Set<SingleLockState> getLockState(WakeLockInstance f) {		
-		Set<SingleLockState> pair = map.get(f);
-		return pair;		
+	public SingleLockState getLockState(WakeLockInstance f) {		
+		return map.get(f);
 	}
 	
-	public Map<WakeLockInstance, Set<SingleLockState>> getLockStateMap() {			
+	public Collection<SingleLockState> getStates() {
+		return map.values();
+	}
+	
+	public Map<WakeLockInstance, SingleLockState> getLockStateMap() {			
 		return map;
 	}
 	
 	public String toString(){
 		StringBuffer sb = new StringBuffer();
-		for (Entry<WakeLockInstance, Set<SingleLockState>> e : map.entrySet()) {
+		for (Entry<WakeLockInstance, SingleLockState> e : map.entrySet()) {
 			sb.append(e.getKey().toString() + " :: " + e.getValue().toString() + "\n");			
 		}
 		return sb.toString();
@@ -106,21 +93,18 @@ public class CompoundLockState {
 	
 	public String toShortString(){
 		StringBuffer sb = new StringBuffer();
-		for (Entry<WakeLockInstance, Set<SingleLockState>> e : map.entrySet()) {
+		for (Entry<WakeLockInstance, SingleLockState> e : map.entrySet()) {
 			sb.append(e.getKey().toShortString() + " :: " + e.getValue().toString() + "\n");			
 		}
 		return sb.toString();
 	}
 
 	public JSONObject toJSON() {
-		JSONObject compObj = new JSONObject(map);
-		
-		/*
-		for(Entry<WakeLockInstance, Set<SingleLockState>> e : map.entrySet()) {
-			JSONObject key = e.getKey().toJSON();
+		JSONObject obj = new JSONObject();
+		for(Entry<WakeLockInstance, SingleLockState> e : map.entrySet()) {
+			obj.put(e.getKey().toShortString(), e.getValue().toString());
 		}
-		*/
-		return compObj;
+		return obj;
 	}
 
 	public boolean isEmpty() {

@@ -1,9 +1,9 @@
 package edu.ucsd.energy.component;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 
@@ -20,18 +20,17 @@ import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.collections.Util;
-import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.functions.Function;
+import com.ibm.wala.viz.NodeDecorator;
 
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SingleLockState;
-import edu.ucsd.energy.interproc.SingleLockState.LockStateColor;
-import edu.ucsd.energy.managers.WakeLockInstance;
+import edu.ucsd.energy.interproc.SingleLockState.LockStateDescription;
 import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.SystemUtil;
-import edu.ucsd.energy.viz.IColorNodeDecorator;
 import edu.ucsd.energy.viz.GraphDotUtil;
+import edu.ucsd.energy.viz.IColorNodeDecorator;
 
 public class ComponentPrinter<T extends AbstractComponent> {
 
@@ -40,6 +39,10 @@ public class ComponentPrinter<T extends AbstractComponent> {
 	T component;
 
 	ExplodedInterproceduralCFG icfg;
+	
+	ColorNodeDecorator colorNodeDecorator = new ColorNodeDecorator();
+	
+	SimpleNodeDecorator nodeDecorator = new SimpleNodeDecorator();
 
 	public ComponentPrinter(T component) {
 		this.component = component;
@@ -102,7 +105,6 @@ public class ComponentPrinter<T extends AbstractComponent> {
 				//JNI methods are empty
 				continue;
 			}       
-			// ExceptionPrunedCFG.make(icfg.getCFG(n));
 			TypeName className = n.getMethod().getDeclaringClass().getName();
 			String bareFileName = className.toString().replace('/', '.') + "_"
 					+ n.getMethod().getName().toString();
@@ -111,6 +113,7 @@ public class ComponentPrinter<T extends AbstractComponent> {
 			String pdfFile = null;
 			try {
 				/* Do the colored graph - this will get the colors from the color hash */
+				
 				GraphDotUtil.dotify(cfg, colorNodeDecorator, cfgFileName, pdfFile, dotExe);
 			} catch (WalaException e) {
 				e.printStackTrace();
@@ -119,22 +122,50 @@ public class ComponentPrinter<T extends AbstractComponent> {
 	}
 
 
-	public void outputSolvedICFG() {
+	public void outputColoredSupergraph() {
 		Properties p = WalaExamplesProperties.loadProperties();
 		try {
 			p.putAll(WalaProperties.loadProperties());
 		} catch (WalaException e) {
 			e.printStackTrace();
 		}
-		String path = component.toFileName();
-		String fileName = new File(path).getName();
-		String DOT_FILE = "ExpInterCFG_" + fileName + ".dot";
+		String cfgs = SystemUtil.getResultDirectory() + File.separatorChar + "color_super_cfg";
+		new File(cfgs).mkdirs();
+		
+		String bareFileName = component.toFileName();
+		String dotFile = cfgs + File.separatorChar + bareFileName + ".dot";
 		String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
 		String pdfFile = null;
-		String dotFile = SystemUtil.getResultDirectory() + File.separatorChar + DOT_FILE;
 		try {
 			/* Do the colored graph */
+			ColorNodeDecorator colorNodeDecorator = new ColorNodeDecorator();
 			GraphDotUtil.dotify(icfg, colorNodeDecorator, dotFile, pdfFile, dotExe);
+		} catch (WalaException e) {
+			e.printStackTrace();
+		}
+	}
+
+	
+	/**
+	 * Output the whole component CFG
+	 */
+	public void outputSupergraph() {
+		Properties p = WalaExamplesProperties.loadProperties();
+		try {
+			p.putAll(WalaProperties.loadProperties());
+		} catch (WalaException e) {
+			e.printStackTrace();
+		}
+		String cfgs = SystemUtil.getResultDirectory() + File.separatorChar + "super_cfg";
+		new File(cfgs).mkdirs();
+		
+		String bareFileName = component.toFileName();
+		String dotFile = cfgs + File.separatorChar + bareFileName + ".dot";
+		String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
+		String pdfFile = null;
+		try {
+			/* Do the colored graph */
+			GraphDotUtil.dotify(icfg, nodeDecorator, dotFile, pdfFile, dotExe);
 		} catch (WalaException e) {
 			e.printStackTrace();
 		}
@@ -142,9 +173,49 @@ public class ComponentPrinter<T extends AbstractComponent> {
 
 
 	/**
-	 * This is a colored node decorator for a cfg (inter-procedural or not)
+	 * Node Decorators
 	 */
-	IColorNodeDecorator colorNodeDecorator = new IColorNodeDecorator() {
+	
+	private class ColorNodeDecorator extends SimpleNodeDecorator implements IColorNodeDecorator {
+
+		private Collection<SingleLockState> getStates(IExplodedBasicBlock ebb) {
+			CompoundLockState st = component.getState(ebb);
+			return st.getStates();
+		}
+		
+		public Set<LockStateDescription> getFillColors(Object o) {
+			IExplodedBasicBlock ebb = null;
+			if (o instanceof BasicBlockInContext) {
+				@SuppressWarnings("unchecked")
+				BasicBlockInContext<IExplodedBasicBlock> bb = (BasicBlockInContext<IExplodedBasicBlock>) o;        
+				ebb = bb.getDelegate();
+			}
+			//Per method cfg
+			else if (o instanceof IExplodedBasicBlock) {
+				ebb = (IExplodedBasicBlock) o;
+			}
+			if (ebb != null) {
+				Collection<SingleLockState> states = getStates(ebb);
+				Function<SingleLockState, LockStateDescription> f = new Function<SingleLockState, LockStateDescription>() {
+					public LockStateDescription apply(SingleLockState sls) {
+						return sls.getLockStateDescription();
+					}
+				};
+				return Util.mapToSet(states, f);
+			}
+			HashSet<LockStateDescription> set = new HashSet<LockStateDescription>();
+			set.add(LockStateDescription.UNDEFINED);
+			return set;
+		}
+
+		public String getFontColor(Object n) {
+			return "black";
+		}
+
+	}
+	
+	
+	private class SimpleNodeDecorator implements NodeDecorator {
 
 		public String getLabel(Object o) throws WalaException {
 			/* This is the case for the complete Interprocedural CFG */
@@ -178,47 +249,7 @@ public class ComponentPrinter<T extends AbstractComponent> {
 			return "[error]";
 		}
 
-		private Set<SingleLockState> getStates(IExplodedBasicBlock ebb) {
-			CompoundLockState st = component.getState(ebb);
-			Set<SingleLockState> result = new HashSet<SingleLockState>();
-			if (st != null) {
-				for (Entry<WakeLockInstance, Set<SingleLockState>> e : st.getLockStateMap().entrySet()) {
-					//Merges the state for every field
-					result.add(CompoundLockState.simplify(e.getValue()));
-				}        	
-			}
-			return result;
-		}
-
-		public Set<LockStateColor> getFillColors(Object o) {
-			IExplodedBasicBlock ebb = null;
-			if (o instanceof BasicBlockInContext) {
-				@SuppressWarnings("unchecked")
-				BasicBlockInContext<IExplodedBasicBlock> bb = (BasicBlockInContext<IExplodedBasicBlock>) o;        
-				ebb = bb.getDelegate();
-			}
-			//Per method cfg
-			else if (o instanceof IExplodedBasicBlock) {
-				ebb = (IExplodedBasicBlock) o;
-			}
-			if (ebb != null) {
-				Set<SingleLockState> states = getStates(ebb);
-				Function<SingleLockState, LockStateColor> f = new Function<SingleLockState, LockStateColor>() {
-					public LockStateColor apply(SingleLockState sls) {
-						return sls.getLockStateColor();
-					}
-				};
-				return Util.mapToSet(states, f);
-			}
-			HashSet<LockStateColor> set = new HashSet<LockStateColor>();
-			set.add(LockStateColor.UNDEFINED);
-			return set;
-		}
-
-		public String getFontColor(Object n) {
-			return "black";
-		}
-
+		
 	};
 
 }

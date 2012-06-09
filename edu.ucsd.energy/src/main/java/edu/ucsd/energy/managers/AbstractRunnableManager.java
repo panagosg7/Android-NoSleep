@@ -17,6 +17,7 @@ import com.ibm.wala.util.graph.Acyclic;
 import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 
+import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.results.IReport;
@@ -91,7 +92,9 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 			}
 		};
 
-		if (!com.ibm.wala.util.collections.Util.forAll(GraphUtil.inferRoots(g), p)) {
+		if (Opts.FAIL_AT_DEPENDENCY_CYCLES &&
+				(!com.ibm.wala.util.collections.Util.forAll(GraphUtil.inferRoots(g), p))) {
+			//GraphUtils.dumpConstraintGraph(g, getTag());
 			Assertions.UNREACHABLE("Cannot handle circular dependencies in thread calls. ");  
 		}
 	} 

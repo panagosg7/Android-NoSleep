@@ -352,6 +352,10 @@ public class ApkInstance {
 		return this.getWala().analyzeFull();		
 	}
  
+	public IReport analyzeUsage() throws IOException, CancelException, RetargetException, WalaException, ApkException {		
+		return this.getWala().analyzeUsage();		
+	}
+	
 	public IReport wakelockAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException, JSONException {		
 		return this.getWala().wakelockAnalyze();		
 	}

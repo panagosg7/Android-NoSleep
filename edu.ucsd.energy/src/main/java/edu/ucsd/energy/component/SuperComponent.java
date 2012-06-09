@@ -16,10 +16,13 @@ import com.ibm.wala.util.collections.Pair;
 import edu.ucsd.energy.contexts.Activity;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.contexts.Service;
-import edu.ucsd.energy.interproc.InterproceduralCFG;
+import edu.ucsd.energy.interproc.SuperContextCFG;
 import edu.ucsd.energy.managers.GlobalManager;
+import edu.ucsd.energy.util.E;
 
 public class SuperComponent extends AbstractComponent {
+
+	private static final int DEBUG = 1;
 
 	Set<Context> sComponent;
 
@@ -54,25 +57,50 @@ public class SuperComponent extends AbstractComponent {
 				}
 			}
 		}
+		
+		public String toString() {
+			StringBuffer sb = new StringBuffer();
+			if (!entrySet().isEmpty()) {
+				sb.append("SEEDS:\n");
+			}
+			for (java.util.Map.Entry<SSAInstruction, Context> e : entrySet()) {
+				sb.append(e.getKey().toString() + " -> " + e.getValue().toString() + "\n");			
+			}
+			return sb.toString();
+		}
+		
 	}
 
-	public InterproceduralCFG makeInterproceduralCFG() {
+	public SuperContextCFG makeCFG() {
+		//Gathers all nodes
 		Collection<CGNode> nodeSet = new HashSet<CGNode>();
+		//Context life-cycle edges among methods
 		Set<Pair<CGNode, CGNode>> edgePairs = new HashSet<Pair<CGNode, CGNode>>();
+		//Inter-context edges
 		SeedMap mSeeds = new SeedMap();
 		for (Context c : sComponent) {
 			// Gather nodes
 			Iterator<CGNode> nItr = c.getNodes();
 			while (nItr.hasNext()) {
-				nodeSet.add(nItr.next());
+				nodeSet.add(nItr.next());	//duplicates are omitted
 			}
 			// Gather sensible node edges
 			edgePairs.addAll(c.getImplicitEdges());
+			if(DEBUG < 2) {
+				for ( Pair<CGNode, CGNode> ie : c.getImplicitEdges()) {
+					E.log(1, "IMPLICIT: " + 
+							ie.fst.getMethod().getSelector().toString() + " -> " +
+							ie.snd.getMethod().getSelector().toString());
+				}
+			}
 			// Gather inter-component communication edges
 			mSeeds.registerSeeds(c);
+			if(DEBUG < 2) {
+				E.log(1, mSeeds.toString()); 
+			}
 		}
 		// These are edges between CGNodes that we are going to need
-		return new InterproceduralCFG(this, edgePairs, mSeeds);
+		return new SuperContextCFG(this, edgePairs, mSeeds);
 	}
 
 	protected void makeCallGraph() {
@@ -94,12 +122,12 @@ public class SuperComponent extends AbstractComponent {
 		if (fileName == null) {
 			for (Context c : sComponent) {
 				if ((c instanceof Activity) || (c instanceof Service)) {
-					fileName = "SUPER_" + c.toFileName();
+					fileName = c.toFileName();
 					break;
 				}
 			}
 			if (fileName == null) {
-				fileName = "SUPER_" + sComponent.iterator().next().toFileName();;
+				fileName = sComponent.iterator().next().toFileName();;
 			}
 		}
 		return fileName;
