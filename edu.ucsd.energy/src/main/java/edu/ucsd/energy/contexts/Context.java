@@ -1,5 +1,6 @@
 package edu.ucsd.energy.contexts;
 
+import java.awt.peer.LightweightPeer;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,6 +20,7 @@ import com.ibm.wala.util.collections.Pair;
 import edu.ucsd.energy.analysis.SpecialConditions.SpecialCondition;
 import edu.ucsd.energy.component.AbstractComponent;
 import edu.ucsd.energy.component.CallBack;
+import edu.ucsd.energy.interproc.LifecycleGraph.SensibleCGNode;
 import edu.ucsd.energy.interproc.SingleContextCFG;
 import edu.ucsd.energy.interproc.LifecycleGraph;
 import edu.ucsd.energy.managers.GlobalManager;
@@ -90,6 +92,33 @@ public abstract class Context extends AbstractComponent {
 	public CallBack getCallBack(Selector sel) {
 		return mActualCallback.get(sel);
 	}
+	
+	
+	/**
+	 * TODO: see if this is needed and fix this 
+	 * @param sel
+	 * @return
+	 */
+	public Set<CallBack> getCallBackOrPred(Selector sel) {
+		if (sel == null) {
+			return null;
+		}
+		CallBack cb = getCallBack(sel);
+		if (cb == null) {
+			SensibleCGNode n = SensibleCGNode.makeEmpty(sel);
+			Iterator<SensibleCGNode> predNodes = implicitGraph.getPredNodes(n);
+			Set<CallBack> res = new HashSet<CallBack>();
+			SensibleCGNode predNode = predNodes.next();
+			while(predNodes.hasNext()) {
+				if (!predNode.isEmpty()) {
+					res.add(predNode.getCallBack());
+				}
+			}
+			return res;
+		}
+		return null;
+	}
+	
 
 	public HashSet<Pair<Selector, Selector>> getCallbackEdges() {
 		return callbackEdges;
@@ -121,9 +150,6 @@ public abstract class Context extends AbstractComponent {
 	    return new SingleContextCFG(this, getImplicitEdges());
   	}
 
-  	public void setSpecialConditions(HashMap<BasicBlockInContext<IExplodedBasicBlock>, SpecialCondition> compCond) {
-  		icfg.setSpecConditions(compCond);	
-  	}
  
   	/****************************************************
   	* These are the points in the code that might call 
@@ -155,12 +181,17 @@ public abstract class Context extends AbstractComponent {
  	}
 
  /**
-  * Whoever really needs this will have to override it.
-  * @return
+  * Whoever really needs these will have to override it.
   */
  	public Set<Selector> getEntryPoints() {
  		return null;
  	}
+
+	public Set<Selector> getExitPoints() {
+		return null;
+	}
+
+ 	
  	
  	public Iterator<CGNode> getNodes() {
  		return originalCallgraph.iterator();
@@ -169,5 +200,6 @@ public abstract class Context extends AbstractComponent {
  	public String toFileName() {
  		return getKlass().getName().toString().replace("/", ".");
  	}
- 	
+
+	
 }

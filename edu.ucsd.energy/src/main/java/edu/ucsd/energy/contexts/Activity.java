@@ -26,6 +26,10 @@ public class Activity extends Component {
 	public Set<Selector> getEntryPoints() {
 		return Interesting.activityEntryMethods;
 	}
+	
+	public Set<Selector> getExitPoints() {
+		return Interesting.activityExitMethods;
+	}
 
 	public Activity(GlobalManager global, CGNode root) {
 		super(global, root);

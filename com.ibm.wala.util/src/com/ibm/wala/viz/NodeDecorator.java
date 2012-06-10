@@ -17,7 +17,9 @@ public interface NodeDecorator {
   public static final NodeDecorator DEFAULT = new NodeDecorator() {
     public String getLabel(Object o) {
       return o.toString();
-    } };
+    }
+
+    };
   
   /**
    * @param o

@@ -24,6 +24,7 @@ import com.ibm.wala.util.functions.Function;
 import com.ibm.wala.viz.NodeDecorator;
 
 import edu.ucsd.energy.contexts.Context;
+import edu.ucsd.energy.interproc.AbstractContextCFG;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.interproc.SingleLockState.LockStateDescription;
@@ -38,7 +39,7 @@ public class ComponentPrinter<T extends AbstractComponent> {
 
 	T component;
 
-	ExplodedInterproceduralCFG icfg;
+	AbstractContextCFG icfg;
 	
 	ColorNodeDecorator colorNodeDecorator = new ColorNodeDecorator();
 	
@@ -176,7 +177,7 @@ public class ComponentPrinter<T extends AbstractComponent> {
 	 * Node Decorators
 	 */
 	
-	private class ColorNodeDecorator extends SimpleNodeDecorator implements IColorNodeDecorator {
+	public class ColorNodeDecorator extends SimpleNodeDecorator implements IColorNodeDecorator {
 
 		private Collection<SingleLockState> getStates(IExplodedBasicBlock ebb) {
 			CompoundLockState st = component.getState(ebb);
@@ -208,6 +209,20 @@ public class ComponentPrinter<T extends AbstractComponent> {
 			return set;
 		}
 
+		
+		public String edgeLabel (Object o1, Object o2) {
+			if ((o1 instanceof BasicBlockInContext) && (o2 instanceof BasicBlockInContext)) {
+				@SuppressWarnings("unchecked")
+				BasicBlockInContext<IExplodedBasicBlock> bb1 = (BasicBlockInContext<IExplodedBasicBlock>) o1;
+				@SuppressWarnings("unchecked")
+				BasicBlockInContext<IExplodedBasicBlock> bb2 = (BasicBlockInContext<IExplodedBasicBlock>) o2;
+				if (icfg.isExceptionalEdge(bb1, bb2)) {
+					return " [style = dashed]";
+				}
+			}
+			return "";
+		}
+		
 		public String getFontColor(Object n) {
 			return "black";
 		}
@@ -215,7 +230,7 @@ public class ComponentPrinter<T extends AbstractComponent> {
 	}
 	
 	
-	private class SimpleNodeDecorator implements NodeDecorator {
+	public class SimpleNodeDecorator implements NodeDecorator {
 
 		public String getLabel(Object o) throws WalaException {
 			/* This is the case for the complete Interprocedural CFG */

@@ -55,7 +55,9 @@ public class SingleLockState  {
 	public boolean equals(Object o) {
 		if (o instanceof SingleLockState) {
 			SingleLockState l = (SingleLockState) o;			
-			return (hashCode() == l.hashCode());	//this should work			
+			return ((acquired() == l.acquired()) &&
+					(timed() == l.timed()) &&
+					(async() == l.async()));	//this should work			
 		}
 		return false;		
 	}
@@ -133,6 +135,10 @@ public class SingleLockState  {
 	public static SingleLockState merge(SingleLockState a, SingleLockState b) {
 		if (a == null) return b;
 		return a.merge(b);
+	}
+
+	public void setAcquired(boolean b) {
+		acquired = b;		
 	}
 
 

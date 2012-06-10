@@ -25,6 +25,7 @@ public class Interesting {
 	
 	public static Set<Selector> activityCallbackMethods = new HashSet<Selector>();
 	public static Set<Selector> activityEntryMethods = new HashSet<Selector>();
+	public static Set<Selector> activityExitMethods = new HashSet<Selector>();
 	
 	public static Set<Selector> serviceCallbackMethods = new HashSet<Selector>();
 	public static Set<Selector> serviceEntryMethods = new HashSet<Selector>();
@@ -69,6 +70,8 @@ public class Interesting {
 	
 	
 	static {
+
+	//WakeLocks
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.app.AlarmManager.set(IJLandroid/app/PendingIntent;)V"));
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.app.AlarmManager.cancel(Landroid/app/PendingIntent;)V"));
 		
@@ -116,9 +119,10 @@ public class Interesting {
 		mRunnableMethods.put(Selector.make("postDelayed(Ljava/lang/Runnable;J)Z"), new Integer(1));
 		//TODO: may have to extend this list with more calls
 		
-		sInterestingMethods.addAll(mWakelockMethods.keySet());		
-	//Activities
-		activityCallbackMethods.add(Selector.make("<init>()V"));
+		sInterestingMethods.addAll(mWakelockMethods.keySet());
+		
+	//Activity
+		activityCallbackMethods.add(Selector.make("<init>()V"));	//Should this be an entry point?
 		activityCallbackMethods.add(ActivityOnPause);
 		activityCallbackMethods.add(ActivityOnResume);
 		activityCallbackMethods.add(ActivityOnCreate);
@@ -131,7 +135,9 @@ public class Interesting {
 		activityEntryMethods.add(ActivityOnResume);
 		activityEntryMethods.add(ActivityOnRestart);
 		
-	//Services
+		activityExitMethods.add(ActivityOnDestroy);
+
+	//Service
 		serviceCallbackMethods.add(Selector.make("<init>()V"));
 		serviceCallbackMethods.add(Selector.make("onBind(Landroid/content/Intent;)Landroid.os.IBinder;"));
 		serviceCallbackMethods.add(Selector.make("onDestroy()V"));

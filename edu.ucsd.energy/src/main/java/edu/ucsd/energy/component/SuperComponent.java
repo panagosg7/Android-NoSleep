@@ -22,7 +22,7 @@ import edu.ucsd.energy.util.E;
 
 public class SuperComponent extends AbstractComponent {
 
-	private static final int DEBUG = 1;
+	private static final int DEBUG = 2;
 
 	Set<Context> sComponent;
 
