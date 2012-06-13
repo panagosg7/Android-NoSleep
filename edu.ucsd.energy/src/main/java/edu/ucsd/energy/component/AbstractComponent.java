@@ -5,10 +5,13 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
+import com.ibm.wala.dataflow.IFDS.ISupergraph;
 import com.ibm.wala.dataflow.IFDS.TabulationDomain;
+import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
+import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.util.CancelException;
@@ -25,6 +28,7 @@ import edu.ucsd.energy.analysis.AppCallGraph;
 import edu.ucsd.energy.interproc.AbstractContextCFG;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.CtxSensLocking;
+import edu.ucsd.energy.interproc.CtxSensLocking.SensibleICFGSupergraph;
 import edu.ucsd.energy.interproc.LockingTabulationSolver.LockingResult;
 import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.managers.GlobalManager;
@@ -34,11 +38,11 @@ import edu.ucsd.energy.util.Util;
 
 public abstract class AbstractComponent extends NodeWithNumber implements IComponent {
 
-	private GlobalManager global;  
+	protected GlobalManager 	global;  
 
-	protected CallGraph componentCallgraph;
+	protected CallGraph 		componentCallgraph;
 
-	public AppCallGraph originalCallgraph;
+	protected AppCallGraph 		originalCallgraph;
 
 	public AbstractComponent(GlobalManager gm) {
 		global = gm;
@@ -68,12 +72,22 @@ public abstract class AbstractComponent extends NodeWithNumber implements ICompo
 
 
 	protected AbstractContextCFG icfg = null;
+	protected ISupergraph<BasicBlockInContext<IExplodedBasicBlock>, CGNode> supergraph = null;
+	
 
 	public AbstractContextCFG getICFG() {
 		if (icfg == null) {
 			icfg = makeCFG();
 		}
 		return icfg;
+	}
+	
+	public ISupergraph<BasicBlockInContext<IExplodedBasicBlock>, CGNode> getSupergraph() {
+		if (supergraph == null) {
+			AnalysisCache cache = new AnalysisCache();
+			supergraph = new SensibleICFGSupergraph(getICFG(), cache);
+		}
+		return supergraph;
 	}
 
 	protected LockingResult csSolver;
@@ -85,26 +99,23 @@ public abstract class AbstractComponent extends NodeWithNumber implements ICompo
 	 * based on the component's sensible callgraph
 	 */
 	public void solve() {
-		CtxSensLocking lockingProblem = new CtxSensLocking(getICFG());
+		CtxSensLocking lockingProblem = new CtxSensLocking(this);
 		csSolver = lockingProblem.analyze();    
 		csDomain = lockingProblem.getDomain();
-		isSolved = true;    
 		cacheStates();
 	}
-
-	//Set this true if we analyze it as part of a larger graph
-	public boolean isSolved = false;
 
 	//No so elegant way to keep the states for every method in the graph
 	private HashMap<SSAInstruction, CompoundLockState> mInstrState;
 	private HashMap<IExplodedBasicBlock, CompoundLockState> mEBBState;
+	private HashMap<BasicBlockInContext<IExplodedBasicBlock>, CompoundLockState> mBBICState;
 
 	private void cacheStates() {
-		E.log(2, "Caching states");
 		mInstrState = new HashMap<SSAInstruction, CompoundLockState>();
 		mEBBState = new HashMap<IExplodedBasicBlock, CompoundLockState>();
+		mBBICState = new HashMap<BasicBlockInContext<IExplodedBasicBlock>, CompoundLockState>();
 
-		Iterator<BasicBlockInContext<IExplodedBasicBlock>> iterator = icfg.iterator();
+		Iterator<BasicBlockInContext<IExplodedBasicBlock>> iterator = getSupergraph().iterator();
 		while (iterator.hasNext()) {
 			BasicBlockInContext<IExplodedBasicBlock> bb = iterator.next();
 			IntSet set = csSolver.getResult(bb);
@@ -119,8 +130,9 @@ public abstract class AbstractComponent extends NodeWithNumber implements ICompo
 				mInstrState.put(instruction, q);
 			}
 			mEBBState.put(bb.getDelegate(), q);
-
+			mBBICState.put(bb, q);
 		}
+		
 	}
 
 
@@ -156,6 +168,11 @@ public abstract class AbstractComponent extends NodeWithNumber implements ICompo
 		return merged;
 	}
 
+	public CompoundLockState getState(BasicBlockInContext<IExplodedBasicBlock> i) {
+		return mBBICState.get(i);
+	}
+
+	
 	public CompoundLockState getState(IExplodedBasicBlock i) {
 		return mEBBState.get(i);
 	}

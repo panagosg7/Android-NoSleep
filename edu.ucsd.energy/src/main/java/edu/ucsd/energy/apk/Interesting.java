@@ -131,11 +131,12 @@ public class Interesting {
 		activityCallbackMethods.add(ActivityOnStop);
 		
 		activityEntryMethods.add(ActivityOnCreate);
-		activityEntryMethods.add(ActivityOnStart);
-		activityEntryMethods.add(ActivityOnResume);
-		activityEntryMethods.add(ActivityOnRestart);
+		//activityEntryMethods.add(ActivityOnStart);
+		//activityEntryMethods.add(ActivityOnResume);
+		//activityEntryMethods.add(ActivityOnRestart);
 		
 		activityExitMethods.add(ActivityOnDestroy);
+		activityExitMethods.add(ActivityOnStop);
 
 	//Service
 		serviceCallbackMethods.add(Selector.make("<init>()V"));

@@ -1,6 +1,5 @@
 package edu.ucsd.energy.contexts;
 
-import java.awt.peer.LightweightPeer;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,18 +10,15 @@ import java.util.Set;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
-import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.ssa.SSAInstruction;
-import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.collections.Pair;
 
-import edu.ucsd.energy.analysis.SpecialConditions.SpecialCondition;
 import edu.ucsd.energy.component.AbstractComponent;
 import edu.ucsd.energy.component.CallBack;
+import edu.ucsd.energy.interproc.LifecycleGraph;
 import edu.ucsd.energy.interproc.LifecycleGraph.SensibleCGNode;
 import edu.ucsd.energy.interproc.SingleContextCFG;
-import edu.ucsd.energy.interproc.LifecycleGraph;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.util.E;
 
@@ -194,7 +190,7 @@ public abstract class Context extends AbstractComponent {
  	
  	
  	public Iterator<CGNode> getNodes() {
- 		return originalCallgraph.iterator();
+ 		return componentCallgraph.iterator();
  	}
  	
  	public String toFileName() {

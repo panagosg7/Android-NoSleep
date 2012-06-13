@@ -102,9 +102,6 @@ public class ComponentManager {
 		return unresolvedInterestingCallBacks;
 	}
 
-	/**
-	 * 1. Reachability results are going to be useful later
-	 */
 	public void prepareReachability() {    
 		Filter<CGNode> filter = new CollectionFilter<CGNode>(
 				originalCG.getTargetCGNodeHash().values());
@@ -123,9 +120,7 @@ public class ComponentManager {
 	 * 						RESOLVE COMPONENTS
 	 * 
 	 ****************************************************************************/
-	/**
-	 * 2. Resolve components based on the root methods of the call graph (Callbacks)
-	 */
+
 	public void resolveComponents() {
 		E.log(1, "Number of nodes: " + originalCG.getNumberOfNodes());
 		// Counts
@@ -194,8 +189,6 @@ public class ComponentManager {
 				}
 			}
 		}
-
-
 
 		if(! Opts.RUN_IN_PARALLEL) {
 			System.out.println();
@@ -289,10 +282,6 @@ public class ComponentManager {
 	/**
 	 * Find out what type of component this class belongs to. E.g. Activity,
 	 * Service, ...
-	 * 
-	 * @param root
-	 * @return
-	 * @throws IOException
 	 */
 	private  Context resolveNode(CGNode root) {
 
@@ -337,7 +326,6 @@ public class ComponentManager {
 				if (ancName.equals("Landroid/telephony/PhoneStateListener")) {
 					comp = new PhoneStateListener(global, root);
 				}
-
 				if (comp != null) break;
 			}
 
@@ -349,7 +337,7 @@ public class ComponentManager {
 			}
 
 			/* TODO Check to see if this is a constructor. 
-			 * Has to be <init> or somethind...
+			 * Has to be <init> or something...
 			 * */
 			if (methName.equals("<init>") || methName.equals("<clinit>")) {
 				comp = new Initializer(global, root);       
@@ -443,10 +431,7 @@ public class ComponentManager {
 	 * 
 	 * 						PROCESS COMPONENTS
 	 * 
-	 ****************************************************************************/  
-	/**
-	 * 2. Process the components that have been resolved
-	 */
+	 ****************************************************************************/
 	public void solveComponents() {
 		System.out.println();
 		E.log(1, "Solving components...");
@@ -458,18 +443,22 @@ public class ComponentManager {
 		SparseNumberedGraph<Context> iCG = intentManager.getConstraintGraph();
 
 		SparseNumberedGraph<Context> constraintGraph = GraphUtils.merge(rCG,iCG);
-		GraphUtils.dumpConstraintGraph(constraintGraph, "constraints");
+		GraphUtils.dumpConstraintGraph(constraintGraph, "all_constraints");
 
 		/*
 		//Components
 		Iterator<Context> bottomUpIterator = GraphUtils.topDownIterator(constraintGraph);
-		// Analyze the components based on this graph in bottom up order
+		// Analyze the components based on this graph
 		while (bottomUpIterator.hasNext()) {
-			solveComponent(bottomUpIterator.next());
+			Context ctx = bottomUpIterator.next();
+			solveComponent(ctx);
+			E.log(1, ctx.toString() + " :  " + ctx.getCallGraph().getNumberOfNodes());
+			
 		}
-		*/
+		E.log(1, "===========================");
+		 */
 		
-		//SuperComponents
+		//Create SuperComponents based on component constraints
 		Iterator<Set<Context>> scItr = GraphUtils.connectedComponentIterator(constraintGraph);
 		//SuperComponents: the sequence does not matter
 		while(scItr.hasNext()) {
@@ -479,8 +468,10 @@ public class ComponentManager {
 			ComponentPrinter<SuperComponent> printer = new ComponentPrinter<SuperComponent>(superComponent);
 			printer.outputSupergraph();
 			solveComponent(superComponent);
+			
+			
 		}
-		
+
 	}
 
 
@@ -516,7 +507,7 @@ public class ComponentManager {
 		}
 	}
 
-	
+
 	public IReport[] getAnalysisResults() {
 		return new ProcessResults(this).processExitStates();
 	}

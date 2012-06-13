@@ -68,7 +68,7 @@ public class TabulationSolver<T, P, F> {
    * <li>3 Also print worklists
    * </ul>
    */
-  protected static final int DEBUG_LEVEL = 0;
+  protected static final int DEBUG_LEVEL = 1;
 
   static protected final boolean verbose = true && ("true".equals(System.getProperty("com.ibm.wala.fixedpoint.impl.verbose")) ? true
       : false);

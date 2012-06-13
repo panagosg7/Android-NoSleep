@@ -54,10 +54,10 @@ public class ComponentPrinter<T extends AbstractComponent> {
 	public void outputNormalCallGraph() {
 		String prefix = "unknown";
 		if (component instanceof Context) {
-			prefix = "compcg";
+			prefix = "context_callgraphs";
 		}
 		else if (component instanceof SuperComponent) {
-			prefix = "super";
+			prefix = "supercomponent_callgraphs";
 		}
 		outputCallGraph(component.getCallGraph(), prefix);
 	}
@@ -83,20 +83,21 @@ public class ComponentPrinter<T extends AbstractComponent> {
 
 
 	/**
-	 * Output the colored CFG for each node in the callgraph (Basically done
-	 * because dot can't render the complete inter-procedural CFG.)
+	 * Output the colored CFG for each node in the callgraph.
+	 * "Dot" can't render the complete inter-procedural CFG.
 	 * @param icfg 
 	 */	
 	public void outputColoredCFGs() {
-		/* Need to do this here - WALA was giving me a hard time to crop a small
-		 * part of the graph */
+		//Need to do this here - WALA was giving me a hard time to crop a small
+		//part of the graph
 		Properties p = WalaExamplesProperties.loadProperties();
 		try {
 			p.putAll(WalaProperties.loadProperties());
 		} catch (WalaException e) {
 			e.printStackTrace();
 		}
-		String cfgs = SystemUtil.getResultDirectory() + File.separatorChar + "color_cfg";
+		String cfgs = SystemUtil.getResultDirectory() + File.separatorChar + "color_cfg" +
+				File.separatorChar +  component.toFileName() ;	//every supercomponent should have its own folder 
 		new File(cfgs).mkdirs();
 		Iterator<CGNode> it = componentCallgraph.iterator();
 		while (it.hasNext()) {
@@ -148,7 +149,7 @@ public class ComponentPrinter<T extends AbstractComponent> {
 
 	
 	/**
-	 * Output the whole component CFG
+	 * Output the whole component CFG without colors
 	 */
 	public void outputSupergraph() {
 		Properties p = WalaExamplesProperties.loadProperties();
@@ -184,19 +185,26 @@ public class ComponentPrinter<T extends AbstractComponent> {
 			return st.getStates();
 		}
 		
+		private Collection<SingleLockState> getStates(BasicBlockInContext<IExplodedBasicBlock> ebb) {
+			CompoundLockState st = component.getState(ebb);
+			return st.getStates();
+		}
+		
 		public Set<LockStateDescription> getFillColors(Object o) {
 			IExplodedBasicBlock ebb = null;
+			Collection<SingleLockState> states = null;
+			//Supergraph - need to have the BasicBlockInContext
 			if (o instanceof BasicBlockInContext) {
 				@SuppressWarnings("unchecked")
 				BasicBlockInContext<IExplodedBasicBlock> bb = (BasicBlockInContext<IExplodedBasicBlock>) o;        
-				ebb = bb.getDelegate();
+				states = getStates(bb);
 			}
 			//Per method cfg
 			else if (o instanceof IExplodedBasicBlock) {
 				ebb = (IExplodedBasicBlock) o;
+				states = getStates(ebb);
 			}
-			if (ebb != null) {
-				Collection<SingleLockState> states = getStates(ebb);
+			if (states != null) {
 				Function<SingleLockState, LockStateDescription> f = new Function<SingleLockState, LockStateDescription>() {
 					public LockStateDescription apply(SingleLockState sls) {
 						return sls.getLockStateDescription();
@@ -218,6 +226,9 @@ public class ComponentPrinter<T extends AbstractComponent> {
 				BasicBlockInContext<IExplodedBasicBlock> bb2 = (BasicBlockInContext<IExplodedBasicBlock>) o2;
 				if (icfg.isExceptionalEdge(bb1, bb2)) {
 					return " [style = dashed]";
+				}
+				if (icfg.isReturnFromContext(bb1, bb2) || icfg.isCallToContext(bb1, bb2)) {
+					return " [style = bold arrowhead = diamond]";
 				}
 			}
 			return "";

@@ -152,11 +152,10 @@ public class SuperComponent extends AbstractComponent {
 	}
 
 	public void dumpContainingComponents() {
-		System.out.println("SuperComponent containing: ");
+		E.log(1, "SuperComponent (#nodes: " + getCallGraph().getNumberOfNodes() + ") containing:");
 		for (Context c : sComponent) {
-			System.out.println("\t" + c.toString());			
+			E.log(1, "\t" + c.toString());			
 		}
 	}
-
 
 }

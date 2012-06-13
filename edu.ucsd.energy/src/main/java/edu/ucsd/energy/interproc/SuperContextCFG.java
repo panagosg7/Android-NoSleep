@@ -27,11 +27,17 @@ public class SuperContextCFG extends AbstractContextCFG {
 		  this.callgraph = component.getCallGraph();
 		  /* Will only work like this - loses laziness. */
 		  constructFullGraph();
-		  addReturnToEntryEdge(packedEdges);
+		  
+		  //For the implicit edges within components
+		  
+		  
 		  cacheCallbacks(packedEdges);
 		  //Add edges from Intent calls etc
 		  //Using as packed edges the total of the edges for every component
 		  addCallToEntryAndReturnEdges(seeds);
+		  
+		  addReturnToEntryEdge(packedEdges);
+		  
 	  }
 
 

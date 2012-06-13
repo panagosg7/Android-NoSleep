@@ -1,6 +1,9 @@
 package edu.ucsd.energy.interproc;
 
 import java.util.Collection;
+import java.util.Iterator;
+
+import org.eclipse.core.runtime.content.IContentTypeManager.ISelectionPolicy;
 
 import com.ibm.wala.dataflow.IFDS.ICFGSupergraph;
 import com.ibm.wala.dataflow.IFDS.IFlowFunction;
@@ -37,6 +40,7 @@ import edu.ucsd.energy.analysis.SpecialConditions.IsHeldCondition;
 import edu.ucsd.energy.analysis.SpecialConditions.NullCondition;
 import edu.ucsd.energy.analysis.SpecialConditions.SpecialCondition;
 import edu.ucsd.energy.apk.Interesting;
+import edu.ucsd.energy.component.AbstractComponent;
 import edu.ucsd.energy.interproc.LockingTabulationSolver.LockingResult;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.managers.WakeLockManager;
@@ -45,7 +49,14 @@ import edu.ucsd.energy.util.E;
 public class CtxSensLocking {
 
 	private static final int DEBUG = 2;
-
+	
+	/**
+	 * The underlying Inter-procedural Control Flow Graph
+	 */
+	private AbstractComponent component;
+	
+	private AbstractContextCFG icfg;	
+	
 	/**
 	 * the supergraph over which tabulation is performed
 	 */
@@ -62,32 +73,45 @@ public class CtxSensLocking {
 	private final TabDomain domain = new TabDomain();
 
 	/**
-	 * The underlaying Inter-procedural Control Flow Graph
-	 */
-	private AbstractContextCFG icfg;
-
-	/**
 	 * We are going to extend the ICFGSupergraph that WALA had for reaching
 	 * definitions to that we are able to define our own sensible supergraph
 	 * (containing extra edges).
 	 */
-	public class SensibleICFGSupergraph extends ICFGSupergraph {
-		protected SensibleICFGSupergraph(ExplodedInterproceduralCFG icfg,
-				AnalysisCache cache) {
+	public static class SensibleICFGSupergraph extends ICFGSupergraph {
+		public SensibleICFGSupergraph(ExplodedInterproceduralCFG icfg, AnalysisCache cache) {
 			super(icfg, cache);
 		}
 	}
 
-	public CtxSensLocking(AbstractContextCFG icfg) {
+	public CtxSensLocking(AbstractComponent comp) {
 		/*
 		 * We already have created our SensibleExplodedInterproceduralCFG which
-		 * contains extra nodes compared to the exploded i-cfg WALA usually
-		 * creates
+		 * contains extra edges compared to the exploded i-cfg WALA usually creates
 		 */
-		AnalysisCache cache = new AnalysisCache();
-		this.icfg = icfg;
-		this.supergraph = new SensibleICFGSupergraph(icfg, cache);
-		this.wakeLockManager = icfg.getComponent().getGlobalManager().getWakeLockManager();
+		this.component = comp;
+		this.icfg = component.getICFG();
+		this.supergraph = component.getSupergraph(); 
+		///////////////
+		/*Iterator<BasicBlockInContext<IExplodedBasicBlock>> iterator = supergraph.iterator();
+		while(iterator.hasNext()) {
+			BasicBlockInContext<IExplodedBasicBlock> next = iterator.next();
+			E.log(1, "Visiting: " + next.toShortString());
+			Iterator<BasicBlockInContext<IExplodedBasicBlock>> succNodes = supergraph.getSuccNodes(next);
+			while(succNodes.hasNext()) {
+				BasicBlockInContext<IExplodedBasicBlock> next2 = succNodes.next();
+				try {
+					E.log(1, "\t" + next2.toShortString() + 
+							(icfg.isExceptionalEdge(next2, next)?" (EXC)":""));
+				}
+				catch (Exception e) {
+					E.log(1, "\t" + next2.toShortString() + " (THREW EXC)" );
+					e.printStackTrace();
+				}
+			}
+		}
+		*/
+		///////////////////
+		this.wakeLockManager = component.getGlobalManager().getWakeLockManager();
 	}
 
 	private WakeLockManager wakeLockManager;
@@ -215,9 +239,12 @@ public class CtxSensLocking {
 			 * determined.
 			 */
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {
-				E.log(PRINT_EXCEPTIONAL, "KILL EXC: " + src.toString() + " -> " + dest.toString());				
+				E.log(PRINT_EXCEPTIONAL, "KILL EXC: " + src.toShortString() + " -> " + dest.toShortString());				
 				return KillEverything.singleton(); 
 			}
+
+			E.log(PRINT_EXCEPTIONAL, "NORMAL: " + src.toShortString() + " -> " + dest.toShortString());				
+
 			
 			if(Opts.ENFORCE_SPECIAL_CONDITIONS) {
 				//Check for special conditions
@@ -261,7 +288,7 @@ public class CtxSensLocking {
 				BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest,
 				BasicBlockInContext<IExplodedBasicBlock> ret) {
-
+			E.log(PRINT_EXCEPTIONAL, "CALL FLOW: " + src.toShortString() + "->" + dest.toShortString());
 			return IdentityFlowFunction.identity();
 		}
 
@@ -271,11 +298,13 @@ public class CtxSensLocking {
 		 * callees exist.
 		 */
 		public IUnaryFlowFunction getCallToReturnFlowFunction(
-				final BasicBlockInContext<IExplodedBasicBlock> src,
-				final BasicBlockInContext<IExplodedBasicBlock> dest) {					
-
+				BasicBlockInContext<IExplodedBasicBlock> src,
+				BasicBlockInContext<IExplodedBasicBlock> dest) {
+			
+			E.log(PRINT_EXCEPTIONAL, "KILLING(call to return): " + src.toShortString() + "->" + dest.toShortString());
+			
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {			
-				E.log(PRINT_EXCEPTIONAL, "EXCEPTIONAL Killing [" + src.toString() + " -> " + dest.toString() + "]");
+				E.log(PRINT_EXCEPTIONAL, "EXCEPTIONAL Killing [" + src.toShortString() + " -> " + dest.toShortString() + "]");
 				return KillEverything.singleton();				
 			}
 
@@ -303,7 +332,7 @@ public class CtxSensLocking {
 				final BasicBlockInContext<IExplodedBasicBlock> dest) {
 			
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {
-				E.log(PRINT_EXCEPTIONAL, "KILL EXC: " + src.toString() + " -> " + dest.toString());
+				E.log(PRINT_EXCEPTIONAL, "KILL EXC: " + src.toShortString() + " -> " + dest.toShortString());
 				return KillEverything.singleton();
 			}
 
@@ -333,9 +362,11 @@ public class CtxSensLocking {
 				BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest) {
 
-			//This needs to be here!
-			if (icfg.contextReturn(src, dest)) {
-				E.log(1, "CTX UNBAL RETURN: " + src.toString() + " -> " + dest.toString());	
+			E.log(PRINT_EXCEPTIONAL, "unbal: " + src.toShortString() + "->" + dest.toShortString());
+			
+			//Returning from a context ASYNCHRONOUSLY
+			if (icfg.isReturnFromContext(src, dest)) {
+				E.log(1, "CTX UNBAL RETURN: " + src.toShortString() + " -> " + dest.toShortString());	
 				return new IUnaryFlowFunction() {
 					public IntSet getTargets(int d1) {
 						Pair<WakeLockInstance, SingleLockState> mappedObject = domain.getMappedObject(d1);
@@ -351,7 +382,7 @@ public class CtxSensLocking {
 			}			
 			
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {			
-				E.log(PRINT_EXCEPTIONAL,  "KILL EXC: " + src.toString() + " -> " + dest.toString() +"]");
+				E.log(PRINT_EXCEPTIONAL,  "KILL EXC: " + src.toShortString() + " -> " + dest.toShortString() +"]");
 				return KillEverything.singleton();				
 			}
 			return IdentityFlowFunction.identity();
@@ -362,6 +393,8 @@ public class CtxSensLocking {
 				BasicBlockInContext<IExplodedBasicBlock> call,
 				BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest) {
+		
+			E.log(PRINT_EXCEPTIONAL, "return: " + src.toShortString() + "->" + dest.toShortString());
 			
 			/**
 			 * Exceptional edges in cases where no acquire/release is involved. 
@@ -369,12 +402,12 @@ public class CtxSensLocking {
 			 * are not determined.
 			 */
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(call, dest)) {
-				E.log(PRINT_EXCEPTIONAL, "KILL EXC: " + src.toString() + " -> " + dest.toString());
+				E.log(PRINT_EXCEPTIONAL, "KILL EXC: " + src.toShortString() + " -> " + dest.toShortString());
 				return KillEverything.singleton();							
 			}
 			
-			if (icfg.contextReturn(src, dest)) {
-				E.log(1, "CTX RETURN: " + src.toString() + " -> " + dest.toString());	
+			if (icfg.isReturnFromContext(src, dest)) {
+				E.log(1, "CTX RETURN: " + src.toShortString() + " -> " + dest.toShortString());	
 				return new IUnaryFlowFunction() {
 					public IntSet getTargets(int d1) {
 						Pair<WakeLockInstance, SingleLockState> mappedObject = domain.getMappedObject(d1);
@@ -386,9 +419,7 @@ public class CtxSensLocking {
 					}
 				};
 			}			
-			
 			return IdentityFlowFunction.identity();			
-
 		}
 
 	}
@@ -408,14 +439,9 @@ public class CtxSensLocking {
 
 		/**
 		 * Define the set of path edges to start propagation with.
-		 * 
-		 * @return
 		 */
 		private Collection<PathEdge<BasicBlockInContext<IExplodedBasicBlock>>> collectInitialSeeds() {
 			Collection<PathEdge<BasicBlockInContext<IExplodedBasicBlock>>> result =	HashSetFactory.make();
-
-
-
 			for (BasicBlockInContext<IExplodedBasicBlock> bb : supergraph) {
 				WakeLockInstance timedAcquiredWL = timedAcquire(bb);
 				if (timedAcquiredWL != null) {
@@ -491,17 +517,13 @@ public class CtxSensLocking {
 			return flowFunctions;
 		}
 
-		public BasicBlockInContext<IExplodedBasicBlock> getFakeEntry(
-				BasicBlockInContext<IExplodedBasicBlock> n) {
+		public BasicBlockInContext<IExplodedBasicBlock> getFakeEntry(BasicBlockInContext<IExplodedBasicBlock> n) {
 			final CGNode cgNode = n.getNode();
 			return getFakeEntry(cgNode);
-
 		}
 
-		private BasicBlockInContext<IExplodedBasicBlock> getFakeEntry(
-				CGNode cgNode) {
-			BasicBlockInContext<IExplodedBasicBlock>[] entriesForProcedure = supergraph
-					.getEntriesForProcedure(cgNode);
+		private BasicBlockInContext<IExplodedBasicBlock> getFakeEntry(CGNode cgNode) {
+			BasicBlockInContext<IExplodedBasicBlock>[] entriesForProcedure = supergraph.getEntriesForProcedure(cgNode);
 			assert entriesForProcedure.length == 1;
 			return entriesForProcedure[0];
 		}

@@ -713,6 +713,7 @@ public class BugHunt {
 //				theSet.add("UEFA.com");
 //				theSet.add("GO_sms");
 				theSet.add("ContactManager");
+//				theSet.add("SimpleTime");
 //				theSet.add("InstaFetch");
 			}
 			else {
