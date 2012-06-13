@@ -147,7 +147,7 @@ public class Opts {
   /**
    * Prune exceptional edges in CFG
    */
-  public static final boolean PRUNE_EXCEPTION_EDGES_IN_GFG = false;
+  public static final boolean PRUNE_EXCEPTION_EDGES_IN_GFG = true;
 
   public static final boolean OUTPUT_PLAIN_CFGS = false;
 

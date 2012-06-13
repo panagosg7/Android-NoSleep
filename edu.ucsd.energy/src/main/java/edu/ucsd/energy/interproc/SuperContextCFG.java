@@ -29,9 +29,8 @@ public class SuperContextCFG extends AbstractContextCFG {
 		  constructFullGraph();
 		  
 		  //For the implicit edges within components
-		  
-		  
 		  cacheCallbacks(packedEdges);
+
 		  //Add edges from Intent calls etc
 		  //Using as packed edges the total of the edges for every component
 		  addCallToEntryAndReturnEdges(seeds);
@@ -39,8 +38,5 @@ public class SuperContextCFG extends AbstractContextCFG {
 		  addReturnToEntryEdge(packedEdges);
 		  
 	  }
-
-
-
 
 }

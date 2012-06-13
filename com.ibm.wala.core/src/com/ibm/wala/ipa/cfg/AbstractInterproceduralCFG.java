@@ -423,7 +423,7 @@ public abstract class AbstractInterproceduralCFG<T extends ISSABasicBlock> imple
 
   private boolean constructedFullGraph = false;
 
-  //Panagiotis Vekris changed visibility from private to protected
+  //PV changed visibility from private to protected
   protected void constructFullGraph() {
     if (!constructedFullGraph) {
       for (CGNode n : cg) {

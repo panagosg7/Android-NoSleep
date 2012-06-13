@@ -22,7 +22,7 @@ import edu.ucsd.energy.util.E;
 
 public class SuperComponent extends AbstractComponent {
 
-	private static final int DEBUG = 2;
+	private static final int DEBUG = 1;
 
 	Set<Context> sComponent;
 
@@ -68,7 +68,6 @@ public class SuperComponent extends AbstractComponent {
 			}
 			return sb.toString();
 		}
-		
 	}
 
 	public SuperContextCFG makeCFG() {

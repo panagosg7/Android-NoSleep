@@ -1,6 +1,5 @@
 package edu.ucsd.energy.interproc;
 
-
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -15,7 +14,6 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.ipa.cfg.ExplodedInterproceduralCFG;
-import com.ibm.wala.shrikeBT.GetInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.analysis.ExplodedControlFlowGraph;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
@@ -26,7 +24,6 @@ import edu.ucsd.energy.component.AbstractComponent;
 import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.util.E;
-import edu.ucsd.energy.util.Util;
 
 /**
  * This is an exploded inter-procedural CFG with extra edges connecting 
@@ -78,7 +75,7 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 			Context targetComp = map.get(instr);
 			if (targetComp != null) {
 
-				//For the moment we propagate the information from all exit points
+				//For the moment, we propagate the information from all exit points
 				//Return edges must be added first to avoid having the entry method as
 				//a successor of the invoke instruction
 
@@ -98,7 +95,7 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 								getSuccNodes(caller); succIter.hasNext();) {
 							BasicBlockInContext<IExplodedBasicBlock> returnBB = succIter.next();
 							//Eliminate edges from called context to the exception catch node 
-							//of the calling context 
+							//of the calling context
 							if (!isExceptionalEdge(caller, returnBB)) {
 								addEdge(src, returnBB);
 								sContextReturn.add(Pair.make(src, returnBB));
@@ -193,6 +190,7 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 		//probably an exceptional one.
 		if((!src.getMethod().equals(dest.getMethod())) && src.getDelegate().isExitBlock()
 				&& dest.getDelegate().isExitBlock()) {
+			E.log(1, "EXCE: " + src.toShortString() + " -> " + dest.toShortString());
 			return true;
 		}
 		//Exceptional successors from method's CFG
@@ -200,6 +198,7 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 			Collection<IExplodedBasicBlock> exceptionalSuccessors = 
 					getCFG(src).getExceptionalSuccessors(src.getDelegate());
 			if (exceptionalSuccessors.contains(dest.getDelegate())) {
+				E.log(1, "EXCE1: " + src.toShortString() + " -> " + dest.toShortString());
 				return true;
 			}
 		}
@@ -213,8 +212,7 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 			//If the edge spans between two methods, make sure that:
 			//the starting vertex is the exit of a method.
 			if(!src.getDelegate().equals(this.getCFG(src).exit())) {	//callee: any point - not the exit
-				//E.log(1, "Found INTER-exceptional edge: " + src.toShortString() + " -> " + 
-				//dest.toShortString() + " exit: " + this.getCFG(src).exit().getNumber());	 
+				E.log(1, "EXCE2: " + src.toShortString() + " -> " + dest.toShortString());
 				return true;
 			}				
 		}

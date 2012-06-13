@@ -1,6 +1,5 @@
 package edu.ucsd.energy.managers;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;

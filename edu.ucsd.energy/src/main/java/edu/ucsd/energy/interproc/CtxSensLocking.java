@@ -227,7 +227,7 @@ public class CtxSensLocking {
 
 	private class LockingFunctions implements IPartiallyBalancedFlowFunctions<BasicBlockInContext<IExplodedBasicBlock>> {
 
-		private static final int PRINT_EXCEPTIONAL = 2;
+		private static final int PRINT_EXCEPTIONAL = 1;
 
 		public IUnaryFlowFunction getNormalFlowFunction(
 				final BasicBlockInContext<IExplodedBasicBlock> src,
@@ -235,8 +235,7 @@ public class CtxSensLocking {
 			/**
 			 * Exceptional edges should be treated as normal in cases where no
 			 * acquire/release is involved. BE CAREFUL : exceptional edges that
-			 * span across multiple procedures (if possible) cannot be
-			 * determined.
+			 * span across multiple procedures (if possible) cannot be determined.
 			 */
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {
 				E.log(PRINT_EXCEPTIONAL, "KILL EXC: " + src.toShortString() + " -> " + dest.toShortString());				
@@ -263,7 +262,6 @@ public class CtxSensLocking {
 							}
 						}
 					}
-
 					//Look for isHeld() condition
 					else if (specialCondition instanceof IsHeldCondition) {
 						E.log(2, src.toShortString() + " -> " + dest.toShortString() + " : " + specialCondition.toString());
@@ -301,10 +299,8 @@ public class CtxSensLocking {
 				BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest) {
 			
-			E.log(PRINT_EXCEPTIONAL, "KILLING(call to return): " + src.toShortString() + "->" + dest.toShortString());
-			
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {			
-				E.log(PRINT_EXCEPTIONAL, "EXCEPTIONAL Killing [" + src.toShortString() + " -> " + dest.toShortString() + "]");
+				E.log(PRINT_EXCEPTIONAL, "KILL(call-to-return):" + src.toShortString() + " -> " + dest.toShortString());
 				return KillEverything.singleton();				
 			}
 
@@ -312,10 +308,10 @@ public class CtxSensLocking {
 			//Two merged states will have lost any info regarding their sequencing...
 			//We have marked cases where a different context is called (e.g. startActivity)
 			//We need to propagate the state and not treat this as a common method call!
-			//if (icfg.propagateState(src, dest)) {
-			//	E.log(1, "PROPAGATING: " + src.toString() + " -> " + dest.toString());
-			//	return IdentityFlowFunction.identity();
-			//}
+			if (icfg.isCallToContext(src, dest)) {
+				E.log(1, "PROPAGATING: " + src.toString() + " -> " + dest.toString());
+				return IdentityFlowFunction.identity();
+			}
 			
 			//Kill the info for all the rest functions - info will 
 			return KillEverything.singleton();
@@ -332,7 +328,8 @@ public class CtxSensLocking {
 				final BasicBlockInContext<IExplodedBasicBlock> dest) {
 			
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {
-				E.log(PRINT_EXCEPTIONAL, "KILL EXC: " + src.toShortString() + " -> " + dest.toShortString());
+				E.log(PRINT_EXCEPTIONAL, "KILL(call-none-to-return): " +
+						src.toShortString() + " -> " + dest.toShortString());
 				return KillEverything.singleton();
 			}
 
@@ -362,8 +359,6 @@ public class CtxSensLocking {
 				BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest) {
 
-			E.log(PRINT_EXCEPTIONAL, "unbal: " + src.toShortString() + "->" + dest.toShortString());
-			
 			//Returning from a context ASYNCHRONOUSLY
 			if (icfg.isReturnFromContext(src, dest)) {
 				E.log(1, "CTX UNBAL RETURN: " + src.toShortString() + " -> " + dest.toShortString());	
@@ -382,7 +377,7 @@ public class CtxSensLocking {
 			}			
 			
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {			
-				E.log(PRINT_EXCEPTIONAL,  "KILL EXC: " + src.toShortString() + " -> " + dest.toShortString() +"]");
+				E.log(PRINT_EXCEPTIONAL,  "KILL(unbal): " + src.toShortString() + " -> " + dest.toShortString());
 				return KillEverything.singleton();				
 			}
 			return IdentityFlowFunction.identity();
@@ -394,15 +389,13 @@ public class CtxSensLocking {
 				BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest) {
 		
-			E.log(PRINT_EXCEPTIONAL, "return: " + src.toShortString() + "->" + dest.toShortString());
-			
 			/**
 			 * Exceptional edges in cases where no acquire/release is involved. 
 			 * BE CAREFUL : exceptional edges that span across multiple procedures 
 			 * are not determined.
 			 */
 			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(call, dest)) {
-				E.log(PRINT_EXCEPTIONAL, "KILL EXC: " + src.toShortString() + " -> " + dest.toShortString());
+				E.log(PRINT_EXCEPTIONAL, "KILL(return): " + src.toShortString() + " -> " + dest.toShortString());
 				return KillEverything.singleton();							
 			}
 			
