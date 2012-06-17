@@ -26,9 +26,9 @@ import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.graph.traverse.DFSPathFinder;
 
-import edu.ucsd.energy.analysis.AppCallGraph;
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.apk.ApkInstance;
+import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.component.AbstractComponent;
 import edu.ucsd.energy.component.ComponentPrinter;
 import edu.ucsd.energy.component.SuperComponent;
@@ -455,7 +455,7 @@ public class ComponentManager {
 			
 		}
 		E.log(1, "===========================");
-		 */
+		*/
 		
 		//Create SuperComponents based on component constraints
 		Iterator<Set<Context>> scItr = GraphUtils.connectedComponentIterator(constraintGraph);

@@ -1,4 +1,4 @@
-package edu.ucsd.energy.analysis;
+package edu.ucsd.energy.apk;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -69,6 +69,7 @@ import com.ibm.wala.viz.DotUtil;
 import com.ibm.wala.viz.NodeDecorator;
 import com.ibm.wala.viz.PDFViewUtil;
 
+import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.intraproc.IntraProcAnalysis;
 import edu.ucsd.energy.managers.IntentManager;
 import edu.ucsd.energy.managers.WakeLockManager;
@@ -226,23 +227,18 @@ public class AppCallGraph implements CallGraph {
 		/* Add wakelock methods and their callsites to the call graph */
 		insertTargetMethodsToCG(cg);
 
-		if (Opts.KEEP_ONLY_WAKELOCK_SPECIFIC_NODES) {
-			/*
-			 * Create a prunded call graph that contains only those nodes that
-			 * descend to lock operations
-			 */
+		/*if (Opts.KEEP_ONLY_WAKELOCK_SPECIFIC_NODES) {
 			CallGraph pcg = pruneLockIrrelevantNodes(cg);
 			return pcg;
-		}
+		}*/
 
 		if (!Opts.KEEP_PRIMORDIAL) {
-			CallGraph pcg = prunePrimordialNodes(cg);
-			return pcg;
+			return prunePrimordialNodes(cg);
 		}
 		return cg;
 	}
 
-	private CallGraph prunePrimordialNodes(ExplicitCallGraph cg) {
+	private PartialCallGraph prunePrimordialNodes(ExplicitCallGraph cg) {
 		HashSet<CGNode> keepers = new HashSet<CGNode>();
 		Iterator<CGNode> iterator = cg.iterator();
 
@@ -250,7 +246,7 @@ public class AppCallGraph implements CallGraph {
 			CGNode node = iterator.next();
 			if (isAppNode(node) /*|| isTargetMethod(node)*/) {
 				keepers.add(node);
-				E.log(2, "Keep: " + node.getMethod().toString());
+				E.log(1, "Keep: " + node.getMethod().toString());
 			} else {
 				E.log(2, "Prune: " + node.getMethod().toString());
 			}

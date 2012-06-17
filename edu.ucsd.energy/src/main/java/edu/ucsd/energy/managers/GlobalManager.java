@@ -5,9 +5,9 @@ import java.io.IOException;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 
-import edu.ucsd.energy.analysis.AppCallGraph;
-import edu.ucsd.energy.analysis.AppClassHierarchy;
-import edu.ucsd.energy.analysis.SpecialConditions;
+import edu.ucsd.energy.apk.AppCallGraph;
+import edu.ucsd.energy.apk.AppClassHierarchy;
+import edu.ucsd.energy.conditions.SpecialConditions;
 import edu.ucsd.energy.results.PolicyReport;
 import edu.ucsd.energy.results.IReport;
 

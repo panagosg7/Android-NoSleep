@@ -25,26 +25,31 @@ public class LockingTabulationSolver  extends PartiallyBalancedTabulationSolver<
 	BasicBlockInContext<IExplodedBasicBlock>, 
 	CGNode, Pair<WakeLockInstance, SingleLockState>> {
 
+	private AbstractContextCFG icfg;
+
 	protected LockingTabulationSolver(
-			PartiallyBalancedTabulationProblem<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<WakeLockInstance, SingleLockState>> p,
-			IProgressMonitor monitor) {
+			PartiallyBalancedTabulationProblem<BasicBlockInContext<IExplodedBasicBlock>, 
+			CGNode, Pair<WakeLockInstance, SingleLockState>> p,
+			IProgressMonitor monitor, AbstractContextCFG icfg) {
 		super(p, monitor);
+		this.icfg = icfg;
 	} 
-	
-	
+
+
 	public LockingResult solve() throws CancelException {
-		TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<WakeLockInstance, SingleLockState>> result = super.solve();		
+		TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, 
+			CGNode, Pair<WakeLockInstance, SingleLockState>> result = super.solve();		
 		return new LockingResult(result);
 	}
-	
+
 	public class LockingResult implements TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, 
 	CGNode, Pair<WakeLockInstance, SingleLockState>> {
 		TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<WakeLockInstance, SingleLockState>> result;
-		
+
 		LockingResult(TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<WakeLockInstance, SingleLockState>> r) {
 			this.result = r;
 		} 
-		
+
 		/**
 		 * Get the a mapping with all the states with a single state for every field 
 		 * @param n
@@ -90,8 +95,17 @@ public class LockingTabulationSolver  extends PartiallyBalancedTabulationSolver<
 		public Collection<PathEdge<BasicBlockInContext<IExplodedBasicBlock>>> getSeeds() {
 			return result.getSeeds();
 		}
+
 	
 	}
+	
+	//We also classify cases of propagating state to the next method in the lifecycle as unbalanced seeds.
+	protected boolean wasUsedAsUnbalancedSeed(BasicBlockInContext<IExplodedBasicBlock> s_p, int i,
+			BasicBlockInContext<IExplodedBasicBlock> n, int j) {
+		boolean b = super.wasUsedAsUnbalancedSeed(s_p,i, n, j) ||	icfg.isLifecycleExit(n);
+		return b;		
+	}
+
 	
 
 }

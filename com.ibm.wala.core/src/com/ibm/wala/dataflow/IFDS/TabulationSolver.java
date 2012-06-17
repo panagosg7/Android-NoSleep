@@ -260,8 +260,6 @@ public class TabulationSolver<T, P, F> {
         System.err.println("TABULATE " + edge);
       }
       curPathEdge = edge;
-      /* Panagiotis Vekris */
-      //System.out.println("Edge: " + edge.toString());
 
       int j = merge(edge.entry, edge.d1, edge.target, edge.d2);
       if (j == -1 && DEBUG_LEVEL > 0) {
@@ -271,7 +269,7 @@ public class TabulationSolver<T, P, F> {
         if (j != edge.d2) {
           // this means that we don't want to push the edge. instead,
           // we'll push the merged fact. a little tricky, but i think should
-          // work.          
+          // work.
           if (DEBUG_LEVEL > 0) { 
             System.err.println("propagating merged fact " + j);
           }
@@ -366,6 +364,9 @@ public class TabulationSolver<T, P, F> {
 
     final LocalSummaryEdges summaries = findOrCreateLocalSummaryEdges(supergraph.getProcOf(edge.target));
     int s_p_n = supergraph.getLocalBlockNumber(edge.entry);
+    if (DEBUG_LEVEL > 0) {
+      System.err.println("s_p_n: " + s_p_n);
+    }
     int x = supergraph.getLocalBlockNumber(edge.target);
     if (!summaries.contains(s_p_n, x, edge.d1, edge.d2)) {
       summaries.insertSummaryEdge(s_p_n, x, edge.d1, edge.d2);
@@ -382,7 +383,9 @@ public class TabulationSolver<T, P, F> {
         // [23] for each d4 s.t. <c,d4> -> <s_p,d1> occurred earlier
         int globalC = it.next();
         final IntSet D4 = callFlow.getCallFlowSources(globalC, edge.d1);
-
+        if (DEBUG_LEVEL > 0) {
+          System.err.println("Propagating to return" );
+        }
         // [23] for each d5 s.t. <e_p,d2> -> <returnSite(c),d5> ...
         propagateToReturnSites(edge, supergraph.getNode(globalC), D4);
       }
@@ -411,7 +414,7 @@ public class TabulationSolver<T, P, F> {
     // exit block to each return site.
     for (Iterator<? extends T> retSites = supergraph.getReturnSites(c, supergraph.getProcOf(edge.target)); retSites.hasNext();) {
       final T retSite = retSites.next();
-      if (DEBUG_LEVEL > 1) {
+      if (DEBUG_LEVEL > 0) {
         System.err.println("candidate return site: " + retSite + " " + supergraph.getNumber(retSite));
       }
       // note: since we might have multiple exit nodes for the callee, (to handle exceptional returns)
@@ -422,7 +425,7 @@ public class TabulationSolver<T, P, F> {
       if (!supergraph.hasEdge(edge.target, retSite)) {
         continue;
       }
-      if (DEBUG_LEVEL > 1) {
+      if (DEBUG_LEVEL > 0) {
         System.err.println("feasible return site: " + retSite);
       }
       final IFlowFunction retf = flowFunctionMap.getReturnFlowFunction(c, edge.target, retSite);
@@ -784,7 +787,6 @@ public class TabulationSolver<T, P, F> {
     assert number >= 0;
 
     LocalPathEdges pLocal = findOrCreateLocalPathEdges(s_p);
-
     assert j >= 0;
 
     if (!pLocal.contains(i, number, j)) {

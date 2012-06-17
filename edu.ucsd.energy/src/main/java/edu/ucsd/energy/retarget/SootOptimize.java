@@ -10,9 +10,9 @@ import java.util.concurrent.Callable;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 
+import edu.ucsd.energy.RetargetException;
 import edu.ucsd.energy.apk.ApkInstance;
 import edu.ucsd.energy.apk.ApkPaths;
-import edu.ucsd.energy.entry.RetargetException;
 import edu.ucsd.energy.util.SystemUtil;
 
 public class SootOptimize implements JavaOptimize {

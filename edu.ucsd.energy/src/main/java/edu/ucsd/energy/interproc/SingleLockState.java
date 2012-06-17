@@ -28,7 +28,7 @@ public class SingleLockState  {
 		//(ASYNC_)TIMED_RELEASED does not make sense
 		ASYNC_RELEASED("greenyellow"),
 		
-		NO_LOCKS("grey"),
+//		NO_LOCKS("grey"),
 		UNDEFINED("black");		
 
 		public String color;
@@ -57,7 +57,7 @@ public class SingleLockState  {
 			SingleLockState l = (SingleLockState) o;			
 			return ((acquired() == l.acquired()) &&
 					(timed() == l.timed()) &&
-					(async() == l.async()));	//this should work			
+					(async() == l.async()));			
 		}
 		return false;		
 	}
@@ -70,7 +70,7 @@ public class SingleLockState  {
 		return sb.toString();
 	}
 
-	public SingleLockState merge(SingleLockState l) {		
+	public SingleLockState merge(SingleLockState l) {
 		if (l == null) {
 			return this;
 		}		
@@ -111,6 +111,9 @@ public class SingleLockState  {
 		}
 		if (async && (!timed) && (!acquired)) {
 			return LockStateDescription.ASYNC_RELEASED;
+		}
+		if (async && (!timed) && acquired) {
+			return LockStateDescription.ASYNC_ACQUIRED;
 		}
 		return LockStateDescription.UNDEFINED;	//the rest of the cases are bogus
 	}

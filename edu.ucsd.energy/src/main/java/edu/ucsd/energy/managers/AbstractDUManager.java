@@ -28,7 +28,7 @@ import com.ibm.wala.util.collections.Iterator2List;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.intset.MutableSparseIntSet;
 
-import edu.ucsd.energy.analysis.AppCallGraph;
+import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.GraphUtils;

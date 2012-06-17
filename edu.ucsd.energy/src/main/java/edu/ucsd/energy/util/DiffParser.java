@@ -1,4 +1,4 @@
-package edu.ucsd.energy.entry;
+package edu.ucsd.energy.util;
 //Author: John C. McCullough
 import java.io.BufferedReader;
 import java.io.File;
@@ -17,10 +17,10 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringEscapeUtils;
 
-import edu.ucsd.energy.entry.DiffParser.DiffLine.LineType;
 import edu.ucsd.energy.smali.LameMethod;
 import edu.ucsd.energy.smali.LameSmali;
 import edu.ucsd.energy.smali.LameWorld;
+import edu.ucsd.energy.util.DiffParser.DiffLine.LineType;
 
 public class DiffParser implements Iterable<DiffParser.DiffFile>{
 	public static class DiffLine {

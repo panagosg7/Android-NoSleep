@@ -24,7 +24,7 @@ import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.OrdinalSet;
 
-import edu.ucsd.energy.analysis.AppCallGraph;
+import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.interproc.AbstractContextCFG;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.CtxSensLocking;
@@ -131,6 +131,7 @@ public abstract class AbstractComponent extends NodeWithNumber implements ICompo
 			}
 			mEBBState.put(bb.getDelegate(), q);
 			mBBICState.put(bb, q);
+			//E.log(1, bb.toShortString() + " : " + q.toShortString());
 		}
 		
 	}

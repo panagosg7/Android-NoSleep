@@ -7,9 +7,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+import edu.ucsd.energy.RetargetException;
 import edu.ucsd.energy.apk.ApkInstance;
 import edu.ucsd.energy.apk.ApkPaths;
-import edu.ucsd.energy.entry.RetargetException;
 
 public class D2jConverter implements DexConverter {
 	private ApkPaths mPaths;

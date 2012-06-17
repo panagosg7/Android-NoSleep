@@ -6,7 +6,7 @@ package edu.ucsd.energy.retarget;
 import java.io.File;
 import java.io.IOException;
 
-import edu.ucsd.energy.entry.RetargetException;
+import edu.ucsd.energy.RetargetException;
 
 public interface DexConverter {
 	public File getTarget();

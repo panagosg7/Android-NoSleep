@@ -1,4 +1,4 @@
-package edu.ucsd.energy.analysis;
+package edu.ucsd.energy.conditions;
 
 import java.util.ArrayList;
 import java.util.HashMap;

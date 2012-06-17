@@ -1,4 +1,4 @@
-package edu.ucsd.energy.entry;
+package edu.ucsd.energy;
 //Author: John C. McCullough
 import java.io.BufferedReader;
 import java.io.DataInputStream;
@@ -39,16 +39,16 @@ import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.debug.UnimplementedError;
 
+import edu.ucsd.energy.ApkCollection.ApkApplication;
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.apk.ApkInstance;
-import edu.ucsd.energy.entry.ApkCollection.ApkApplication;
 import edu.ucsd.energy.results.BugResult;
 import edu.ucsd.energy.results.FailReport;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ProcessResults.ResultType;
 import edu.ucsd.energy.util.SystemUtil;
 
-public class BugHunt {
+public class Main {
 	
 	private static File acqrelDatabaseFile;
 	
@@ -669,6 +669,7 @@ public class BugHunt {
 		options.addOption(new Option("u", "usage", false, "print the components that leave a callback locked or unlocked"));
 		options.addOption(new Option("w", "wakelock-info", false, "gather info about wakelock creation"));
 		options.addOption(new Option("o", "output", true, "specify an output filename (date will be included)"));
+		options.addOption(new Option("unit", false, "run the unit tests"));
 		options.addOption(new Option("i", "input", true, "specify the input json file"));
 		options.addOption(new Option("t", "threads", true, "run the analysis on t threads (works for pattern analysis only)"));
 		options.addOption(new Option("s", "small-set", false, "run the analysis on a small set"));
@@ -696,9 +697,15 @@ public class BugHunt {
 			if (line.hasOption("input")) {
 				setInputJSONFile(line.getOptionValue("input"));
 			}
+			else if (line.hasOption("unit")) {
+				acqrelDatabaseFile = new File("/home/pvekris/dev/apk_scratch/output/unit.json");
+			}
 			else{
 				acqrelDatabaseFile = new File("/home/pvekris/dev/apk_scratch/output/optimized.json");
 			}
+			
+			
+			//Define the set of apps to run the analysis on
 			if (line.hasOption("small-set")) {
 				theSet = new HashSet<String>();
 				/* The applications you specify here need to be in apk_collection !!! */
@@ -713,8 +720,19 @@ public class BugHunt {
 //				theSet.add("UEFA.com");
 //				theSet.add("GO_sms");
 				theSet.add("ContactManager");
-//				theSet.add("SimpleTime");
+//				theSet.add("aTrackDogSD");
+//				theSet.add("Scanner_Buddy_FREE");
+//				theSet.add("Steel");
+//				theSet.add("Store_Hours");
+//				theSet.add("3D_Level");
+//				theSet.add("aLogcat");
 //				theSet.add("InstaFetch");
+			}
+			else if (line.hasOption("unit")) {
+				theSet = new HashSet<String>();
+				theSet.add("Unit_01");
+				theSet.add("Unit_02");
+				theSet.add("Unit_03");
 			}
 			else {
 				FileInputStream is = new FileInputStream(acqrelDatabaseFile);
@@ -737,9 +755,7 @@ public class BugHunt {
 							theSet.add(k);
 						}
 					} 
-					catch(Exception e) {
-					}
-					
+					catch(Exception e) { }
 				}
 			}
 			
@@ -764,6 +780,8 @@ public class BugHunt {
     		} else if (line.hasOption("patterns")) {
     			runPatternAnalysis();
     		} else if (line.hasOption("usage")) {
+    			runUsageAnalysis();
+    		} else if (line.hasOption("unit")) {
     			runUsageAnalysis();
     		} else if (line.hasOption("create-json")) {
     			String input = line.getOptionValue("create-json");

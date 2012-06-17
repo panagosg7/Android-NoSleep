@@ -23,11 +23,11 @@ import net.sf.json.JSONObject;
 
 import org.apache.commons.lang.StringUtils;
 
+import edu.ucsd.energy.RetargetException;
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.apk.ApkInstance;
 import edu.ucsd.energy.apk.ConfigurationException;
 import edu.ucsd.energy.apk.Util;
-import edu.ucsd.energy.entry.RetargetException;
 
 public class SystemUtil {
 

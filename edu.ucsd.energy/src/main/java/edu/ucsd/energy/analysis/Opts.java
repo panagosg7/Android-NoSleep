@@ -147,13 +147,13 @@ public class Opts {
   /**
    * Prune exceptional edges in CFG
    */
-  public static final boolean PRUNE_EXCEPTION_EDGES_IN_GFG = true;
+  public static final boolean PRUNE_EXCEPTION_EDGES_IN_GFG = false;
 
   public static final boolean OUTPUT_PLAIN_CFGS = false;
 
   public static final boolean OUTPUT_CLASS_HIERARCHY = true;
 
-  public static final boolean ENFORCE_SPECIAL_CONDITIONS = false;
+  public static final boolean ENFORCE_SPECIAL_CONDITIONS = true;
 	
   public static final boolean DATAFLOW_IGNORE_EXCEPTIONAL = true;
 	
@@ -163,10 +163,6 @@ public class Opts {
 
 
 
-
-
-
-  
   /*******************************************
    * Other Options
    */

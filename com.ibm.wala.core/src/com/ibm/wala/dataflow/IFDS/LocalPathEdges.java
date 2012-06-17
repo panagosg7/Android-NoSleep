@@ -126,7 +126,7 @@ public class LocalPathEdges {
         }
 
         if (TabulationSolver.DEBUG_LEVEL > 1) {
-          // System.err.println("recording path edge, now d2=" + j + " has been reached from " + R);
+          System.err.println("recording path edge, now d2=" + j + " has been reached from " + R);
         }
       }
     }

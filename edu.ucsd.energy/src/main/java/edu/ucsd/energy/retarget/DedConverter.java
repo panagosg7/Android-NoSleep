@@ -6,9 +6,9 @@ package edu.ucsd.energy.retarget;
 import java.io.File;
 import java.io.IOException;
 
+import edu.ucsd.energy.RetargetException;
 import edu.ucsd.energy.apk.ApkInstance;
 import edu.ucsd.energy.apk.ApkPaths;
-import edu.ucsd.energy.entry.RetargetException;
 import edu.ucsd.energy.util.SystemUtil;
 
 public class DedConverter implements DexConverter {

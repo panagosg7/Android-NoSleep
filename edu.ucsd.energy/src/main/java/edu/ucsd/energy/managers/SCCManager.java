@@ -19,8 +19,8 @@ import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.IntSetUtil;
 import com.ibm.wala.viz.DotUtil;
 
-import edu.ucsd.energy.analysis.AppCallGraph;
 import edu.ucsd.energy.analysis.Opts;
+import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.util.SystemUtil;
 import edu.ucsd.energy.util.Util;
 

@@ -1,4 +1,4 @@
-package edu.ucsd.energy.entry;
+package edu.ucsd.energy;
 //Author: John C. McCullough
 public class ApkException extends Exception {
 

@@ -190,24 +190,14 @@ public class ComponentPrinter<T extends AbstractComponent> {
 			return st.getStates();
 		}
 		
-		public Set<LockStateDescription> getFillColors(Object o) {
-			IExplodedBasicBlock ebb = null;
-			Collection<SingleLockState> states = null;
-			//Supergraph - need to have the BasicBlockInContext
-			if (o instanceof BasicBlockInContext) {
-				@SuppressWarnings("unchecked")
-				BasicBlockInContext<IExplodedBasicBlock> bb = (BasicBlockInContext<IExplodedBasicBlock>) o;        
-				states = getStates(bb);
-			}
-			//Per method cfg
-			else if (o instanceof IExplodedBasicBlock) {
-				ebb = (IExplodedBasicBlock) o;
-				states = getStates(ebb);
-			}
+		
+
+		public Set<LockStateDescription> statesToColor(Collection<SingleLockState> states) {
 			if (states != null) {
 				Function<SingleLockState, LockStateDescription> f = new Function<SingleLockState, LockStateDescription>() {
 					public LockStateDescription apply(SingleLockState sls) {
-						return sls.getLockStateDescription();
+						LockStateDescription lsd = sls.getLockStateDescription();
+						return lsd;
 					}
 				};
 				return Util.mapToSet(states, f);
@@ -215,6 +205,28 @@ public class ComponentPrinter<T extends AbstractComponent> {
 			HashSet<LockStateDescription> set = new HashSet<LockStateDescription>();
 			set.add(LockStateDescription.UNDEFINED);
 			return set;
+		}
+		
+		
+		public Set<LockStateDescription> getFillColors(Object o) {
+			IExplodedBasicBlock ebb = null;
+			Collection<SingleLockState> states = null;
+			//Supergraph - need to have the BasicBlockInContext
+			if (o instanceof BasicBlockInContext) {
+				@SuppressWarnings("unchecked")
+				BasicBlockInContext<IExplodedBasicBlock> bb = (BasicBlockInContext<IExplodedBasicBlock>) o;
+				states = getStates(bb);
+			}
+			//Per method cfg
+			else if (o instanceof IExplodedBasicBlock) {
+				ebb = (IExplodedBasicBlock) o;
+				states = getStates(ebb);
+				//if (ebb.isExitBlock()) {
+				//	System.out.println(ebb.toString() + " :: " + states.toString());
+				//}
+			}
+			return statesToColor(states);
+			
 		}
 
 		

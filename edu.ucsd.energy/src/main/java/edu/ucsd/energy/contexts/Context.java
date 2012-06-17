@@ -190,7 +190,7 @@ public abstract class Context extends AbstractComponent {
  	
  	
  	public Iterator<CGNode> getNodes() {
- 		return componentCallgraph.iterator();
+ 		return getCallGraph().iterator();
  	}
  	
  	public String toFileName() {

@@ -43,7 +43,7 @@ public class PartiallyBalancedTabulationSolver<T, P, F> extends TabulationSolver
   @Override
   protected boolean propagate(T s_p, int i, T n, int j) {
     boolean result = super.propagate(s_p, i, n, j);
-    if (result && wasUsedAsUnbalancedSeed(s_p, i) && supergraph.isExit(n)) {
+    if (result && wasUsedAsUnbalancedSeed(s_p, i, n, j) && supergraph.isExit(n)) {
       // j was reached from an entry seed. if there are any facts which are reachable from j, even without
       // balanced parentheses, we can use these as new seeds.
       for (Iterator<? extends T> it2 = supergraph.getSuccNodes(n); it2.hasNext();) {
@@ -84,8 +84,11 @@ public class PartiallyBalancedTabulationSolver<T, P, F> extends TabulationSolver
   /**
    * Was the fact number i named at node s_p introduced as an "unbalanced" seed during partial tabulation?
    * If so, any facts "reached" from here can be further propagated with unbalanced parens.
+   * @param j 
+   * @param n 
+   * PV: added last two arguments
    */
-  private boolean wasUsedAsUnbalancedSeed(T s_p, int i) {
+  protected boolean wasUsedAsUnbalancedSeed(T s_p, int i, T n, int j) {
    return unbalancedSeeds.contains(Pair.make(s_p, i));
   }
 }

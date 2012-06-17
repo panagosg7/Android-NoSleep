@@ -26,8 +26,8 @@ import com.ibm.wala.util.graph.Path;
 import com.ibm.wala.util.graph.dominators.Dominators;
 import com.ibm.wala.util.graph.impl.InvertedGraph;
 
-import edu.ucsd.energy.analysis.AppCallGraph;
 import edu.ucsd.energy.analysis.Opts;
+import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.conditions.CompoundCondition;
 import edu.ucsd.energy.conditions.ConditionManager;
 import edu.ucsd.energy.conditions.GeneralCondition;

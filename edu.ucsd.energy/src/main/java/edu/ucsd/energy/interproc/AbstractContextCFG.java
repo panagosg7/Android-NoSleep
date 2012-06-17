@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 
 import com.ibm.wala.cfg.ControlFlowGraph;
@@ -14,6 +13,7 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.ipa.cfg.ExplodedInterproceduralCFG;
+import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.analysis.ExplodedControlFlowGraph;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
@@ -47,9 +47,11 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 	protected Set<Pair<BasicBlockInContext<IExplodedBasicBlock>,BasicBlockInContext<IExplodedBasicBlock>>> sContextReturn = 
 			new HashSet<Pair<BasicBlockInContext<IExplodedBasicBlock>,BasicBlockInContext<IExplodedBasicBlock>>>();
 
+	//We need to keep these nodes so that the tabulation solver know that he has to 
+	//propagate the state (these are going to be unbalanced seeds)
+	protected Set<BasicBlockInContext<IExplodedBasicBlock>> sLifecycleEdge = 
+			new HashSet<BasicBlockInContext<IExplodedBasicBlock>>();
 
-	//Keep a map to all thread calls 
-	protected HashMap<BasicBlockInContext<IExplodedBasicBlock>, Context> mThreadCalls = null;
 
 	public AbstractContextCFG(CallGraph cg) {
 		super(cg);
@@ -61,6 +63,14 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 
 	public boolean isReturnFromContext(BasicBlockInContext<IExplodedBasicBlock> a, BasicBlockInContext<IExplodedBasicBlock> b) {
 		return sContextReturn.contains(Pair.make(a, b));
+	}
+	
+	/**
+	 * It suffices to account just for the exit point of a node that is important for the 
+	 * lifecycle of the context 
+	 */
+	public boolean isLifecycleExit(BasicBlockInContext<IExplodedBasicBlock> a) {
+		return sLifecycleEdge.contains(a);
 	}
 
 	/**
@@ -80,13 +90,16 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 				//a successor of the invoke instruction
 
 				Set<Selector> exitPoints = targetComp.getExitPoints();
-				E.log(1, "Adding RETURN edges FROM: " + targetComp.toString());
+				E.log(1, "Adding ASYNC CALL return edges : " + caller.toShortString());
+				//E.log(1, "To: " + targetComp.toString());
 				for (Selector sel : exitPoints) {
 					CallBack callBack = targetComp.getCallBack(sel);
 					//Continue only if this callback is indeed overridden
 					if (callBack != null) {
-						E.log(DEBUG, "\tTO: " + callBack.toString());
+						//E.log(1, "\tTO: " + callBack.toString());
 						CGNode node = callBack.getNode();
+						//addCalleeEdgesForCall(node, caller);
+						
 						ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> srcCFG = getCFG(node);				     
 						IExplodedBasicBlock srcIEBB = srcCFG.exit();
 						BasicBlockInContext<IExplodedBasicBlock> src =
@@ -99,15 +112,14 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 							if (!isExceptionalEdge(caller, returnBB)) {
 								addEdge(src, returnBB);
 								sContextReturn.add(Pair.make(src, returnBB));
-								E.log(1, "ADDING CTX RETURN: " + src.toString() + " -> " + returnBB.toString());
+								E.log(1, "ADDING ASYNC CTX RETURN: " + src.toShortString() +
+										" -> " + returnBB.toShortString());
 							}
 						}
 					}
 				}
-
-
 				Set<Selector> entryPoints = targetComp.getEntryPoints();
-				E.log(DEBUG, "Adding ENTRY edges TO: " + targetComp.toString());
+				
 				for (Selector sel : entryPoints) {
 					CallBack callBack = targetComp.getCallBack(sel);
 					//Continue only if this callback is indeed overridden
@@ -118,6 +130,8 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 						BasicBlockInContext<IExplodedBasicBlock> dest =
 								new BasicBlockInContext<IExplodedBasicBlock>(node, destIEBB);
 						addEdge(caller,dest);
+						E.log(DEBUG, "Adding ASYNC CTX CALL: " + caller.toShortString() + 
+								" -> " + dest.toShortString());
 						sPropagateState.add(Pair.make(caller,dest));
 					}
 				}
@@ -131,7 +145,7 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 	 * So we will cache them and apply our policies later.
 	 * @param packedEdges 
 	 */
-	protected  void cacheCallbacks(Set<Pair<CGNode, CGNode>> packedEdges) {
+	protected void cacheCallbacks(Set<Pair<CGNode, CGNode>> packedEdges) {
 		for (Pair<CGNode, CGNode> e : packedEdges) {
 			getCallbacks().put(e.fst.getMethod().getName().toString(), e.fst);
 			getCallbacks().put(e.snd.getMethod().getName().toString(), e.snd);
@@ -144,16 +158,14 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 			ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> startCFG = getCFG(startNode);      
 			CGNode stopNode = edge.snd;
 			ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> stopCFG = getCFG(stopNode);
-
 			IExplodedBasicBlock startBB = startCFG.exit();
 			IExplodedBasicBlock stopBB = stopCFG.entry();
-
 			BasicBlockInContext<IExplodedBasicBlock> p = 
 					new BasicBlockInContext<IExplodedBasicBlock>(startNode, startBB);
 			BasicBlockInContext<IExplodedBasicBlock> b =
 					new BasicBlockInContext<IExplodedBasicBlock>(stopNode, stopBB);
 			addEdge(p,b);
-			E.log(1,"Added edge:" + p.toString() +" -> "+ b.toString());     
+			sLifecycleEdge.add(p);
 		}
 	}
 
@@ -190,7 +202,7 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 		//probably an exceptional one.
 		if((!src.getMethod().equals(dest.getMethod())) && src.getDelegate().isExitBlock()
 				&& dest.getDelegate().isExitBlock()) {
-			E.log(1, "EXCE: " + src.toShortString() + " -> " + dest.toShortString());
+			E.log(2, "EXCE: " + src.toShortString() + " -> " + dest.toShortString());
 			return true;
 		}
 		//Exceptional successors from method's CFG
@@ -198,7 +210,7 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 			Collection<IExplodedBasicBlock> exceptionalSuccessors = 
 					getCFG(src).getExceptionalSuccessors(src.getDelegate());
 			if (exceptionalSuccessors.contains(dest.getDelegate())) {
-				E.log(1, "EXCE1: " + src.toShortString() + " -> " + dest.toShortString());
+				E.log(2, "EXCE1: " + src.toShortString() + " -> " + dest.toShortString());
 				return true;
 			}
 		}
@@ -208,24 +220,20 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 				throw np;
 			}
 		}
-		if (!getCGNode(src).equals(getCGNode(dest))) { 
+	
+		if (!getCGNode(src).equals(getCGNode(dest))) {
 			//If the edge spans between two methods, make sure that:
-			//the starting vertex is the exit of a method.
-			if(!src.getDelegate().equals(this.getCFG(src).exit())) {	//callee: any point - not the exit
-				E.log(1, "EXCE2: " + src.toShortString() + " -> " + dest.toShortString());
+			//the starting vertex is the exit of a method, or 
+			//a caller method
+			if((!src.getDelegate().equals(this.getCFG(src).exit())) && 		//callee: any point - not the exit
+			(!(src.getDelegate().getInstruction() instanceof SSAAbstractInvokeInstruction))) {
 				return true;
 			}				
 		}
+		
 		return false;
 	} 	
 
-
-	public void printBBToThreadMap() {
-		E.log(1, "");
-		for ( Entry<BasicBlockInContext<IExplodedBasicBlock>, Context> e : mThreadCalls.entrySet()) {
-			System.out.println(e.getKey().toString() + " -> " + e.getValue());
-		} 		
-	}
 
 	public BasicBlockInContext<IExplodedBasicBlock> getExplodedBasicBlock(CGNode n, ProgramCounter pc) {
 		ExplodedControlFlowGraph cfg = (ExplodedControlFlowGraph) this.getCFG(n);

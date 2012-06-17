@@ -1,15 +1,22 @@
 package edu.ucsd.energy.managers;
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
 import net.sf.json.JSONObject;
 
+import com.ibm.wala.classLoader.CallSiteReference;
+import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
+import com.ibm.wala.types.Selector;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
@@ -29,6 +36,7 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 
 	private final int DEBUG = 2;
 
+	
 	private SparseNumberedGraph<Context> constraintGraph;
 
 	public AbstractRunnableManager(GlobalManager gm) {
@@ -43,6 +51,40 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 
 	public void prepare() {
 		super.prepare();
+		
+		//fixCallGraph();
+		
+	}
+
+	private void fixCallGraph() {
+		Map<Selector, Set<CallSiteReference>> map = new HashMap<Selector, Set<CallSiteReference>>();
+		for (Entry<Pair<MethodReference, SSAInstruction>, V> e : mInstruction2Instance.entrySet()) {
+			SSAInstruction instr = e.getKey().snd;
+			if(instr instanceof SSAInvokeInstruction) {
+				SSAInvokeInstruction inv = (SSAInvokeInstruction) instr;
+				Set<Selector> entryPoints = e.getValue().getCalledComponent().getEntryPoints();
+				for(Selector ep : entryPoints) {
+					Set<CallSiteReference> set = map.get(ep);
+					if (set == null) {
+						set = new HashSet<CallSiteReference>();
+					}
+					set.add(inv.getCallSite());
+					map.put(ep, set);	
+				}
+			}
+		}
+		for(Iterator<CGNode> it = cg.iterator(); it.hasNext();) {
+			CGNode next = it.next();
+			Selector selector = next.getMethod().getSelector();
+			Set<CallSiteReference> set = map.get(selector);
+			for (CallSiteReference cs : set) {
+				//TODO: add the edges in the callgraph!!!
+				
+			}
+			
+		}
+		
+				
 	}
 
 	public void computeConstraintGraph() {

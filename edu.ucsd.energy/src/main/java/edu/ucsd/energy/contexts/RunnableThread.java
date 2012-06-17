@@ -18,28 +18,31 @@ import edu.ucsd.energy.managers.GlobalManager;
  */
 public class RunnableThread extends Context {
 
-  static Selector elements[] = { Interesting.ThreadRun };
-  
-  public RunnableThread(GlobalManager gm, CGNode root) {
-	 super(gm, root);
-	 sTypicalCallback.addAll(Arrays.asList(elements));
-  }
-    
-  public String toString() {
-	  StringBuffer b = new StringBuffer();
-	  b.append("Runnable thread: ");
-	  b.append(getKlass().getName().toString());
-	  return b.toString();
-  }  
-  
-  public CompoundLockState getThreadExitState() {
-	CGNode runNode = super.getCallBack(Interesting.ThreadRun).getNode();	
-	return super.getReturnState(runNode);
-  }
+	static Selector elements[] = { Interesting.ThreadRun };
 
-  public Set<Selector> getEntryPoints() {
-	  return Interesting.runnableEntryMethods;
-  }
+	public RunnableThread(GlobalManager gm, CGNode root) {
+		super(gm, root);
+		sTypicalCallback.addAll(Arrays.asList(elements));
+	}
 
-  
+	public String toString() {
+		StringBuffer b = new StringBuffer();
+		b.append("Runnable thread: ");
+		b.append(getKlass().getName().toString());
+		return b.toString();
+	}  
+
+	public CompoundLockState getThreadExitState() {
+		CGNode runNode = super.getCallBack(Interesting.ThreadRun).getNode();	
+		return super.getReturnState(runNode);
+	}
+
+	public Set<Selector> getEntryPoints() {
+		return Interesting.runnableEntryMethods;
+	}
+
+	public Set<Selector> getExitPoints() {
+		return Interesting.runnableExitMethods;
+	}
+
 }

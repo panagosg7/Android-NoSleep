@@ -29,17 +29,20 @@ public class Interesting {
 	
 	public static Set<Selector> serviceCallbackMethods = new HashSet<Selector>();
 	public static Set<Selector> serviceEntryMethods = new HashSet<Selector>();
-	public static Set<Selector> ignoreSelectors = new HashSet<Selector>();
+	public static Set<Selector> serviceExitMethods = new HashSet<Selector>();
+	
+	public static Set<Selector> runnableCallbackMethods = new HashSet<Selector>();
 	
 	public static Set<Selector> runnableEntryMethods = new HashSet<Selector>();
+	public static Set<Selector> runnableExitMethods = new HashSet<Selector>();
 	
+	
+	public static Set<Selector> ignoreSelectors = new HashSet<Selector>();
 	
 	public static Set<Selector> broadcastReceiverCallbackMethods = new HashSet<Selector>();
 	public static Set<Selector> broadcastReceiverEntryMethods = new HashSet<Selector>();
 	
 	public static Map<Selector, Integer> mRunnableMethods = new HashMap<Selector, Integer>();
-	
-	
 
 	public final static TypeName WakeLockType = TypeName.string2TypeName("Landroid/os/PowerManager$WakeLock");
 	
@@ -66,7 +69,6 @@ public class Interesting {
 	public static final Selector ServiceOnCreate = Selector.make("onCreate()V");
 	public static final Selector ServiceOnStart = Selector.make("onStartCommand(Landroid/content/Intent;II)V");
 	public static final Selector ServiceOnDestroy = Selector.make("onDestroy()V");
-	
 	
 	
 	static {
@@ -165,8 +167,16 @@ public class Interesting {
 		serviceEntryMethods.add(Selector.make("onCreate()V"));
 		serviceEntryMethods.add(Selector.make("onStart(Landroid/content/Intent;I)V"));
 		serviceEntryMethods.add(Selector.make("onStartCommand(Landroid/content/Intent;II)V"));
+		serviceEntryMethods.add(Selector.make("onHandleIntent(Landroid/content/Intent;)V"));
 		serviceEntryMethods.add(Selector.make("bindService(Landroid/content/Intent;Landroid/content/ServiceConnection;I)Z"));
+		
+		serviceExitMethods.add(Selector.make("onDestroy()V"));
+		serviceExitMethods.add(Selector.make("onHandleIntent(Landroid/content/Intent;)V"));
+		
+	//Runnables
+		runnableCallbackMethods.add(ThreadRun);
 		runnableEntryMethods.add(ThreadRun);
+		runnableExitMethods.add(ThreadRun);
 		
 	//BroadcastReceivers
 		broadcastReceiverEntryMethods.add(Selector.make("onReceive(Landroid/content/Context;Landroid/content/Intent;)V"));

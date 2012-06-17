@@ -31,7 +31,11 @@ public class Service extends Component {
 	public Set<Selector> getEntryPoints() {
 		return Interesting.serviceEntryMethods;
 	}
-
+	
+	public Set<Selector> getExitPoints() {
+		return Interesting.serviceExitMethods;
+	}
+	
 	public String toString() {
 
 		StringBuffer b = new StringBuffer();

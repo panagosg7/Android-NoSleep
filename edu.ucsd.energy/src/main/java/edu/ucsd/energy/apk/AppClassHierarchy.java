@@ -1,4 +1,4 @@
-package edu.ucsd.energy.analysis;
+package edu.ucsd.energy.apk;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,6 +21,7 @@ import com.ibm.wala.util.graph.impl.SlowSparseNumberedGraph;
 import com.ibm.wala.util.io.FileProvider;
 import com.ibm.wala.viz.DotUtil;
 
+import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.util.SystemUtil;
 
 public class AppClassHierarchy {

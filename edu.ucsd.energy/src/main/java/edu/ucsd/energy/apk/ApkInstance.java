@@ -47,9 +47,10 @@ import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.strings.StringStuff;
 
-import edu.ucsd.energy.entry.ApkException;
-import edu.ucsd.energy.entry.FailedManifestException;
-import edu.ucsd.energy.entry.RetargetException;
+import edu.ucsd.energy.ApkException;
+import edu.ucsd.energy.FailedManifestException;
+import edu.ucsd.energy.RetargetException;
+import edu.ucsd.energy.analysis.Wala;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.retarget.D2jConverter;
 import edu.ucsd.energy.retarget.DedConverter;
@@ -126,7 +127,6 @@ public class ApkInstance {
 	
 	public String getApkHash() throws IOException {
 		try {
-			String result = null;
 			MessageDigest digest = MessageDigest.getInstance("SHA-256");
 			
 			digest.reset();
@@ -358,10 +358,6 @@ public class ApkInstance {
 	
 	public IReport wakelockAnalyze() throws IOException, CancelException, RetargetException, WalaException, ApkException, JSONException {		
 		return this.getWala().wakelockAnalyze();		
-	}
-	
-	public Wala.UsageType analyze() throws IOException, RetargetException {
-		return this.getWala().analyze();
 	}
 	
 	public void requiresRetargeted() throws IOException, RetargetException {

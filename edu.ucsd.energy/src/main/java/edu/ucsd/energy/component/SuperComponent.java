@@ -95,7 +95,7 @@ public class SuperComponent extends AbstractComponent {
 			// Gather inter-component communication edges
 			mSeeds.registerSeeds(c);
 			if(DEBUG < 2) {
-				E.log(1, mSeeds.toString()); 
+				E.log(1, mSeeds.toString());
 			}
 		}
 		// These are edges between CGNodes that we are going to need
@@ -151,6 +151,7 @@ public class SuperComponent extends AbstractComponent {
 	}
 
 	public void dumpContainingComponents() {
+		E.log(1, "========================================");
 		E.log(1, "SuperComponent (#nodes: " + getCallGraph().getNumberOfNodes() + ") containing:");
 		for (Context c : sComponent) {
 			E.log(1, "\t" + c.toString());			

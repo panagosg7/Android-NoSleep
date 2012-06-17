@@ -1,9 +1,6 @@
 package edu.ucsd.energy.interproc;
 
 import java.util.Collection;
-import java.util.Iterator;
-
-import org.eclipse.core.runtime.content.IContentTypeManager.ISelectionPolicy;
 
 import com.ibm.wala.dataflow.IFDS.ICFGSupergraph;
 import com.ibm.wala.dataflow.IFDS.IFlowFunction;
@@ -35,12 +32,12 @@ import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.MutableSparseIntSet;
 
 import edu.ucsd.energy.analysis.Opts;
-import edu.ucsd.energy.analysis.SpecialConditions;
-import edu.ucsd.energy.analysis.SpecialConditions.IsHeldCondition;
-import edu.ucsd.energy.analysis.SpecialConditions.NullCondition;
-import edu.ucsd.energy.analysis.SpecialConditions.SpecialCondition;
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.AbstractComponent;
+import edu.ucsd.energy.conditions.SpecialConditions;
+import edu.ucsd.energy.conditions.SpecialConditions.IsHeldCondition;
+import edu.ucsd.energy.conditions.SpecialConditions.NullCondition;
+import edu.ucsd.energy.conditions.SpecialConditions.SpecialCondition;
 import edu.ucsd.energy.interproc.LockingTabulationSolver.LockingResult;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.managers.WakeLockManager;
@@ -211,7 +208,7 @@ public class CtxSensLocking {
 				//This is a completely different field we're operating on
 				//so put both states								
 				result.add(d1);
-				result.add(factNum);					
+				result.add(factNum);						
 			}
 			else {					
 				result.add(factNum);								
@@ -227,7 +224,7 @@ public class CtxSensLocking {
 
 	private class LockingFunctions implements IPartiallyBalancedFlowFunctions<BasicBlockInContext<IExplodedBasicBlock>> {
 
-		private static final int PRINT_EXCEPTIONAL = 1;
+		private static final int PRINT_EXCEPTIONAL = 2;
 
 		public IUnaryFlowFunction getNormalFlowFunction(
 				final BasicBlockInContext<IExplodedBasicBlock> src,
@@ -242,8 +239,7 @@ public class CtxSensLocking {
 				return KillEverything.singleton(); 
 			}
 
-			E.log(PRINT_EXCEPTIONAL, "NORMAL: " + src.toShortString() + " -> " + dest.toShortString());				
-
+			E.log(DEBUG, "NORMAL: " + src.toShortString() + " -> " + dest.toShortString());				
 			
 			if(Opts.ENFORCE_SPECIAL_CONDITIONS) {
 				//Check for special conditions
@@ -254,11 +250,11 @@ public class CtxSensLocking {
 						Boolean checkDestination = checkDestination(nc, dest);
 						if (checkDestination!= null) {
 							if (checkDestination.booleanValue()) {
-								E.log(2, "Killing NULL PATH: " + src.toShortString() + " -> " + dest.toShortString());
+								E.log(1, "Killing NULL PATH: " + src.toShortString() + " -> " + dest.toShortString());
 								return KillEverything.singleton();	//This only kills the wl instance we want
 							}
 							else {
-								E.log(2, "NOT NULL PATH: " + src.toShortString() + " -> " + dest.toShortString());
+								E.log(1, "NOT NULL PATH: " + src.toShortString() + " -> " + dest.toShortString());
 							}
 						}
 					}
@@ -269,10 +265,10 @@ public class CtxSensLocking {
 						Boolean checkDestination = checkDestination(isc, dest);						
 						if (checkDestination!= null) {
 							if (checkDestination.booleanValue()) {
-								E.log(2, "ISHELD TRUE PATH: " + src.toShortString() + " -> " + dest.toShortString());
+								E.log(1, "ISHELD TRUE PATH: " + src.toShortString() + " -> " + dest.toShortString());
 							}
 							else {
-								E.log(2, "Killing ISHELD FALSE PATH: " + src.toShortString() + " -> " + dest.toShortString());
+								E.log(1, "Killing ISHELD FALSE PATH: " + src.toShortString() + " -> " + dest.toShortString());
 								return KillEverything.singleton();
 							}
 						}
@@ -309,18 +305,17 @@ public class CtxSensLocking {
 			//We have marked cases where a different context is called (e.g. startActivity)
 			//We need to propagate the state and not treat this as a common method call!
 			if (icfg.isCallToContext(src, dest)) {
-				E.log(1, "PROPAGATING: " + src.toString() + " -> " + dest.toString());
+				E.log(DEBUG, "PROPAGATING: " + src.toString() + " -> " + dest.toString());
 				return IdentityFlowFunction.identity();
 			}
 			
 			//Kill the info for all the rest functions - info will 
 			return KillEverything.singleton();
 		}
-	
 
 
 		/**
-		 * Call to wakelock operation methods are handled as None-to-return 
+		 * Call to wakelock operation methods are handled as None-to-return
 		 * As we removed these target nodes from the callgraph.
 		 */
 		public IUnaryFlowFunction getCallNoneToReturnFlowFunction (
@@ -342,7 +337,7 @@ public class CtxSensLocking {
 						if (releasedWL.equals(mappedObject.fst)) {
 							SingleLockState oldSt = mappedObject.snd;
 							SingleLockState newSt = new SingleLockState(false, false, oldSt.async());
-							result.add(domain.getMappedIndex(Pair.make(releasedWL, newSt)));
+							result.add(domain.add(Pair.make(releasedWL, newSt)));
 						} 
 						else {
 							result.add(d1);
@@ -359,9 +354,9 @@ public class CtxSensLocking {
 				BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest) {
 
+			E.log(DEBUG, "Unbal: " + src.toShortString() + " -> " + dest.toShortString());
 			//Returning from a context ASYNCHRONOUSLY
 			if (icfg.isReturnFromContext(src, dest)) {
-				E.log(1, "CTX UNBAL RETURN: " + src.toShortString() + " -> " + dest.toShortString());	
 				return new IUnaryFlowFunction() {
 					public IntSet getTargets(int d1) {
 						Pair<WakeLockInstance, SingleLockState> mappedObject = domain.getMappedObject(d1);
@@ -369,16 +364,16 @@ public class CtxSensLocking {
 						SingleLockState oldSt = mappedObject.snd;
 						SingleLockState newSt = new SingleLockState(oldSt.acquired(), oldSt.timed(), true);
 						//This is probably unknown to the domain so far, so we have to add it
-						//getMappedIndex returns -1 if the value is not in the domain 
+						//getMappedIndex returns -1 if the value is not in the domain
 						result.add(domain.add(Pair.make(mappedObject.fst, newSt)));
 						return result;
 					}
 				};
-			}			
+			}
 			
-			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {			
+			if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {
 				E.log(PRINT_EXCEPTIONAL,  "KILL(unbal): " + src.toShortString() + " -> " + dest.toShortString());
-				return KillEverything.singleton();				
+				return KillEverything.singleton();
 			}
 			return IdentityFlowFunction.identity();
 		}
@@ -388,7 +383,9 @@ public class CtxSensLocking {
 				BasicBlockInContext<IExplodedBasicBlock> call,
 				BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest) {
-		
+			
+			E.log(DEBUG, "Return: " + src.toShortString() + " -> " + dest.toShortString());
+			
 			/**
 			 * Exceptional edges in cases where no acquire/release is involved. 
 			 * BE CAREFUL : exceptional edges that span across multiple procedures 
@@ -400,14 +397,13 @@ public class CtxSensLocking {
 			}
 			
 			if (icfg.isReturnFromContext(src, dest)) {
-				E.log(1, "CTX RETURN: " + src.toShortString() + " -> " + dest.toShortString());	
 				return new IUnaryFlowFunction() {
 					public IntSet getTargets(int d1) {
 						Pair<WakeLockInstance, SingleLockState> mappedObject = domain.getMappedObject(d1);
 						MutableSparseIntSet result = MutableSparseIntSet.makeEmpty();
 						SingleLockState oldSt = mappedObject.snd;
 						SingleLockState newSt = new SingleLockState(oldSt.acquired(), oldSt.timed(), true);
-						result.add(domain.getMappedIndex(Pair.make(mappedObject.fst, newSt)));							
+						result.add(domain.add(Pair.make(mappedObject.fst, newSt)));							
 						return result;
 					}
 				};
@@ -438,7 +434,7 @@ public class CtxSensLocking {
 			for (BasicBlockInContext<IExplodedBasicBlock> bb : supergraph) {
 				WakeLockInstance timedAcquiredWL = timedAcquire(bb);
 				if (timedAcquiredWL != null) {
-					E.log(DEBUG, "Adding timed acquire seed: " + bb.toShortString());
+					E.log(1, "Adding timed acquire seed: " + bb.toShortString());
 					SingleLockState sls = new SingleLockState(true, true, false);
 					Pair<WakeLockInstance, SingleLockState> fact = Pair.make(timedAcquiredWL, sls);					
 					int factNum = domain.add(fact);
@@ -448,14 +444,14 @@ public class CtxSensLocking {
 
 				WakeLockInstance acquiredWL = acquire(bb);
 				if (acquiredWL != null) {
-					E.log(DEBUG, "Adding acquire seed: " + bb.toShortString());
+					E.log(1, "Adding acquire seed: " + bb.toShortString());
 					SingleLockState sls = new SingleLockState(true, false, false);
 					Pair<WakeLockInstance, SingleLockState> fact = Pair.make(acquiredWL, sls);					
 					int factNum = domain.add(fact);
 					BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(bb.getNode());
 					result.add(PathEdge.createPathEdge(fakeEntry, factNum, bb, factNum));
 				}
-
+				/*
 				WakeLockInstance releasedWL = release(bb);
 				if (releasedWL != null)  {					
 					E.log(DEBUG, "Adding release seed: " + bb.toShortString());
@@ -465,6 +461,8 @@ public class CtxSensLocking {
 					BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(bb.getNode());
 					result.add(PathEdge.createPathEdge(fakeEntry, factNum, bb, factNum));
 				}
+				*/
+				
 			}			
 			return result;
 		}
@@ -485,7 +483,7 @@ public class CtxSensLocking {
 				 * the old state represented by x. return -1 if no fact should be 
 				 * propagated.
 				 */
-				public int merge(IntSet x, int j) {				
+				public int merge(IntSet x, int j) {			
 					Pair<WakeLockInstance, SingleLockState> jObj = domain.getMappedObject(j);
 					for (IntIterator it = x.intIterator(); it.hasNext(); ) {
 						int i = it.next();
@@ -496,7 +494,7 @@ public class CtxSensLocking {
 							SingleLockState resState = jObj.snd.merge(iObj.snd);							
 							Pair<WakeLockInstance, SingleLockState> pair = Pair.make(iField, resState);							
 							int ind = domain.add(pair);
-							//E.log(1, "Merge yields: " + ind + " :: " + resState.toString());
+							E.log(2, "Merge yields: " + ind + " :: " + resState.toString());
 							Assertions.productionAssertion(ind>=0, pair.toString());
 							return ind;
 						}
@@ -527,7 +525,7 @@ public class CtxSensLocking {
 	 * perform the tabulation analysis and return the {@link TabulationResult}
 	 */
 	public LockingResult analyze() {
-		LockingTabulationSolver solver = new LockingTabulationSolver(new LockingProblem(), null);
+		LockingTabulationSolver solver = new LockingTabulationSolver(new LockingProblem(), null, icfg);
 		LockingResult result = null;
 		try {
 			result = solver.solve();
