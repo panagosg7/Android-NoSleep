@@ -68,7 +68,7 @@ public class TabulationSolver<T, P, F> {
    * <li>3 Also print worklists
    * </ul>
    */
-  protected static final int DEBUG_LEVEL = 0;
+  protected static final int DEBUG_LEVEL = 3;
 
   static protected final boolean verbose = true && ("true".equals(System.getProperty("com.ibm.wala.fixedpoint.impl.verbose")) ? true
       : false);
@@ -588,7 +588,7 @@ public class TabulationSolver<T, P, F> {
         f = flowFunctionMap.getCallNoneToReturnFlowFunction(edge.target, returnSite);
       }
       IntSet reached = computeFlow(edge.d2, f);
-      if (DEBUG_LEVEL > 0) {      
+      if (DEBUG_LEVEL > 0) {
         System.err.println("reached: " + reached);
       }
       if (reached != null) {

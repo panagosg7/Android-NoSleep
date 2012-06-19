@@ -246,7 +246,7 @@ public class AppCallGraph implements CallGraph {
 			CGNode node = iterator.next();
 			if (isAppNode(node) /*|| isTargetMethod(node)*/) {
 				keepers.add(node);
-				E.log(1, "Keep: " + node.getMethod().toString());
+				E.log(2, "Keep: " + node.getMethod().toString());
 			} else {
 				E.log(2, "Prune: " + node.getMethod().toString());
 			}
@@ -286,13 +286,7 @@ public class AppCallGraph implements CallGraph {
 				Iterator<CGNode> pnIter = cg.getPredNodes(n);
 				while (pnIter.hasNext()) {
 					CGNode pn = pnIter.next();
-					/*
-					 * All but the first nodes (acq/rel) will have to be app
-					 * nodes
-					 */
-					if (Opts.KEEP_PRIMORDIAL) {
-						q.add(pn);
-					} else if (isAppNode(pn)) {
+					if (Opts.KEEP_PRIMORDIAL || isAppNode(pn)) {
 						q.add(pn);
 					}
 				}

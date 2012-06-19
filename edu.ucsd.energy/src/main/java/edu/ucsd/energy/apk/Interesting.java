@@ -67,7 +67,7 @@ public class Interesting {
 	public final static Selector ThreadCall = Selector.make("call()V");
 	
 	public static final Selector ServiceOnCreate = Selector.make("onCreate()V");
-	public static final Selector ServiceOnStart = Selector.make("onStartCommand(Landroid/content/Intent;II)V");
+	public static final Selector ServiceOnStart = Selector.make("onStartCommand(Landroid/content/Intent;II)I");
 	public static final Selector ServiceOnDestroy = Selector.make("onDestroy()V");
 	
 	

@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 import com.ibm.wala.util.WalaException;
@@ -361,7 +362,7 @@ public class GraphDotUtil {
 		return null;
 	}
 
-	public static String concatStringsWSep(Set<LockStateDescription> cols, String separator) {
+	public static String concatStringsWSep(List<LockStateDescription> cols, String separator) {
 		StringBuilder sb = new StringBuilder();	    	    
 		if (cols.size() == 0) {	    
 			return "";
@@ -390,7 +391,7 @@ public class GraphDotUtil {
 		StringBuffer result = new StringBuffer();
 
 		if (d instanceof IColorNodeDecorator) {
-			Set<LockStateDescription> cols = ((IColorNodeDecorator) d).getFillColors(n);    	
+			List<LockStateDescription> cols = ((IColorNodeDecorator) d).getFillColors(n);    	
 			String concatCols = concatStringsWSep(cols, ":");      
 			if (concatCols.equals("")) {
 				concatCols = "grey";

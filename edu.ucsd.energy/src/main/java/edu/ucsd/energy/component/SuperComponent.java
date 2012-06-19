@@ -11,6 +11,7 @@ import java.util.Set;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.contexts.Activity;
@@ -22,7 +23,7 @@ import edu.ucsd.energy.util.E;
 
 public class SuperComponent extends AbstractComponent {
 
-	private static final int DEBUG = 1;
+	private static final int DEBUG = 0;
 
 	Set<Context> sComponent;
 
@@ -63,8 +64,12 @@ public class SuperComponent extends AbstractComponent {
 			if (!entrySet().isEmpty()) {
 				sb.append("SEEDS:\n");
 			}
-			for (java.util.Map.Entry<SSAInstruction, Context> e : entrySet()) {
-				sb.append(e.getKey().toString() + " -> " + e.getValue().toString() + "\n");			
+			for (Map.Entry<SSAInstruction, Context> e : entrySet()) {
+				if (e.getKey() instanceof SSAInvokeInstruction) {
+					SSAInvokeInstruction inv = (SSAInvokeInstruction) e.getKey();
+					sb.append(inv.getDeclaredTarget().getSelector().toString() 
+							+ " -> " + e.getValue().toString() + "\n");
+				}
 			}
 			return sb.toString();
 		}
@@ -85,17 +90,17 @@ public class SuperComponent extends AbstractComponent {
 			}
 			// Gather sensible node edges
 			edgePairs.addAll(c.getImplicitEdges());
-			if(DEBUG < 2) {
+			if(DEBUG > 1) {
 				for ( Pair<CGNode, CGNode> ie : c.getImplicitEdges()) {
-					E.log(1, "IMPLICIT: " + 
+					System.out.println("IMPLICIT: " + 
 							ie.fst.getMethod().getSelector().toString() + " -> " +
 							ie.snd.getMethod().getSelector().toString());
 				}
 			}
 			// Gather inter-component communication edges
 			mSeeds.registerSeeds(c);
-			if(DEBUG < 2) {
-				E.log(1, mSeeds.toString());
+			if(DEBUG > 1) {
+				System.out.println(mSeeds.toString());
 			}
 		}
 		// These are edges between CGNodes that we are going to need

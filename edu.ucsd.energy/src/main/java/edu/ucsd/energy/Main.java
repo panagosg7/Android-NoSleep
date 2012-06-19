@@ -709,24 +709,7 @@ public class Main {
 			if (line.hasOption("small-set")) {
 				theSet = new HashSet<String>();
 				/* The applications you specify here need to be in apk_collection !!! */
-//				theSet.add("NetCounter");
-//				theSet.add("TrafficDroid");
-//				theSet.add("SimpleTime");
-//				theSet.add("Android_Agenda_Widget");
-//				theSet.add("Motion_Detector");
-//				theSet.add("imo");
-//				theSet.add("Azan_Alarm");
-//				theSet.add("XDA");
-//				theSet.add("UEFA.com");
-//				theSet.add("GO_sms");
-				theSet.add("ContactManager");
-//				theSet.add("aTrackDogSD");
-//				theSet.add("Scanner_Buddy_FREE");
-//				theSet.add("Steel");
-//				theSet.add("Store_Hours");
-//				theSet.add("3D_Level");
-//				theSet.add("aLogcat");
-//				theSet.add("InstaFetch");
+				theSet.add("Unit_04");
 			}
 			else if (line.hasOption("unit")) {
 				theSet = new HashSet<String>();

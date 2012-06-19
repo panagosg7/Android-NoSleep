@@ -3,7 +3,6 @@ package edu.ucsd.energy.interproc;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -17,11 +16,9 @@ import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.analysis.ExplodedControlFlowGraph;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
-import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.component.AbstractComponent;
-import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.util.E;
 
@@ -39,13 +36,6 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 
 	protected Map<String,CGNode> callbacks;
 
-	//Keeps all the edges that connect different contexts
-	//Helps distinguish from function calls
-	protected Set<Pair<BasicBlockInContext<IExplodedBasicBlock>,BasicBlockInContext<IExplodedBasicBlock>>> sPropagateState = 
-			new HashSet<Pair<BasicBlockInContext<IExplodedBasicBlock>,BasicBlockInContext<IExplodedBasicBlock>>>();
-
-	protected Set<Pair<BasicBlockInContext<IExplodedBasicBlock>,BasicBlockInContext<IExplodedBasicBlock>>> sContextReturn = 
-			new HashSet<Pair<BasicBlockInContext<IExplodedBasicBlock>,BasicBlockInContext<IExplodedBasicBlock>>>();
 
 	//We need to keep these nodes so that the tabulation solver know that he has to 
 	//propagate the state (these are going to be unbalanced seeds)
@@ -57,13 +47,8 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 		super(cg);
 	}
 
-	public boolean isCallToContext(BasicBlockInContext<IExplodedBasicBlock> a, BasicBlockInContext<IExplodedBasicBlock> b) {
-		return sPropagateState.contains(Pair.make(a, b));
-	}
 
-	public boolean isReturnFromContext(BasicBlockInContext<IExplodedBasicBlock> a, BasicBlockInContext<IExplodedBasicBlock> b) {
-		return sContextReturn.contains(Pair.make(a, b));
-	}
+
 	
 	/**
 	 * It suffices to account just for the exit point of a node that is important for the 
@@ -72,73 +57,6 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 	public boolean isLifecycleExit(BasicBlockInContext<IExplodedBasicBlock> a) {
 		return sLifecycleEdge.contains(a);
 	}
-
-	/**
-	 * This method adds edges that refer to Intent, Thread and Handler posts etc.
-	 * @param map
-	 */
-	protected void addCallToEntryAndReturnEdges(Map<SSAInstruction, Context> map) {
-		Iterator<BasicBlockInContext<IExplodedBasicBlock>> iterator = iterator();
-		while(iterator.hasNext()) {
-			BasicBlockInContext<IExplodedBasicBlock> caller = iterator.next();
-			SSAInstruction instr = caller.getDelegate().getInstruction();
-			Context targetComp = map.get(instr);
-			if (targetComp != null) {
-
-				//For the moment, we propagate the information from all exit points
-				//Return edges must be added first to avoid having the entry method as
-				//a successor of the invoke instruction
-
-				Set<Selector> exitPoints = targetComp.getExitPoints();
-				E.log(1, "Adding ASYNC CALL return edges : " + caller.toShortString());
-				//E.log(1, "To: " + targetComp.toString());
-				for (Selector sel : exitPoints) {
-					CallBack callBack = targetComp.getCallBack(sel);
-					//Continue only if this callback is indeed overridden
-					if (callBack != null) {
-						//E.log(1, "\tTO: " + callBack.toString());
-						CGNode node = callBack.getNode();
-						//addCalleeEdgesForCall(node, caller);
-						
-						ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> srcCFG = getCFG(node);				     
-						IExplodedBasicBlock srcIEBB = srcCFG.exit();
-						BasicBlockInContext<IExplodedBasicBlock> src =
-								new BasicBlockInContext<IExplodedBasicBlock>(node, srcIEBB);
-						for (Iterator<BasicBlockInContext<IExplodedBasicBlock>> succIter = 
-								getSuccNodes(caller); succIter.hasNext();) {
-							BasicBlockInContext<IExplodedBasicBlock> returnBB = succIter.next();
-							//Eliminate edges from called context to the exception catch node 
-							//of the calling context
-							if (!isExceptionalEdge(caller, returnBB)) {
-								addEdge(src, returnBB);
-								sContextReturn.add(Pair.make(src, returnBB));
-								E.log(1, "ADDING ASYNC CTX RETURN: " + src.toShortString() +
-										" -> " + returnBB.toShortString());
-							}
-						}
-					}
-				}
-				Set<Selector> entryPoints = targetComp.getEntryPoints();
-				
-				for (Selector sel : entryPoints) {
-					CallBack callBack = targetComp.getCallBack(sel);
-					//Continue only if this callback is indeed overridden
-					if (callBack != null) {
-						CGNode node = callBack.getNode();
-						ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> destCFG = getCFG(node);				     
-						IExplodedBasicBlock destIEBB = destCFG.entry();				     
-						BasicBlockInContext<IExplodedBasicBlock> dest =
-								new BasicBlockInContext<IExplodedBasicBlock>(node, destIEBB);
-						addEdge(caller,dest);
-						E.log(DEBUG, "Adding ASYNC CTX CALL: " + caller.toShortString() + 
-								" -> " + dest.toShortString());
-						sPropagateState.add(Pair.make(caller,dest));
-					}
-				}
-			}
-		}
-	}
-
 
 	/**
 	 * The adjacent nodes to the packed edges are the interesting callbacks.
@@ -194,7 +112,7 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 
 		//The edges we added for calling and returning from other contexts 
 		//should not be treated as exceptional edges
-		if (isCallToContext(src, dest) || isReturnFromContext(src, dest)) {
+		if (isCallToContextEdge(src, dest) || isReturnFromContextEdge(src, dest)) {
 			return false;
 		}
 
@@ -234,7 +152,6 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 		return false;
 	} 	
 
-
 	public BasicBlockInContext<IExplodedBasicBlock> getExplodedBasicBlock(CGNode n, ProgramCounter pc) {
 		ExplodedControlFlowGraph cfg = (ExplodedControlFlowGraph) this.getCFG(n);
 		BasicBlockInContext<IExplodedBasicBlock> explodedBasicBlock = cfg.getExplodedBasicBlock(n, pc);
@@ -244,5 +161,25 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 	public AbstractComponent getComponent() {
 		return component;
 	}
+
+
+
+	//Super CFG will have to override these
+	
+	public abstract boolean isReturnFromContextEdge(BasicBlockInContext<IExplodedBasicBlock> bb1,
+			BasicBlockInContext<IExplodedBasicBlock> bb2);
+
+	public abstract boolean isCallToContextEdge(BasicBlockInContext<IExplodedBasicBlock> src,
+			BasicBlockInContext<IExplodedBasicBlock> dest);
+
+	public abstract boolean isCallToContext(BasicBlockInContext<IExplodedBasicBlock> src);
+	
+	abstract public Context returnFromContext(BasicBlockInContext<IExplodedBasicBlock> src);
+	
+	abstract public Context getCalleeContext(BasicBlockInContext<IExplodedBasicBlock> bb);
+	
+	abstract public Set<BasicBlockInContext<IExplodedBasicBlock>> getContextExit(Context c);
+	
+	
 }
 

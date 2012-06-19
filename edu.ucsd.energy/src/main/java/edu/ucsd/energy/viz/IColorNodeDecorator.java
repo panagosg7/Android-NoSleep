@@ -1,5 +1,6 @@
 package edu.ucsd.energy.viz;
 
+import java.util.List;
 import java.util.Set;
 
 import com.ibm.wala.util.WalaException;
@@ -11,7 +12,7 @@ public interface IColorNodeDecorator extends NodeDecorator {
   
   public String getLabel(Object o) throws WalaException;
   
-  public Set<LockStateDescription> getFillColors(Object o);
+  public List<LockStateDescription> getFillColors(Object o);
 
   public String getFontColor(Object n);
 

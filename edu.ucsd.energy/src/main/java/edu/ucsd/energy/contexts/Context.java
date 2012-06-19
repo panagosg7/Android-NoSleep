@@ -26,15 +26,15 @@ public abstract class Context extends AbstractComponent {
   
 	protected IClass klass;
   
-	// These are the ACTUAL callbacks that get resolved
+	//These are the ACTUAL callbacks that get resolved
 	//private HashSet<CallBack> callbacks;
 	//callbacks be obtained by callbackMap.values 
 	private Map<Selector, CallBack> 	mActualCallback;
   
-	// 	Typical callbacks specified by API
+	//Typical callbacks specified by API
 	protected Set<Selector> sTypicalCallback;
   
-	// 	This is going to be needed for the construction of the sensible graph
+	//This is going to be needed for the construction of the sensible graph
 	protected HashSet<Pair<Selector, Selector>> callbackEdges;
   
 	public void registerCallback(CGNode node) {

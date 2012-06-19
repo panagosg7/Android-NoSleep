@@ -1,26 +1,23 @@
 package edu.ucsd.energy.component;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Properties;
-import java.util.Set;
 
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.examples.properties.WalaExamplesProperties;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
-import com.ibm.wala.ipa.cfg.ExplodedInterproceduralCFG;
 import com.ibm.wala.properties.WalaProperties;
 import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.util.WalaException;
-import com.ibm.wala.util.collections.Util;
-import com.ibm.wala.util.functions.Function;
 import com.ibm.wala.viz.NodeDecorator;
 
 import edu.ucsd.energy.contexts.Context;
@@ -192,23 +189,22 @@ public class ComponentPrinter<T extends AbstractComponent> {
 		
 		
 
-		public Set<LockStateDescription> statesToColor(Collection<SingleLockState> states) {
+		public List<LockStateDescription> statesToColor(Collection<SingleLockState> states) {
+			ArrayList<LockStateDescription> list = new ArrayList<LockStateDescription>();
 			if (states != null) {
-				Function<SingleLockState, LockStateDescription> f = new Function<SingleLockState, LockStateDescription>() {
-					public LockStateDescription apply(SingleLockState sls) {
-						LockStateDescription lsd = sls.getLockStateDescription();
-						return lsd;
-					}
-				};
-				return Util.mapToSet(states, f);
+				for(SingleLockState st : states) {
+					LockStateDescription lsd = st.getLockStateDescription();
+					list.add(lsd);
+				}
 			}
-			HashSet<LockStateDescription> set = new HashSet<LockStateDescription>();
-			set.add(LockStateDescription.UNDEFINED);
-			return set;
+			else {
+				list.add(LockStateDescription.UNDEFINED);
+			}
+			return list;
 		}
 		
 		
-		public Set<LockStateDescription> getFillColors(Object o) {
+		public List<LockStateDescription> getFillColors(Object o) {
 			IExplodedBasicBlock ebb = null;
 			Collection<SingleLockState> states = null;
 			//Supergraph - need to have the BasicBlockInContext
@@ -239,7 +235,7 @@ public class ComponentPrinter<T extends AbstractComponent> {
 				if (icfg.isExceptionalEdge(bb1, bb2)) {
 					return " [style = dashed]";
 				}
-				if (icfg.isReturnFromContext(bb1, bb2) || icfg.isCallToContext(bb1, bb2)) {
+				if (icfg.isReturnFromContextEdge(bb1, bb2) || icfg.isCallToContextEdge(bb1, bb2)) {
 					return " [style = bold arrowhead = diamond]";
 				}
 			}
