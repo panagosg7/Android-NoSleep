@@ -24,6 +24,8 @@ public abstract class AbstractRunnableInstance extends ObjectInstance {
 	}
 
 	private TypeName callee;
+
+	//TODO: is this needed
 	private Context calledComponent;
 	
 	public String toString() {
@@ -41,9 +43,10 @@ public abstract class AbstractRunnableInstance extends ObjectInstance {
 		this.calledComponent = comp;
 	}
 	
-	public Context getCalledComponent() {
-		return calledComponent;
+	public boolean isResolved() {
+		return (callee != null);
 	}
+	
 	
 	public TypeName getCalledType() {
 		return callee;

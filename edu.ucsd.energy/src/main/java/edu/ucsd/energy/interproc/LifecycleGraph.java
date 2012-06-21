@@ -15,40 +15,42 @@ import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.graph.impl.NodeWithNumber;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
-import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
+import com.ibm.wala.util.intset.IntSetAction;
 import com.ibm.wala.viz.NodeDecorator;
 
 import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.interproc.LifecycleGraph.SensibleCGNode;
-import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.SystemUtil;
 import edu.ucsd.energy.viz.GraphDotUtil;
 
 public class LifecycleGraph extends SparseNumberedGraph<SensibleCGNode> {
 
-	private static final int DEBUG = 2;
+	//Set to 1 to dump auxillary life-cycle graphs	
+	//Set to more to get more detailed debug messages
+	private static final int DEBUG = 1;
+	
+
+	private HashMap<Selector, SensibleCGNode> dictionary;
+
+	private Context component;
 
 
-	public static class SensibleCGNode extends NodeWithNumber {
+	public class SensibleCGNode extends NodeWithNumber {
+
 		private Selector name = null;
+
+		//The callback corresponding to a sensible node
+		//This will be null if the callback is not overridden  
 		private CallBack realCallBack = null;
 
-		public static SensibleCGNode makeNonEmpty(CallBack callback) {
-			return new SensibleCGNode(callback);
-		}
-
-		public static SensibleCGNode makeEmpty(Selector s) {
-			return new SensibleCGNode(s);
-		}
-
-		private SensibleCGNode(CallBack cb) {
-			this.setCallBack(cb);
+		SensibleCGNode(CallBack cb) {
+			realCallBack = cb;
 			this.name = cb.getNode().getMethod().getSelector();
 		}        
 
-		private SensibleCGNode(Selector s) {
+		public SensibleCGNode(Selector s) {
 			this.name = s;
 		}
 
@@ -79,46 +81,67 @@ public class LifecycleGraph extends SparseNumberedGraph<SensibleCGNode> {
 			}
 			return false;
 		}
-		
-		public void setCallBack(CallBack cb) {
-			this.realCallBack = cb;
-		}
 
 		public CallBack getCallBack() {
 			return realCallBack;
 		}
+
 	}
 
-
-
-
-	private HashMap<Selector,SensibleCGNode> sensibleMap;
-
-	private Context component;
-
-	public LifecycleGraph(Context component) {
-		this.component = component;        
-		sensibleMap = new HashMap<Selector, SensibleCGNode>();
-
-		/* Initialization part:
-		 * Add all nodes and edges to the sensible graph 
-		 * irrelevant of whether they are found in the 
-		 * actual call graph - they will be pruned later.
-		 */
-		for (Selector cb : component.getTypicalCallbacks()) {
+	private SparseNumberedGraph<SensibleCGNode> fullLifeCycleGraph;
+	
+	public SparseNumberedGraph<SensibleCGNode> getFullLifeCycleGraph() {
+		return fullLifeCycleGraph;
+	}
+	
+	public LifecycleGraph(Context context) {
+		this.component = context;
+		dictionary = new HashMap<Selector, SensibleCGNode>();
+		
+		if (DEBUG > 1) {
+			System.out.println("Creating lifecycle graph: " + context.toString());
+			System.out.println("Size typ callbacks: " + context.getTypicalCallbacks());
+		}
+		
+		for (Selector cb : context.getTypicalCallbacks()) {
 			addSensibleNode(cb);
 		}
-		for (Pair<Selector, Selector> edge : component.getCallbackEdges()) {
+		for (Pair<Selector, Selector> edge : context.getCallbackEdges()) {
 			addSensibleEdge(edge.fst, edge.snd);
 		}
-
-		/* Prune empty nodes */
+		//The full life-cycle graph will be the snapshot of the final graph  
+		//without removing the empty edges from it.
+		fullLifeCycleGraph = getSnapShot();
+		
 		removeEmptyNodes();
 
-		if (DEBUG < 2) {
+		if (DEBUG > 0) {
 			outputToDot();
 		}
 	}
+
+
+	private SparseNumberedGraph<SensibleCGNode> getSnapShot() {
+		SparseNumberedGraph<SensibleCGNode> g = new SparseNumberedGraph<SensibleCGNode>();
+		for (Iterator<SensibleCGNode> it = iterator(); it.hasNext(); ) {
+			g.addNode(it.next());
+		}
+		for (Iterator<SensibleCGNode> it = iterator(); it.hasNext(); ) {
+			SensibleCGNode n = it.next();
+			for (Iterator<SensibleCGNode> iit = getSuccNodes(n); iit.hasNext(); ) {
+				g.addEdge(n, iit.next());
+			}
+		}
+		return g;
+	}
+
+	public SensibleCGNode find(Selector s) {
+		if (s != null) {
+			return dictionary.get(s);
+		}
+		return null;
+	}
+
 
 	/**
 	 * Remove nodes that are not found in the actual graph by
@@ -128,48 +151,54 @@ public class LifecycleGraph extends SparseNumberedGraph<SensibleCGNode> {
 		for (Iterator<SensibleCGNode> iter = iterator(); iter.hasNext();) {
 			SensibleCGNode node = iter.next();
 			if (node.isEmpty()) {
-				E.log(DEBUG, "Removing: " + node.toString());
+				if (DEBUG > 1) {
+					System.out.println("Removing: " + node.toString());
+				}
 				IntSet predSet = getPredNodeNumbers(node);
-				IntSet succSet = getSuccNodeNumbers(node);        
+				final IntSet succSet = getSuccNodeNumbers(node);        
 				if (predSet != null && succSet != null) {
-					E.log(DEBUG, "#PredNodes: " + predSet);
-					E.log(DEBUG, "#SuccNodes: " + succSet);
-					IntIterator predIterator = predSet.intIterator();
-					IntIterator succIterator = succSet.intIterator();
-					while(predIterator.hasNext()) {            
-						SensibleCGNode src = getNode(predIterator.next());
-						while(succIterator.hasNext()) {
-							SensibleCGNode dst = getNode(succIterator.next());
-							addEdge(src, dst);              
-						}
+					if (DEBUG > 1) {
+						System.out.println("#PredNodes: " + predSet);
+						System.out.println("#SuccNodes: " + succSet);
 					}
+					predSet.foreach(new IntSetAction() {
+						public void act(final int p) {
+							succSet.foreach(new IntSetAction() {
+								public void act(int s) {
+									SensibleCGNode pn = getNode(p);
+									SensibleCGNode sn = getNode(s);
+									if (DEBUG > 1) {
+										System.out.println("Connecting: " + pn + " -> " + sn);
+									}
+									addEdge(pn, sn);
+								}
+							});
+						};
+					});
 				};
 				removeNodeAndEdges(node);
 			}
 		}
 	}
 
+
 	private void addSensibleNode(Selector sel) {
 		CallBack callback = component.getCallBack(sel);
-		if (callback != null) {
-			SensibleCGNode snode = SensibleCGNode.makeNonEmpty(callback);
-			sensibleMap.put(sel, snode);
-			addNode(snode);
+		SensibleCGNode snode = (callback!=null)?(new SensibleCGNode(callback)):(new SensibleCGNode(sel));
+		dictionary.put(sel, snode);	
+		addNode(snode);
+		if (DEBUG > 1) {
+			System.out.println("Adding callback: " + getNumber(snode) + " : " + 
+					sel.toString() + ((callback!=null)?(""):"<null>"));
 		}
-		else {
-			SensibleCGNode snode = SensibleCGNode.makeEmpty(sel);
-			sensibleMap.put(sel, snode);
-			addNode(snode);
-		}
-		E.log(DEBUG,  (callback!=null)?(sel.toString()):"<null>");
-		return;
 	}
 
+
 	private void addSensibleEdge (Selector src, Selector dst) {
-		SensibleCGNode snode = sensibleMap.get(src);
-		SensibleCGNode dnode = sensibleMap.get(dst);        
-		if (snode!=null && dnode!=null) {     
-			addEdge(snode,dnode);
+		SensibleCGNode snode = dictionary.get(src);
+		SensibleCGNode dnode = dictionary.get(dst);        
+		if ((snode!=null) && (dnode!=null)) {     
+			addEdge(snode, dnode);
 		}
 		return;
 	}
@@ -184,13 +213,17 @@ public class LifecycleGraph extends SparseNumberedGraph<SensibleCGNode> {
 			String folder = SystemUtil.getResultDirectory() + File.separatorChar + "aux";
 			new File(folder).mkdirs();
 			String fileName = folder + File.separatorChar + bareFileName + ".dot";
+			String fullFileName = folder + File.separatorChar + "FULL_" + bareFileName + ".dot";
 			NodeDecorator nd = new NodeDecorator() {
 				public String getLabel(Object o) throws WalaException {
 					return ((SensibleCGNode) o).getSelector().toString();
 				}
 			};  
-			E.log(DEBUG,  "Dumping auxilary sensible call graph for this component...");
+			if (DEBUG > 1) {
+				System.out.println("Dumping auxilary sensible call graph for: " + component.toString());
+			}
 			GraphDotUtil.dotify(this , nd, fileName, null, null);
+			GraphDotUtil.dotify(fullLifeCycleGraph , nd, fullFileName, null, null);
 		} catch (WalaException e) {
 			e.printStackTrace();
 		}
@@ -198,8 +231,8 @@ public class LifecycleGraph extends SparseNumberedGraph<SensibleCGNode> {
 
 
 	/**
-	 * Return a set with pairs of all the edges in the custom 
-	 * sensible graph
+	 * Return a set with pairs of all the edges in the life-cycle graph
+	 * after removing the non-overridden nodes.
 	 * @return 
 	 */
 	public HashSet<Pair<CGNode, CGNode>> packEdges() {
@@ -218,7 +251,9 @@ public class LifecycleGraph extends SparseNumberedGraph<SensibleCGNode> {
 					//String dst = destNode.getRealNode().getMethod().getSignature().toString();
 					CGNode dst = destNode.getRealNode();
 					result.add(Pair.make(src,dst));
-					E.log(DEBUG, src + "," + dst );
+					if (DEBUG > 1) {
+						System.out.println("Packing edge: " + src + ", " + dst );
+					}
 				}        
 			}    
 		}

@@ -1,22 +1,15 @@
 package edu.ucsd.energy.managers;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
 import net.sf.json.JSONObject;
 
-import com.ibm.wala.classLoader.CallSiteReference;
-import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
-import com.ibm.wala.types.Selector;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
@@ -34,7 +27,7 @@ import edu.ucsd.energy.util.SSAProgramPoint;
 
 public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance> extends AbstractDUManager<V> { 
 
-	private final int DEBUG = 2;
+	private final int DEBUG = 1;
 
 	
 	private SparseNumberedGraph<Context> constraintGraph;
@@ -49,13 +42,11 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 	}
 
 
-	public void prepare() {
-		super.prepare();
-		
-		//fixCallGraph();
-		
-	}
-
+	/**
+	 * Should we fix the call graph here to incorporate the asynchronous intent calls?
+	 * This is not going to be easy...
+	 */
+	/*
 	private void fixCallGraph() {
 		Map<Selector, Set<CallSiteReference>> map = new HashMap<Selector, Set<CallSiteReference>>();
 		for (Entry<Pair<MethodReference, SSAInstruction>, V> e : mInstruction2Instance.entrySet()) {
@@ -79,16 +70,16 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 			Set<CallSiteReference> set = map.get(selector);
 			for (CallSiteReference cs : set) {
 				//TODO: add the edges in the callgraph!!!
-				
 			}
-			
 		}
-		
-				
 	}
-
+	*/
+	
+	
 	public void computeConstraintGraph() {
-		E.log(DEBUG, "Computing constraint graph for " + getTag());
+		if (DEBUG > 1) {
+			System.out.println("Computing constraint graph for " + getTag());
+		}
 		constraintGraph = new SparseNumberedGraph<Context>(1);
 
 		Collection<Context> sComponents = cm.getComponents();
@@ -99,15 +90,21 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 		for(Entry<Pair<MethodReference, SSAInstruction>, V> e : mInstruction2Instance.entrySet()) {
 			MethodReference mr = e.getKey().fst;
 			Set<Context> sFrom = cm.getContainingComponents(mr);
-			E.log(DEBUG, "Calls from: " + mr.toString());
+			if (DEBUG > 1) {
+				System.out.println("Calls from: " + mr.toString());
+			}
 			if (sFrom != null) {
 				TypeName calledType = e.getValue().getCalledType();
 				if (calledType != null) {
 					Context to = cm.getComponent(calledType);
 					if (to != null) {
-						E.log(DEBUG, "\tCalled Type: " + calledType);
+						if (DEBUG > 1) {
+							System.out.println("\tCalled Type: " + calledType);
+						}
 						for (Context from : sFrom) {
-							E.log(DEBUG, "\t" + to.toString() + " <-- " + from.toString());
+							if (DEBUG > 1) {
+								System.out.println("\t" + to.toString() + " <-- " + from.toString());
+							}
 							//Component "to" will be started with the state of 
 							//component "from" at the specific program point
 							SSAInstruction instr = e.getKey().snd;
@@ -119,12 +116,16 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 				}
 			}
 		}
-		E.log(1, "Building abstract " + getTag() + " constraint graph... " + GraphUtil.countEdges(constraintGraph) + " edge(s).");
+		if (DEBUG > 1) {
+			System.out.println("Building abstract " + getTag() + " constraint graph... " + GraphUtil.countEdges(constraintGraph) + " edge(s).");
+		};
 		testAcyclic(constraintGraph);
 	}
 
 	private void testAcyclic(final SparseNumberedGraph<Context> g) {
-		E.log(1, "Testing for cycles... ");
+		if (DEBUG > 1) {
+			System.out.println("Testing for cycles... ");
+		}
 		//Assert that there are no cycles in the component constraint graph.
 		com.ibm.wala.util.Predicate<Context> p = 
 				new com.ibm.wala.util.Predicate<Context>() {		
@@ -212,4 +213,15 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 		return constraintGraph;
 	}
 
+	
+	protected void sanityCheck() {
+		E.yellow();
+		for (V v : mCreationRefs.values()) {
+			if (!v.isResolved()) {
+				System.out.println("Unresolved " + getTag() + " instance: " + v.toString());
+			}
+		}
+		E.resetColor();
+	}	
+	
 }

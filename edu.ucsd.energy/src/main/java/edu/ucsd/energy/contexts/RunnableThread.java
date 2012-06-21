@@ -7,14 +7,11 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.types.Selector;
 
 import edu.ucsd.energy.apk.Interesting;
-import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.managers.GlobalManager;
 
 /**
  * TODO: This is not really a component
  * Using it just for now  
- * @author progsys
- *
  */
 public class RunnableThread extends Context {
 
@@ -32,10 +29,6 @@ public class RunnableThread extends Context {
 		return b.toString();
 	}  
 
-	public CompoundLockState getThreadExitState() {
-		CGNode runNode = super.getCallBack(Interesting.ThreadRun).getNode();	
-		return super.getReturnState(runNode);
-	}
 
 	public Set<Selector> getEntryPoints() {
 		return Interesting.runnableEntryMethods;

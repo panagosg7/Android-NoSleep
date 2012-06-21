@@ -1,7 +1,5 @@
 package edu.ucsd.energy.managers;
 
-import java.util.HashMap;
-
 import com.ibm.wala.types.FieldReference;
 
 import edu.ucsd.energy.util.SSAProgramPoint;

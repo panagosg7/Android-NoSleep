@@ -68,4 +68,11 @@ public class SingleContextCFG extends AbstractContextCFG {
 			return null;
 		}
 
+
+		@Override
+		public boolean isContextExit(BasicBlockInContext<IExplodedBasicBlock> a) {
+			Assertions.UNREACHABLE();
+			return false;
+		}
+
 }

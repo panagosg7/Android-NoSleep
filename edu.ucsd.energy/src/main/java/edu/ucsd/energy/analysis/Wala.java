@@ -69,16 +69,16 @@ public class Wala {
 		gm.createIntentManager();
 		gm.createRunnableManager();
 
+		//Perform the data flow
 		gm.solveComponents();
 		
 		CompoundReport report = new CompoundReport();
 		report.register(gm.getIntentReport());
 		report.register(gm.getRunnableReport());
 		report.register(gm.getWakeLockReport());
-		IReport[] analysisReport = gm.getAnalysisReport();	//meh
-		for(int i = 0; i < analysisReport.length; i++) {
-			report.register(analysisReport[i]);	
-		}
+		
+		report.register(gm.getAnalysisReport());
+
 		return report;
 	}
 	

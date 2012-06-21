@@ -1,7 +1,6 @@
 package edu.ucsd.energy.component;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -11,7 +10,6 @@ import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
-import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.util.CancelException;
@@ -33,16 +31,20 @@ import edu.ucsd.energy.interproc.LockingTabulationSolver.LockingResult;
 import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
-import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.Util;
 
-public abstract class AbstractComponent extends NodeWithNumber implements IComponent {
+public abstract class AbstractComponent extends NodeWithNumber implements IContext {
 
 	protected GlobalManager 	global;  
 
 	protected CallGraph 		componentCallgraph;
 
 	protected AppCallGraph 		originalCallgraph;
+
+	protected AbstractContextCFG icfg = null;
+
+	protected ISupergraph<BasicBlockInContext<IExplodedBasicBlock>, CGNode> supergraph = null;
+
 
 	public AbstractComponent(GlobalManager gm) {
 		global = gm;
@@ -71,17 +73,13 @@ public abstract class AbstractComponent extends NodeWithNumber implements ICompo
 	}
 
 
-	protected AbstractContextCFG icfg = null;
-	protected ISupergraph<BasicBlockInContext<IExplodedBasicBlock>, CGNode> supergraph = null;
-	
-
 	public AbstractContextCFG getICFG() {
 		if (icfg == null) {
 			icfg = makeCFG();
 		}
 		return icfg;
 	}
-	
+
 	public ISupergraph<BasicBlockInContext<IExplodedBasicBlock>, CGNode> getSupergraph() {
 		if (supergraph == null) {
 			AnalysisCache cache = new AnalysisCache();
@@ -133,7 +131,7 @@ public abstract class AbstractComponent extends NodeWithNumber implements ICompo
 			mBBICState.put(bb, q);
 			//E.log(1, bb.toShortString() + " : " + q.toShortString());
 		}
-		
+
 	}
 
 
@@ -141,39 +139,17 @@ public abstract class AbstractComponent extends NodeWithNumber implements ICompo
 		return global;
 	}
 
-	/**
-	 * Get the state at the exit of a cg node
-	 * @param cgNode
-	 * @return May return null (eg. JNI)
-	 */
-	public CompoundLockState getReturnState(CGNode cgNode) {
-		if (cgNode.getMethod().isNative()) return null;
+	abstract public CompoundLockState getReturnState(CGNode cgNode);
 
-		//XXX: Be very careful with this!!!
-		//The exit basic block does not always contain the state we need, so 
-		//we get it from the non-exceptional predecessor
-		BasicBlockInContext<IExplodedBasicBlock> exitBB = icfg.getExit(cgNode);
-		Iterator<BasicBlockInContext<IExplodedBasicBlock>> predNodes = icfg.getPredNodes(exitBB);
-		HashSet<CompoundLockState> set = new HashSet<CompoundLockState>();
-		while(predNodes.hasNext()) {
-			BasicBlockInContext<IExplodedBasicBlock> bb = predNodes.next();
-			if (!icfg.isExceptionalEdge(bb, exitBB)) {
-				IExplodedBasicBlock ebb = bb.getDelegate();
-				set.add(mEBBState.get(ebb));
-			}
-		}
-		CompoundLockState merged = CompoundLockState.merge(set);
-		//IExplodedBasicBlock exit = exitBB.getDelegate();
-		
-		//Do not search by instruction cause that might be null
-		return merged;
+	
+	public CompoundLockState getExitState(CGNode n) {
+		return mBBICState.get(getICFG().getExit(n));
 	}
 
 	public CompoundLockState getState(BasicBlockInContext<IExplodedBasicBlock> i) {
 		return mBBICState.get(i);
 	}
 
-	
 	public CompoundLockState getState(IExplodedBasicBlock i) {
 		return mEBBState.get(i);
 	}

@@ -1,12 +1,8 @@
 package edu.ucsd.energy.managers;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Map;
 
-import com.ibm.wala.classLoader.CallSiteReference;
-import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSALoadMetadataInstruction;
@@ -37,22 +33,19 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 	Integer interestingMethod(MethodReference declaredTarget) {
 		return Interesting.mIntentMethods.get(declaredTarget.getSelector());
 	}
-	///
 	
-	private static int DEBUG = 2;
+	private static int DEBUG = 0;
 	
 	public IntentManager(GlobalManager cm) {
 		super(cm);
 	}
 
-
 	public void prepare() {
 		super.prepare();
-		if(DEBUG < 2) {
+		if(DEBUG > 0) {
 			dumpInfo();
 		}
 	}
-
 	
 	
 	protected IntentInstance visitNewInstance(SSAInstruction instr) {
@@ -88,7 +81,9 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 			try {
 				TypeReference calledType = (TypeReference) meta.getToken();
 				ii.setCalledType(calledType.getName());
-				E.log(DEBUG, "META: " + ii.toString());
+				if (DEBUG > 0) {
+					E.log(1, "META: " + ii.toString());
+				}
 			}
 			catch(Exception e) {
 				//This is to act against the case that 

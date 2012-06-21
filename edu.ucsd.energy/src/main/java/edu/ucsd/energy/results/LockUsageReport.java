@@ -5,16 +5,17 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import net.sf.json.JSONObject;
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.contexts.Context;
-import edu.ucsd.energy.results.ProcessResults.ComponentState;
+import edu.ucsd.energy.results.ContextSummary.ContextState;
 
 public class LockUsageReport implements IReport {
 
 	public LockUsageReport() {
-		mComponent = new HashMap<Context, ProcessResults.ComponentState>();
+		mComponent = new HashMap<Context, ContextState>();
 	}
 	
-	private Map<Context, ComponentState> mComponent;
+	private Map<Context, ContextState> mComponent;
 	
 	public String getTag() {
 		return "Lock Usage";
@@ -23,7 +24,7 @@ public class LockUsageReport implements IReport {
 	public JSONObject toJSON() {
 		JSONObject obj = new JSONObject();
 		if (mComponent != null) { 
-			for (Entry<Context, ComponentState> e : mComponent.entrySet()) {
+			for (Entry<Context, ContextState> e : mComponent.entrySet()) {
 				obj.put(e.getKey().toString(), e.getValue().toJSON());
 			}
 		}
@@ -32,16 +33,16 @@ public class LockUsageReport implements IReport {
 	
 	public String toShortDescription() {
 		StringBuffer sb = new StringBuffer();
-		for (Entry<Context, ComponentState> e : mComponent.entrySet()) {
+		for (Entry<Context, ContextState> e : mComponent.entrySet()) {
 			sb.append(e.getKey().toString() + " :: " + e.getValue().toString() + "\n");
 		}
 		return sb.toString().replaceAll("\n{2,}", "\n");		//ugly fix...
 	}
 
-	public void insert(ContextSummary cSummary) {
-		Context c = cSummary.getContext();
-		ComponentState callBackUsage = cSummary.getCallBackUsage();
-		mComponent.put(c, callBackUsage);
+	//TODO: fix this
+	public void insert(Component component, ContextSummary cSummary) {
+		//ContextState callBackUsage = cSummary.getCallBackStates();
+		//mComponent.put(component, callBackUsage);
 	}
 	
 	

@@ -89,4 +89,14 @@ public class E {
   public static void err(String string) {
     System.err.println(string);    
   }
+  
+  
+  public static void yellow() {
+  	System.out.print("\033[33m");
+  }
+  
+  public static void resetColor() {
+  	System.out.print("\033[0m");
+  }
+  
 }

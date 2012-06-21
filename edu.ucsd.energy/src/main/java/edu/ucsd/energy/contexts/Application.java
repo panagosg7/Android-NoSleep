@@ -2,8 +2,10 @@ package edu.ucsd.energy.contexts;
 
 import com.ibm.wala.ipa.callgraph.CGNode;
 
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.managers.GlobalManager;
-import edu.ucsd.energy.policy.IPolicy;
+import edu.ucsd.energy.results.ContextSummary;
+import edu.ucsd.energy.results.ViolationReport;
 
 
 /**
@@ -30,10 +32,10 @@ public class Application extends Component {
 		    return b.toString();
 		  }
 
-	@Override
-	public IPolicy makePolicy() {
-		// TODO Auto-generated method stub
-		return null;
-	}
+		@Override
+		protected ViolationReport gatherViolations(ContextSummary ctx) {
+			// TODO Auto-generated method stub
+			return null;
+		}
 
 }

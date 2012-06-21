@@ -12,7 +12,6 @@ import com.ibm.wala.examples.properties.WalaExamplesProperties;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
-import com.ibm.wala.properties.WalaProperties;
 import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
@@ -32,14 +31,16 @@ import edu.ucsd.energy.viz.IColorNodeDecorator;
 
 public class ComponentPrinter<T extends AbstractComponent> {
 
+	Properties p = WalaExamplesProperties.properties;
+
 	CallGraph componentCallgraph;
 
 	T component;
 
 	AbstractContextCFG icfg;
-	
+
 	ColorNodeDecorator colorNodeDecorator = new ColorNodeDecorator();
-	
+
 	SimpleNodeDecorator nodeDecorator = new SimpleNodeDecorator();
 
 	public ComponentPrinter(T component) {
@@ -61,8 +62,6 @@ public class ComponentPrinter<T extends AbstractComponent> {
 
 	private void outputCallGraph(CallGraph cg, String prefix) {
 		try {
-			Properties p = WalaExamplesProperties.loadProperties();
-			p.putAll(WalaProperties.loadProperties());
 			String folder = SystemUtil.getResultDirectory() + File.separatorChar + prefix;
 			new File(folder).mkdirs();
 			String fileName = folder + File.separatorChar + component.toFileName() + ".dot";
@@ -71,9 +70,9 @@ public class ComponentPrinter<T extends AbstractComponent> {
 			E.log(2, "Dumping: " + fileName);
 			GraphDotUtil.dotify(cg, null, fileName, pdfFile, dotExe);
 			return;
-		} catch (WalaException e) {
-			e.printStackTrace();
 		} catch (IllegalArgumentException e) {
+			e.printStackTrace();
+		} catch (WalaException e) {
 			e.printStackTrace();
 		}	
 	}
@@ -87,12 +86,6 @@ public class ComponentPrinter<T extends AbstractComponent> {
 	public void outputColoredCFGs() {
 		//Need to do this here - WALA was giving me a hard time to crop a small
 		//part of the graph
-		Properties p = WalaExamplesProperties.loadProperties();
-		try {
-			p.putAll(WalaProperties.loadProperties());
-		} catch (WalaException e) {
-			e.printStackTrace();
-		}
 		String cfgs = SystemUtil.getResultDirectory() + File.separatorChar + "color_cfg" +
 				File.separatorChar +  component.toFileName() ;	//every supercomponent should have its own folder 
 		new File(cfgs).mkdirs();
@@ -112,7 +105,7 @@ public class ComponentPrinter<T extends AbstractComponent> {
 			String pdfFile = null;
 			try {
 				/* Do the colored graph - this will get the colors from the color hash */
-				
+
 				GraphDotUtil.dotify(cfg, colorNodeDecorator, cfgFileName, pdfFile, dotExe);
 			} catch (WalaException e) {
 				e.printStackTrace();
@@ -122,15 +115,10 @@ public class ComponentPrinter<T extends AbstractComponent> {
 
 
 	public void outputColoredSupergraph() {
-		Properties p = WalaExamplesProperties.loadProperties();
-		try {
-			p.putAll(WalaProperties.loadProperties());
-		} catch (WalaException e) {
-			e.printStackTrace();
-		}
+
 		String cfgs = SystemUtil.getResultDirectory() + File.separatorChar + "color_super_cfg";
 		new File(cfgs).mkdirs();
-		
+
 		String bareFileName = component.toFileName();
 		String dotFile = cfgs + File.separatorChar + bareFileName + ".dot";
 		String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
@@ -144,20 +132,15 @@ public class ComponentPrinter<T extends AbstractComponent> {
 		}
 	}
 
-	
+
 	/**
 	 * Output the whole component CFG without colors
 	 */
 	public void outputSupergraph() {
-		Properties p = WalaExamplesProperties.loadProperties();
-		try {
-			p.putAll(WalaProperties.loadProperties());
-		} catch (WalaException e) {
-			e.printStackTrace();
-		}
+		
 		String cfgs = SystemUtil.getResultDirectory() + File.separatorChar + "super_cfg";
 		new File(cfgs).mkdirs();
-		
+
 		String bareFileName = component.toFileName();
 		String dotFile = cfgs + File.separatorChar + bareFileName + ".dot";
 		String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
@@ -174,20 +157,20 @@ public class ComponentPrinter<T extends AbstractComponent> {
 	/**
 	 * Node Decorators
 	 */
-	
+
 	public class ColorNodeDecorator extends SimpleNodeDecorator implements IColorNodeDecorator {
 
 		private Collection<SingleLockState> getStates(IExplodedBasicBlock ebb) {
 			CompoundLockState st = component.getState(ebb);
 			return st.getStates();
 		}
-		
+
 		private Collection<SingleLockState> getStates(BasicBlockInContext<IExplodedBasicBlock> ebb) {
 			CompoundLockState st = component.getState(ebb);
 			return st.getStates();
 		}
-		
-		
+
+
 
 		public List<LockStateDescription> statesToColor(Collection<SingleLockState> states) {
 			ArrayList<LockStateDescription> list = new ArrayList<LockStateDescription>();
@@ -202,8 +185,8 @@ public class ComponentPrinter<T extends AbstractComponent> {
 			}
 			return list;
 		}
-		
-		
+
+
 		public List<LockStateDescription> getFillColors(Object o) {
 			IExplodedBasicBlock ebb = null;
 			Collection<SingleLockState> states = null;
@@ -222,10 +205,10 @@ public class ComponentPrinter<T extends AbstractComponent> {
 				//}
 			}
 			return statesToColor(states);
-			
+
 		}
 
-		
+
 		public String edgeLabel (Object o1, Object o2) {
 			if ((o1 instanceof BasicBlockInContext) && (o2 instanceof BasicBlockInContext)) {
 				@SuppressWarnings("unchecked")
@@ -236,19 +219,22 @@ public class ComponentPrinter<T extends AbstractComponent> {
 					return " [style = dashed]";
 				}
 				if (icfg.isReturnFromContextEdge(bb1, bb2) || icfg.isCallToContextEdge(bb1, bb2)) {
-					return " [style = bold arrowhead = diamond]";
+					return " [style = bold arrowhead = diamond color = blue]";
+				}
+				if (icfg.isLifecycleExit(bb1)) {
+					return " [style = bold color = blue]";
 				}
 			}
 			return "";
 		}
-		
+
 		public String getFontColor(Object n) {
 			return "black";
 		}
 
 	}
-	
-	
+
+
 	public class SimpleNodeDecorator implements NodeDecorator {
 
 		public String getLabel(Object o) throws WalaException {
@@ -283,7 +269,7 @@ public class ComponentPrinter<T extends AbstractComponent> {
 			return "[error]";
 		}
 
-		
+
 	};
 
 }

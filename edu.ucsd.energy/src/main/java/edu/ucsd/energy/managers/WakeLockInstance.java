@@ -57,8 +57,8 @@ public class WakeLockInstance extends ObjectInstance {
 			return referenceCounted;
 		}
 
-		public void setReferenceCounted(RefCount referenceCounted) {
-			this.referenceCounted = referenceCounted;
+		public void setReferenceCounted(RefCount rc) {
+			referenceCounted = rc;
 		}
 		
 		public String toString() {
@@ -118,6 +118,9 @@ public class WakeLockInstance extends ObjectInstance {
 	}
 
 	public WakeLockInfo getInfo() {
+		if (info == null) {
+			info = new WakeLockInfo();
+		}
 		return info;
 	}
 

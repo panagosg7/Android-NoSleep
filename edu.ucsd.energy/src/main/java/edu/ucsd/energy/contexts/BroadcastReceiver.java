@@ -6,9 +6,10 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.types.Selector;
 
 import edu.ucsd.energy.apk.Interesting;
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.managers.GlobalManager;
-import edu.ucsd.energy.policy.BroadcastReceiverPolicy;
-import edu.ucsd.energy.policy.IPolicy;
+import edu.ucsd.energy.results.ContextSummary;
+import edu.ucsd.energy.results.ViolationReport;
 
 public class BroadcastReceiver extends Component {
 
@@ -20,8 +21,12 @@ public class BroadcastReceiver extends Component {
 		super(gm, root);
 	}
 
-	@Override
-	public IPolicy makePolicy() {
-		return new BroadcastReceiverPolicy(this);
+	
+	public ViolationReport gatherViolations(ContextSummary summary) {
+		ViolationReport policyReport = new ViolationReport();
+		//Not sure if there should be a policy here
+		return policyReport;
 	}
+
+	
 }

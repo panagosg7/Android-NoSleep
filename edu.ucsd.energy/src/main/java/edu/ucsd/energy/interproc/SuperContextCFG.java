@@ -20,7 +20,7 @@ import edu.ucsd.energy.contexts.Context;
 
 public class SuperContextCFG extends AbstractContextCFG {
 
-	private static final int DEBUG = 2;
+	private static final int DEBUG = 0;
 
 	//Keeps all the edges that connect different contexts
 	//Helps distinguish from function calls
@@ -158,6 +158,11 @@ public class SuperContextCFG extends AbstractContextCFG {
 				}
 			}
 		}
+	}
+
+	@Override
+	public boolean isContextExit(BasicBlockInContext<IExplodedBasicBlock> a) {
+		return mContextReturn.containsKey(a);
 	}
 
 

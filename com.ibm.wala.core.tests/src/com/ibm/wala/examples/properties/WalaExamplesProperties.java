@@ -15,6 +15,7 @@ import java.net.URL;
 import java.util.Properties;
 
 import com.ibm.wala.properties.WalaProperties;
+import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.io.FileProvider;
 
 public final class WalaExamplesProperties {
@@ -26,10 +27,8 @@ public final class WalaExamplesProperties {
   public final static String PROPERTY_FILENAME = "wala.examples.properties"; //$NON-NLS-1$
 
   public static Properties loadProperties()  {
-
     try {
       Properties result = WalaProperties.loadPropertiesFromFile(WalaExamplesProperties.class.getClassLoader(), PROPERTY_FILENAME);
-
       return result;
     } catch (Exception e) {
       e.printStackTrace();
@@ -46,4 +45,17 @@ public final class WalaExamplesProperties {
     return new File(FileProvider.filePathFromURL(url)).getParentFile().getParentFile().getAbsolutePath();
   }
 
+  //PV added these
+  public static Properties properties = loadWalaExampleProperties();
+  
+  private static Properties loadWalaExampleProperties() {
+    Properties p = loadProperties();
+    try {
+      p.putAll(WalaProperties.loadProperties());
+    } catch (WalaException e) {
+      e.printStackTrace();
+    }
+    return p;
+  }
+  
 }

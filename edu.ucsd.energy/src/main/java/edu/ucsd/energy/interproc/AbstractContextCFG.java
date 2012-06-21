@@ -47,16 +47,18 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 		super(cg);
 	}
 
-
-
 	
 	/**
-	 * It suffices to account just for the exit point of a node that is important for the 
-	 * lifecycle of the context 
+	 * True if this node leads to the next method in the lifecycle
 	 */
 	public boolean isLifecycleExit(BasicBlockInContext<IExplodedBasicBlock> a) {
 		return sLifecycleEdge.contains(a);
 	}
+	
+	abstract public boolean isContextExit(BasicBlockInContext<IExplodedBasicBlock> a);
+	
+	
+	
 
 	/**
 	 * The adjacent nodes to the packed edges are the interesting callbacks.

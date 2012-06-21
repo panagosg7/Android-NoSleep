@@ -1,98 +1,79 @@
 package edu.ucsd.energy.results;
 
 import java.util.HashMap;
-import java.util.Map;
+import java.util.HashSet;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 
-import com.ibm.wala.classLoader.IMethod;
-import com.ibm.wala.ipa.callgraph.CGNode;
-import com.ibm.wala.util.strings.Atom;
+import com.ibm.wala.types.Selector;
 
 import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SingleLockState;
-import edu.ucsd.energy.interproc.SingleLockState.LockStateDescription;
 import edu.ucsd.energy.managers.WakeLockInstance;
-import edu.ucsd.energy.policy.Policy;
-import edu.ucsd.energy.results.ProcessResults.ComponentState;
 import edu.ucsd.energy.results.ProcessResults.LockUsage;
-import edu.ucsd.energy.results.ProcessResults.SingleLockUsage;
 
-public class ContextSummary  {
+public class ContextSummary {
 
-	private Context context;
+	public class ContextState extends HashMap<Selector, LockUsage> {
 
-	private ComponentState callBackExitStates;
+		private static final long serialVersionUID = 1L;
 
-	private HashMap<CGNode, CompoundLockState> allExitStates;
+		public JSONObject toJSON() {
+			JSONObject obj = new JSONObject();
+			for (Entry<Selector, LockUsage> e : entrySet()) {
+				obj.put(e.getKey().toString(), e.getValue().toJSON());
+			}
+			return obj;
+		}
 
-	public ContextSummary(Context c) {
-		this.setContext(c);
-		allExitStates = new HashMap<CGNode, CompoundLockState>();
-		callBackExitStates = new ComponentState();			
+		public String toString() {
+			StringBuffer sb = new StringBuffer();
+			for (Entry<Selector, LockUsage> e : entrySet()) {
+				sb.append(e.getKey().getName() + " :: " + e.getValue().toString() + "\n");
+			}	
+			return sb.toString();
+		}
+	}
+
+	//A mapping with the state at the exit of every callback 
+	private ContextState callBackExitStates;
+	
+	//A set with all the wakelock instances used
+	private Set<WakeLockInstance> instances;
+
+	//The context which this class summarizes
+	private Context delegatingContext;
+	
+
+	public ContextSummary(Context component) {
+		callBackExitStates = new ContextState();
+		instances = new HashSet<WakeLockInstance>();
+		delegatingContext = component;
 	}	
 
-	public HashMap<CGNode, CompoundLockState> getAllExitStates() {
-		return allExitStates;
-	}
 	
-	public ComponentState getCallBackUsage() {
-		return callBackExitStates;
-	}
-
-	public void registerNodeState(CGNode n, CompoundLockState st) {
-		allExitStates.put(n,st);
-		if (getContext().isCallBack(n)){
-			registerCallBackState(CallBack.findOrCreateCallBack(n), st);
-		}
-	}
-
-	private void registerCallBackState(CallBack cb, CompoundLockState st) {
-		LockUsage map = new LockUsage();
-		for(Entry<WakeLockInstance, SingleLockState> e : st.getLockStateMap().entrySet()) {
-			WakeLockInstance wli = e.getKey();
-			SingleLockState sls = e.getValue();
-			map.put(wli, sls);
-		}
-		//Putting only non-empty exit states
-		if (!map.isEmpty()) {
-			callBackExitStates.put(cb,map);
-		}
-	}
-
-	public CompoundLockState getState(CGNode node) {
-		return allExitStates.get(node);
-	}
-
-	//TODO: may have to fix this
-	public boolean isEmpty() {
-		for (LockUsage cbState : callBackExitStates.values()) {				
-			if ((cbState != null) && (!cbState.isEmpty())) {
-				return false;
-			}
-		}
-		return true;
+	public void registerState(CallBack cb, CompoundLockState st) {
+		LockUsage map = new LockUsage(st);
+		instances.addAll(st.getWakeLocks());
+		Selector methSel = cb.getNode().getMethod().getSelector();
+		System.out.println("RegisteringState: " + methSel);
+		System.out.println(map.toString());
+		System.out.println(instances);
+		callBackExitStates.put(methSel, map);
+		
 	}
 	
 	
 	public String toString () {
 		StringBuffer sb = new StringBuffer();
-		/*sb.append("Methods:\n");
-		for (Entry<CGNode, CompoundLockState> e : allExitStates.entrySet()) {
-			CompoundLockState stateForMethod = e.getValue();
-			if ((stateForMethod != null) && (!stateForMethod.isEmpty())) {
-				sb.append(e.getKey().getMethod().getSelector().toString()
-						+ ":\n" + stateForMethod.toShortString());
-			}
-		}
-		*/
 		sb.append("Callbacks:\n");
-		for (Entry<CallBack, LockUsage> cb : callBackExitStates.entrySet()) {				
-			sb.append("   " + cb.getKey().getName() + "\n"); 
+		for (Entry<Selector, LockUsage> cb : callBackExitStates.entrySet()) {				
+			sb.append("   " + cb.getKey().toString() + "\n"); 
 			LockUsage stateForMethod = cb.getValue();
 			if ((stateForMethod != null) && (!stateForMethod.isEmpty())) {
 				for(Entry<WakeLockInstance, SingleLockState> e : stateForMethod.entrySet()) {
@@ -106,14 +87,12 @@ public class ContextSummary  {
 	public JSONObject toJSON() {
 		try {
 			JSONObject methObj = new JSONObject();
-			for (Entry<CGNode, CompoundLockState> e : allExitStates.entrySet()) {
-				IMethod method = e.getKey().getMethod();
-				Atom name = method.getName();
+			for (Entry<Selector, LockUsage> e : callBackExitStates.entrySet()) {
 				JSONObject methContent = new JSONObject();
-				methContent.put("signature", method.getSignature());
-				CompoundLockState state = e.getValue();
-				methContent.put("end_state", state.toJSON());
-				methObj.accumulate(name.toString(), methObj);
+				methContent.put("selector", e.getKey());
+				LockUsage lu = e.getValue();
+				methContent.put("end_state", lu.toJSON());
+				methObj.accumulate(e.getKey().toString(), methObj);
 			}
 			JSONObject compObj = new JSONObject();
 			compObj.put("method_states", methObj);
@@ -124,11 +103,25 @@ public class ContextSummary  {
 		return null;			
 	}
 
-	public Context getContext() {
-		return context;
+	
+	public Set<WakeLockInstance> lockInstances() {
+		return instances;
 	}
 
-	public void setContext(Context context) {
-		this.context = context;
-	} 
+	public Set<LockUsage> getCallBackState(Selector selector) {
+		Set<CallBack> cbs = delegatingContext.getMostRecentCallBack(selector);
+		Set<LockUsage> result = new HashSet<LockUsage>();
+		for (CallBack cb : cbs) {
+			new LockUsage(delegatingContext.getReturnState(cb.getNode()));
+			
+			Selector s = cb.getNode().getMethod().getSelector();
+			LockUsage lockUsage = callBackExitStates.get(s);
+			if (lockUsage != null) {
+				result.add(lockUsage);
+			}
+		}
+		return result;
+	}
+
+
 }

@@ -19,11 +19,10 @@ import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.managers.WakeLockInstance.LockType;
+import edu.ucsd.energy.managers.WakeLockInstance.WakeLockInfo;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ManagerReport;
-import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.SSAProgramPoint;
-
 
 /**
  * Interesting methods for this class are the wakelock operations
@@ -32,10 +31,9 @@ import edu.ucsd.energy.util.SSAProgramPoint;
  * @author pvekris
  *
  */
-
 public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 	
-	private static int DEBUG = 2;
+	private static int DEBUG = 1;
 	
 	public enum RefCount {
 		UNSET,
@@ -47,6 +45,14 @@ public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 		super(globalManager);
 	}
 
+	public void prepare() {
+		super.prepare();
+		if(DEBUG > 0) {
+			dumpInfo();
+		}
+	}
+	
+	
 	public JSONObject toJSON() {
 		JSONObject result = new JSONObject();
 		JSONObject obj = new JSONObject();
@@ -115,7 +121,7 @@ public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 
 	void visitInvokeInstruction(SSAInvokeInstruction inv) {
 		//Reference Count
-		 if (inv.toString().contains("setReferenceCounted")) {
+		 if (inv.toString().contains("WakeLock, setReferenceCounted")) {
 			 visitReferenceCounted(inv);
 		 }
 	}
@@ -129,8 +135,8 @@ public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 		int use = inv.getUse(0);
 		//WakeLockInstance wli = traceInstanceNoCreate(use);
 		WakeLockInstance wli = traceInstance(use);
-		wli.getInfo().setReferenceCounted(refCounted?RefCount.TRUE:RefCount.FALSE);
-		E.log(DEBUG, "Setting refCount");
+		WakeLockInfo info = wli.getInfo();
+		info.setReferenceCounted(refCounted?RefCount.TRUE:RefCount.FALSE);
 	}
 
 	
@@ -151,10 +157,8 @@ public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 			return  getLockType(intValue);
 		}
 		catch (IllegalArgumentException e) {
-		/*
-		 * The 1st parameter of newWakeLock was not a constant int, 
-		 * so we'll have to check what it is ...
-		 */
+		//The 1st parameter of newWakeLock was not a constant int, 
+		//so we'll have to check what it is ...
 			SSAInstruction def = du.getDef(use);
 			HashSet<LockType> ret = new HashSet<LockType>();
 			/* TODO : will probably have to enhance this with more cases */
@@ -196,10 +200,6 @@ public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 		return false;
 	}
 
-	public void dumpInfo() {
-		//super.dumpInfo();
-	}
-
 	@Override
 	public String getTag() {
 		return "WakeLocks";
@@ -209,6 +209,12 @@ public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 	protected void setInterestingType() {
 		interestingTypes = new HashSet<TypeName>();
 		interestingTypes.add(Interesting.WakeLockType);		
+	}
+
+	@Override
+	protected void sanityCheck() {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

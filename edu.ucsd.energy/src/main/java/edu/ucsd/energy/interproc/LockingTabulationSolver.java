@@ -10,7 +10,6 @@ import com.ibm.wala.dataflow.IFDS.CallFlowEdges;
 import com.ibm.wala.dataflow.IFDS.IBinaryReturnFlowFunction;
 import com.ibm.wala.dataflow.IFDS.IFlowFunction;
 import com.ibm.wala.dataflow.IFDS.IUnaryFlowFunction;
-import com.ibm.wala.dataflow.IFDS.LocalSummaryEdges;
 import com.ibm.wala.dataflow.IFDS.PartiallyBalancedTabulationSolver;
 import com.ibm.wala.dataflow.IFDS.PathEdge;
 import com.ibm.wala.dataflow.IFDS.TabulationDomain;
@@ -40,6 +39,9 @@ public class LockingTabulationSolver  extends PartiallyBalancedTabulationSolver<
 BasicBlockInContext<IExplodedBasicBlock>, 
 CGNode, Pair<WakeLockInstance, SingleLockState>> {
 
+	//Toggle this to 
+	private static final boolean ENABLE_CTX_SENS = false;
+	
 	private static final int DEBUG = 1;
 
 	private AbstractContextCFG icfg;
@@ -115,30 +117,32 @@ CGNode, Pair<WakeLockInstance, SingleLockState>> {
 			return result.getSeeds();
 		}
 
-
 	}
 
-	/*
 	//We also classify cases of propagating state to the next method in the lifecycle as unbalanced seeds.
 	protected boolean wasUsedAsUnbalancedSeed(BasicBlockInContext<IExplodedBasicBlock> s_p, int i,
 			BasicBlockInContext<IExplodedBasicBlock> n, int j) {
-		boolean b = super.wasUsedAsUnbalancedSeed(s_p,i, n, j) ||	icfg.isLifecycleExit(n);
+		boolean b = super.wasUsedAsUnbalancedSeed(s_p,i, n, j) ||	(icfg.isLifecycleExit(n));
 		return b;		
 	}
-	*/
 
+	
+	protected boolean propagate(BasicBlockInContext<IExplodedBasicBlock> s_p, int i, 
+			BasicBlockInContext<IExplodedBasicBlock> n, int j) {
+		return super.propagate(s_p, i, n, j);
+	}
+	
+	
+	
 	/**
 	 * Handle lines [14 - 19] of the algorithm, propagating information into and across a call site.
 	 * We need to implement the part of the tabulation algorithm that deals with asynchronous calls 
 	 * to other contexts in a context sensitive way.
 	 */
 	protected void processCall(final PathEdge<BasicBlockInContext<IExplodedBasicBlock>> edge) {
-		if (DEBUG > 0) {
-			System.err.println("process call: " + edge);
-		}
 		// This is an asynchronous call 
 		BasicBlockInContext<IExplodedBasicBlock> callSite = edge.getTarget();
-		if (icfg.isCallToContext(callSite)) {
+		if (ENABLE_CTX_SENS && icfg.isCallToContext(callSite)) {
 
 			// c:= number of the call node
 			final int c = supergraph.getNumber(callSite);
@@ -359,7 +363,7 @@ CGNode, Pair<WakeLockInstance, SingleLockState>> {
 		BasicBlockInContext<IExplodedBasicBlock> target = edge.getTarget();
 		Context ctx = icfg.returnFromContext(target);
 		//Check if this is a context return block
-		if (ctx != null) {
+		if (ENABLE_CTX_SENS && (ctx != null)) {
 			if (DEBUG > 0) {
 	      System.err.println("process context exit: " + edge.getTarget());
 	    }

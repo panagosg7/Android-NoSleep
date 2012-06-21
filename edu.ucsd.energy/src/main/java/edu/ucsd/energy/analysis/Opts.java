@@ -158,6 +158,10 @@ public class Opts {
   public static final boolean DATAFLOW_IGNORE_EXCEPTIONAL = true;
 	
   public static final boolean FAIL_AT_DEPENDENCY_CYCLES = false;
+
+
+
+	public static final boolean ANALYZE_SUPERCOMPONENTS = true;
 	
   public static boolean RUN_IN_PARALLEL = false;
 

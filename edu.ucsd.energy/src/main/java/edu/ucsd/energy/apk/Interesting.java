@@ -56,6 +56,7 @@ public class Interesting {
 	//Method Selectors
 	public final static Selector ThreadRun = Selector.make("run()V");
 	
+	public static final Selector ActivityConstructor = Selector.make("<init>()V");
 	public static final Selector ActivityOnCreate = Selector.make("onCreate(Landroid/os/Bundle;)V");
 	public static final Selector ActivityOnDestroy = Selector.make("onDestroy()V");
 	public static final Selector ActivityOnPause = Selector.make("onPause()V");
@@ -67,9 +68,12 @@ public class Interesting {
 	public final static Selector ThreadCall = Selector.make("call()V");
 	
 	public static final Selector ServiceOnCreate = Selector.make("onCreate()V");
-	public static final Selector ServiceOnStart = Selector.make("onStartCommand(Landroid/content/Intent;II)I");
+	public static final Selector ServiceOnStartCommand = Selector.make("onStartCommand(Landroid/content/Intent;II)I");
+	public static final Selector ServiceOnStart = Selector.make("onStart(Landroid/content/Intent;I)V");
 	public static final Selector ServiceOnDestroy = Selector.make("onDestroy()V");
 	
+	public static final Selector BroadcastReceiverOnReceive = 
+			Selector.make("onReceive(Landroid/content/Context;Landroid/content/Intent;)V");
 	
 	static {
 
@@ -132,9 +136,10 @@ public class Interesting {
 		activityCallbackMethods.add(ActivityOnStart);
 		activityCallbackMethods.add(ActivityOnStop);
 		
+		activityEntryMethods.add(ActivityConstructor);
 		activityEntryMethods.add(ActivityOnCreate);
-		//activityEntryMethods.add(ActivityOnStart);
-		//activityEntryMethods.add(ActivityOnResume);
+		activityEntryMethods.add(ActivityOnStart);
+		activityEntryMethods.add(ActivityOnResume);
 		//activityEntryMethods.add(ActivityOnRestart);
 		
 		activityExitMethods.add(ActivityOnDestroy);
@@ -159,10 +164,20 @@ public class Interesting {
 		serviceCallbackMethods.add(Selector.make("stopSelfResult(I)B"));
 		
 		
+	//Ignore these selectors when invoking a def-use manager
 		ignoreSelectors.add(Selector.make("putExtra(Ljava/lang/String;I)Landroid/content/Intent;"));
 		ignoreSelectors.add(Selector.make("setFlags(I)Landroid/content/Intent;"));
 		ignoreSelectors.add(Selector.make("putExtra(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;"));
 		ignoreSelectors.add(Selector.make("setData(Landroid/net/Uri;)Landroid/content/Intent;"));
+		ignoreSelectors.add(Selector.make("putExtra(Ljava/lang/String;Landroid/os/Parcelable;)Landroid/content/Intent;"));
+		ignoreSelectors.add(Selector.make("setType(Ljava/lang/String;)Landroid/content/Intent;"));
+		ignoreSelectors.add(Selector.make("createChooser(Landroid/content/Intent;Ljava/lang/CharSequence;)Landroid/content/Intent;"));
+		ignoreSelectors.add(Selector.make("addFlags(I)Landroid/content/Intent;"));
+		ignoreSelectors.add(Selector.make("setResult(ILandroid/content/Intent;)V"));
+		ignoreSelectors.add(Selector.make("queryIntentActivities(Landroid/content/Intent;I)Ljava/util/List;"));
+		ignoreSelectors.add(Selector.make("submitIntent(Landroid/content/Intent;)V"));
+		
+		
 		
 		serviceEntryMethods.add(Selector.make("onCreate()V"));
 		serviceEntryMethods.add(Selector.make("onStart(Landroid/content/Intent;I)V"));
@@ -179,8 +194,8 @@ public class Interesting {
 		runnableExitMethods.add(ThreadRun);
 		
 	//BroadcastReceivers
-		broadcastReceiverEntryMethods.add(Selector.make("onReceive(Landroid/content/Context;Landroid/content/Intent;)V"));
-		broadcastReceiverCallbackMethods.add(Selector.make("onReceive(Landroid/content/Context;Landroid/content/Intent;)V"));
+		broadcastReceiverEntryMethods.add(BroadcastReceiverOnReceive);
+		broadcastReceiverCallbackMethods.add(BroadcastReceiverOnReceive);
 	}
 }
 

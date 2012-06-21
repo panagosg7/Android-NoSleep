@@ -38,7 +38,6 @@ import edu.ucsd.energy.contexts.AsyncTask;
 import edu.ucsd.energy.contexts.BroadcastReceiver;
 import edu.ucsd.energy.contexts.Callable;
 import edu.ucsd.energy.contexts.ClickListener;
-import edu.ucsd.energy.contexts.Component;
 import edu.ucsd.energy.contexts.ContentProvider;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.contexts.DialogInterface;
@@ -55,8 +54,8 @@ import edu.ucsd.energy.contexts.ServiceConnection;
 import edu.ucsd.energy.contexts.View;
 import edu.ucsd.energy.contexts.WebViewClient;
 import edu.ucsd.energy.contexts.Widget;
-import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ProcessResults;
+import edu.ucsd.energy.results.ViolationReport;
 import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.GraphUtils;
 
@@ -64,11 +63,13 @@ public class ComponentManager {
 
 	private final static Logger LOGGER = Logger.getLogger(ApkInstance.class.getName());
 
-	private static final int DEBUG = 2;
+	private static final int DEBUG = 1;
 
 	private static final int UNRES = 2;
 
 	private  HashMap<TypeName, Context> componentMap;
+	
+	private List<SuperComponent> superComponents = new ArrayList<SuperComponent>(); 
 
 	private GlobalManager global;
 
@@ -409,7 +410,7 @@ public class ComponentManager {
 				E.log(2, "PASS: " + root.getMethod().getSignature().toString() + " -> " + comp.toString() );
 			}
 			else {
-				E.log(DEBUG, "FAIL: " + root.getMethod().getSignature().toString());
+				E.log(2, "FAIL: " + root.getMethod().getSignature().toString());
 			}      
 			return comp;
 		}
@@ -432,8 +433,9 @@ public class ComponentManager {
 	 * 
 	 ****************************************************************************/
 	public void solveComponents() {
-		System.out.println();
-		E.log(1, "Solving components...");
+		if (DEBUG > 0) {
+			System.out.println("\nSolving components...");
+		}
 		//Build the constraints' graph 
 		RunnableManager runnableManager = global.getRunnableManager();
 		SparseNumberedGraph<Context> rCG = runnableManager.getConstraintGraph();
@@ -444,40 +446,38 @@ public class ComponentManager {
 		SparseNumberedGraph<Context> constraintGraph = GraphUtils.merge(rCG,iCG);
 		GraphUtils.dumpConstraintGraph(constraintGraph, "all_constraints");
 
-		/*
-		//Components
-		Iterator<Context> bottomUpIterator = GraphUtils.topDownIterator(constraintGraph);
-		// Analyze the components based on this graph
-		while (bottomUpIterator.hasNext()) {
-			Context ctx = bottomUpIterator.next();
-			solveComponent(ctx);
-			E.log(1, ctx.toString() + " :  " + ctx.getCallGraph().getNumberOfNodes());
-			
+		if (!Opts.ANALYZE_SUPERCOMPONENTS) {
+			//Components
+			Iterator<Context> bottomUpIterator = GraphUtils.topDownIterator(constraintGraph);
+			// Analyze the components based on this graph
+			while (bottomUpIterator.hasNext()) {
+				Context ctx = bottomUpIterator.next();
+				solveComponent(ctx);
+			}
 		}
-		E.log(1, "===========================");
-		*/
-		
-		//Create SuperComponents based on component constraints
-		Iterator<Set<Context>> scItr = GraphUtils.connectedComponentIterator(constraintGraph);
-		//SuperComponents: the sequence does not matter
-		while(scItr.hasNext()) {
-			Set<Context> next = scItr.next();	//The set of components that construct this supercomponent
-			SuperComponent superComponent = new SuperComponent(global, next);
-			superComponent.dumpContainingComponents();
-			ComponentPrinter<SuperComponent> printer = new ComponentPrinter<SuperComponent>(superComponent);
-			printer.outputSupergraph();
-			solveComponent(superComponent);
-			
-			
+		else {
+			//Create SuperComponents based on component constraints
+			Iterator<Set<Context>> scItr = GraphUtils.connectedComponentIterator(constraintGraph);
+			//SuperComponents: the sequence does not matter
+			while(scItr.hasNext()) {
+				Set<Context> next = scItr.next();	//The set of components that construct this supercomponent
+				SuperComponent superComponent = new SuperComponent(global, next);
+				if (DEBUG > 0) {
+					superComponent.dumpContainingComponents();
+				}
+				ComponentPrinter<SuperComponent> printer = new ComponentPrinter<SuperComponent>(superComponent);
+				printer.outputSupergraph();
+				superComponents.add(superComponent);			
+				solveComponent(superComponent);
+			}
 		}
-
 	}
 
 
 	private <T extends AbstractComponent> void solveComponent(T component) {
-		if (component instanceof Component) {
-			E.log(2, "Solving: " + component.toString());
-		}
+		
+		E.log(1, "Solving: " + component.toString());
+		
 		ComponentPrinter<T> componentPrinter = new ComponentPrinter<T>(component);
 		if (Opts.OUTPUT_COMPONENT_CALLGRAPH) {			
 			componentPrinter.outputNormalCallGraph();
@@ -507,8 +507,13 @@ public class ComponentManager {
 	}
 
 
-	public IReport[] getAnalysisResults() {
+	public ViolationReport getAnalysisResults() {
 		return new ProcessResults(this).processExitStates();
+	}
+
+	//SupperComponents need to have been resolved first
+	public List<SuperComponent> getSuperComponents() {
+		return superComponents;
 	}
 
 }

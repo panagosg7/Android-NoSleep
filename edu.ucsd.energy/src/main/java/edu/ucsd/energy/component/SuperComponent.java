@@ -13,15 +13,17 @@ import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.util.collections.Pair;
+import com.ibm.wala.util.graph.INodeWithNumber;
 
 import edu.ucsd.energy.contexts.Activity;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.contexts.Service;
+import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SuperContextCFG;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.util.E;
 
-public class SuperComponent extends AbstractComponent {
+public class SuperComponent extends AbstractComponent implements INodeWithNumber {
 
 	private static final int DEBUG = 0;
 
@@ -31,6 +33,7 @@ public class SuperComponent extends AbstractComponent {
 
 	public SuperComponent(GlobalManager gm, Set<Context> set) {
 		super(gm);
+		setGraphNodeId(getNextId());
 		sComponent = set;
 	}
 
@@ -110,6 +113,7 @@ public class SuperComponent extends AbstractComponent {
 	protected void makeCallGraph() {
 		Collection<CGNode> nodeSet = new HashSet<CGNode>();
 		for (Context c : sComponent) {
+			c.setContainingSuperComponent(this);
 			// Gather nodes
 			Iterator<CGNode> nItr = c.getNodes();
 			while (nItr.hasNext()) {
@@ -161,6 +165,34 @@ public class SuperComponent extends AbstractComponent {
 		for (Context c : sComponent) {
 			E.log(1, "\t" + c.toString());			
 		}
+	}
+
+	public Set<Context> getContexts() {
+		return sComponent;
+	}
+	
+	
+	//ID accounting	
+	private static int counter = 0;
+	
+	private int id; 
+	
+	private int getNextId() {
+		return counter ++;
+	}
+	
+	public int getGraphNodeId() {
+		return id;
+	}
+
+	public void setGraphNodeId(int number) {
+		id = number;		
+	}
+
+	@Override
+	public CompoundLockState getReturnState(CGNode cgNode) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

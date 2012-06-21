@@ -4,7 +4,6 @@ import java.util.Collection;
 
 import com.ibm.wala.dataflow.IFDS.ICFGSupergraph;
 import com.ibm.wala.dataflow.IFDS.IMergeFunction;
-import com.ibm.wala.dataflow.IFDS.IPartiallyBalancedFlowFunctions;
 import com.ibm.wala.dataflow.IFDS.ISupergraph;
 import com.ibm.wala.dataflow.IFDS.PartiallyBalancedTabulationProblem;
 import com.ibm.wala.dataflow.IFDS.PathEdge;
@@ -37,7 +36,7 @@ import edu.ucsd.energy.util.E;
 
 public class CtxSensLocking {
 
-	static final int DEBUG = 0;
+	static final int DEBUG = 1;
 	
 	/**
 	 * The underlying Inter-procedural Control Flow Graph
@@ -179,6 +178,9 @@ public class CtxSensLocking {
 		 */
 		private Collection<PathEdge<BasicBlockInContext<IExplodedBasicBlock>>> collectInitialSeeds() {
 			Collection<PathEdge<BasicBlockInContext<IExplodedBasicBlock>>> result =	HashSetFactory.make();
+			if (DEBUG > 0) {
+				System.out.println("Computing seeds");
+			}
 			for (BasicBlockInContext<IExplodedBasicBlock> bb : supergraph) {
 				WakeLockInstance timedAcquiredWL = timedAcquire(bb);
 				//Note: We do not add release as a seed. Release will kill the relevant acquire 

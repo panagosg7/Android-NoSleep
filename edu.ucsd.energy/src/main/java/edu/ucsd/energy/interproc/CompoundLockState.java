@@ -71,8 +71,14 @@ public class CompoundLockState {
 		return result;
 	} 	
 	
+	
+	
 	public SingleLockState getLockState(WakeLockInstance f) {		
 		return map.get(f);
+	}
+	
+	public Set<WakeLockInstance> getWakeLocks() {
+		return map.keySet();
 	}
 	
 	public Collection<SingleLockState> getStates() {
