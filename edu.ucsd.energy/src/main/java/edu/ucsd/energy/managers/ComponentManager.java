@@ -12,7 +12,6 @@ import java.util.Set;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Predicate;
-import org.eclipse.core.internal.utils.Queue;
 
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
@@ -64,10 +63,11 @@ import edu.ucsd.energy.util.GraphUtils;
 
 public class ComponentManager {
 
-	private static final int DEBUG = 0;
+	private static final int DEBUG = 2;
 
-	private static final int UNRES = 2;
+	private static final int DUMP_UNRESOLVED_INFO = 2;
 
+	
 	private  HashMap<TypeName, Context> componentMap;
 
 	private List<SuperComponent> superComponents = new ArrayList<SuperComponent>(); 
@@ -127,20 +127,31 @@ public class ComponentManager {
 	public void resolveComponents() {
 		System.out.println("Number of nodes: " + originalCG.getNumberOfNodes());
 		Collection<CGNode>  roots = GraphUtil.inferRoots(originalCG);
+		
 		Context context;
 		Set<CGNode> sRemain = new HashSet<CGNode>(); 
 		for (CGNode root : roots) {
 			//Ignore the stand-alone target method nodes
+			if(DEBUG > 1) {
+				System.out.println("Examining: " + root.getMethod().getSignature());
+			}
+			
 			if (originalCG.isTargetMethod(root)) continue;
+			
 			
 			context = resolveFromClass(root);        
 			if (context == null) {
 				context = resolveFromInterface(root);
 			}
 			
-			updateConstructorCount(context);
-			
 			if (context != null) {
+				
+				if(DEBUG > 1) {
+					System.out.println("Registering: " + 
+							root.getMethod().getSelector().toString()+ 
+							" to " + context.toString());
+				}
+
 				context.registerCallback(root);
 				IClass declaringClass = root.getMethod().getDeclaringClass();
 				registerComponent(declaringClass.getReference(), context);
@@ -177,8 +188,10 @@ public class ComponentManager {
 	}
 
 	
+	
 	/**
 	 * A callback from a parent class must be inherited to the child class
+	 * The class hierarchy is NOT going to have cycles.
 	 */
 	private void fixInheritedMethods() {
 		ClassHierarchy classHierarchy = global.getClassHierarchy();
@@ -186,33 +199,32 @@ public class ComponentManager {
 		
 		IClass rootClass = classHierarchy.getRootClass();
 		worklist.add(rootClass);
-		if(DEBUG > 0) {
+		if(DEBUG > 1) {
 			System.out.println("Worklist add: " + rootClass.toString());
 		}
 		while (!worklist.isEmpty()) {
-			
 			IClass c = worklist.remove();
-			
 			Collection<IClass> subs = classHierarchy.getImmediateSubclasses(c);
 			Context parent = componentMap.get(c.getName());
 			if (parent != null) {
-				if(DEBUG > 0) {
+				if(DEBUG > 1) {
 					System.out.println("Doing: " + c.toString());
 				}
 				for(IClass sub : subs) {
 					Context child = componentMap.get(sub.getName());
 					if (child != null) {
-						if(DEBUG > 0) {
+						if(DEBUG > 1) {
 							System.out.println("  child: " + sub.toString());
 						}
 						//transfer all callback methods that are in the parent and are not
 						//in the child component
 						for (CallBack cb : parent.getCallbacks()) {
 							//If the callback is not overridden by the child class
-							if (!child.isCallBack(cb.getSelector())) {
+							if ((!child.isCallBack(cb.getSelector()))&& (!cb.getNode().getMethod().isPrivate())) {
 								child.registerCallback(cb.getNode());
 								if(DEBUG > 0) {
-									System.out.println("Inheriting: " + cb.getName() + " to " + child.toString());
+									System.out.println("Inheriting: " + cb.getName() + " from " + parent.toString() +
+											" to " + child.toString());
 								}
 							}							
 						}						
@@ -247,13 +259,6 @@ public class ComponentManager {
 		
 	}
 
-	private void updateConstructorCount(Context component) {
-		if (component != null) {
-			if (component instanceof Initializer) {
-				resolvedConstructors++;
-			}
-		}		
-	}
 
 	private void dumpUnresolvedInfo(CGNode root) {
 		Filter<CGNode> filter = new Filter<CGNode>() {
@@ -299,17 +304,17 @@ public class ComponentManager {
 	private  void outputUnresolvedInfo(CGNode root, List<CGNode> path) {
 		IClass declaringClass = root.getMethod().getDeclaringClass();
 		Collection<IClass> allImplementedInterfaces = declaringClass.getAllImplementedInterfaces();
-		E.log(UNRES, "#### UnResolved: " + root.getMethod().getSignature().toString());
+		E.log(DUMP_UNRESOLVED_INFO, "#### UnResolved: " + root.getMethod().getSignature().toString());
 		for (IClass c :  originalCG.getAppClassHierarchy().getClassAncestors(declaringClass)) {
-			E.log(UNRES, "#### CL: " + c.getName().toString());
+			E.log(DUMP_UNRESOLVED_INFO, "#### CL: " + c.getName().toString());
 		}
 		for (IClass c : allImplementedInterfaces) {
-			E.log(UNRES, "#### IF: " + c.getName().toString());
+			E.log(DUMP_UNRESOLVED_INFO, "#### IF: " + c.getName().toString());
 		}
 		if(path != null) {
 			E.log(1, "==== Path to target:");
 			for (CGNode n : path) {
-				E.log(UNRES, "---> " + n.getMethod().getSignature().toString());
+				E.log(DUMP_UNRESOLVED_INFO, "---> " + n.getMethod().getSignature().toString());
 			}
 		}
 	}
@@ -324,8 +329,6 @@ public class ComponentManager {
 		IClass klass = method.getDeclaringClass();
 		TypeName type = klass.getReference().getName();
 		String methName = method.getName().toString();
-		E.log(2, "Declaring class: " + klass.getName().toString());
-
 		Context context = componentMap.get(type);
 		if (context != null) return context;
 			// A class can only extend one class so order does not matter
@@ -362,11 +365,15 @@ public class ComponentManager {
 				if (ancName.equals("Landroid/telephony/PhoneStateListener")) {
 					context = new PhoneStateListener(global, root);
 				}
-				if (context != null) break;
+				if (context != null) {
+					resolvedComponentCount++;
+					break;
+				}
 			}
 			// Important: check if this is a real component before going into the rest.
 			if ((context == null) && methName.equals("<init>") || methName.equals("<clinit>")) {
-				context = new Initializer(global, root);       
+				resolvedConstructors++;
+				context = new Initializer(global, root);
 			}
 		
 		//else {

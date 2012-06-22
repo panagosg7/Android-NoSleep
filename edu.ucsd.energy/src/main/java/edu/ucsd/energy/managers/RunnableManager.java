@@ -16,7 +16,6 @@ import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.contexts.RunnableThread;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ManagerReport;
-import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.SSAProgramPoint;
 
 public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
@@ -52,11 +51,15 @@ public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 		if (instr instanceof SSANewInstruction) {
 			SSANewInstruction newi = (SSANewInstruction) instr;
 			TypeName concreteType = newi.getConcreteType().getName();
-			E.log(DEBUG, "FROM SUPER: " + ri.toString());
+			if (DEBUG > 0) {
+				System.out.println(getTag() + " new Instance: " + ri.toString());
+			}
 			ri.setCalledType(concreteType);
 			Context target = cm.getComponent(concreteType);
 			if (target instanceof RunnableThread) {
-				E.log(DEBUG, "  Assoc: " + target.toString());
+				if (DEBUG > 0) {
+					System.out.println("Associated with: " + target.toString());
+				}
 				ri.setCalledComponent(target);
 			}
 		}

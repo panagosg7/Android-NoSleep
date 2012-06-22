@@ -713,10 +713,10 @@ public class Main {
 			//Define the set of apps to run the analysis on
 			if (line.hasOption("small-set")) {
 				/* The applications you specify here need to be in apk_collection !!! */
-				theSet.add("Unit_Wrong_04");
+				//theSet.add("Unit_Wrong_04");
 				//theSet.add("NetCounter");
 				//theSet.add("3D_Level");
-				//theSet.add("SpeakWrite");
+				theSet.add("SpeakWrite");
 				//theSet.add("iZen_Lite");
 				//theSet.add("Gmote");
 			}
