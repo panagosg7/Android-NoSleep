@@ -128,10 +128,10 @@ public class ProcessResults {
 				if (!(context instanceof Component)) continue;
 				//Do not analyze abstract classes (they will have to be 
 				//extended in order to be used)
-				//if (context.isAbstract()) {
-				//	E.log(1, context.toString() + " is abstract - moving on...");
-				//	continue;
-				//}
+				if (context.isAbstract()) {
+					E.log(1, context.toString() + " is abstract - moving on...");
+					continue;
+				}
 				E.log(1, context.toString() + " - processing ...");
 				Component component = (Component) context;
 				report.mergeReport(component.assembleReport());		

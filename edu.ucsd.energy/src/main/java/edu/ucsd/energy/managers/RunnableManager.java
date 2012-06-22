@@ -21,7 +21,7 @@ import edu.ucsd.energy.util.SSAProgramPoint;
 
 public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 
-	private static final int DEBUG = 2;
+	private static final int DEBUG = 0;
 
 	public RunnableManager(GlobalManager gm) {
 		super(gm);

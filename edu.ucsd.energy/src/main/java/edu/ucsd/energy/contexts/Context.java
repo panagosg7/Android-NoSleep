@@ -59,6 +59,9 @@ public abstract class Context extends AbstractComponent {
 		return mActualCallback.containsValue(CallBack.findOrCreateCallBack(n));	  
 	}
 
+	public boolean isCallBack(Selector s) {
+		return mActualCallback.containsKey(s);	  
+	}
 
 	protected Context(GlobalManager gm, CGNode root) {
 		super(gm);

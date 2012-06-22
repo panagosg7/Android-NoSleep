@@ -5,16 +5,19 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Logger;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Predicate;
+import org.eclipse.core.internal.utils.Queue;
 
 import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
@@ -27,9 +30,9 @@ import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.graph.traverse.DFSPathFinder;
 
 import edu.ucsd.energy.analysis.Opts;
-import edu.ucsd.energy.apk.ApkInstance;
 import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.component.AbstractComponent;
+import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.component.ComponentPrinter;
 import edu.ucsd.energy.component.SuperComponent;
 import edu.ucsd.energy.contexts.Activity;
@@ -61,21 +64,17 @@ import edu.ucsd.energy.util.GraphUtils;
 
 public class ComponentManager {
 
-	private final static Logger LOGGER = Logger.getLogger(ApkInstance.class.getName());
-
-	private static final int DEBUG = 1;
+	private static final int DEBUG = 0;
 
 	private static final int UNRES = 2;
 
 	private  HashMap<TypeName, Context> componentMap;
-	
+
 	private List<SuperComponent> superComponents = new ArrayList<SuperComponent>(); 
 
 	private GlobalManager global;
 
 	private GraphReachability<CGNode> graphReachability;
-
-	private int unresolvedInterestingCallBacks;
 
 	private AppCallGraph originalCG;
 
@@ -98,10 +97,6 @@ public class ComponentManager {
 		return componentMap.get(c);
 	}
 
-	public int getNUnresInterestingCBs() {
-		return unresolvedInterestingCallBacks;
-	}
-
 	public void prepareReachability() {    
 		Filter<CGNode> filter = new CollectionFilter<CGNode>(
 				originalCG.getTargetCGNodeHash().values());
@@ -121,103 +116,143 @@ public class ComponentManager {
 	 * 
 	 ****************************************************************************/
 
+	
+	// Counts
+	int resolvedComponentCount = 0;
+	int totalCallBacks = 0;
+	int resolvedConstructors = 0;
+	int unresolvedCallBacks = 0;
+	List<String> unresolvedSB = new ArrayList<String>();
+	
 	public void resolveComponents() {
-		E.log(1, "Number of nodes: " + originalCG.getNumberOfNodes());
-		// Counts
-		int resolvedComponentCount = 0;
-		int resolvedImplementorCount = 0;
-		int totalCallBacks = 0;
-		int resolvedConstructors = 0;
-		int unresolvedCallBacks = 0;
-		unresolvedInterestingCallBacks = 0;
-		List<String>  unresolvedSB = new ArrayList<String>();
+		System.out.println("Number of nodes: " + originalCG.getNumberOfNodes());
 		Collection<CGNode>  roots = GraphUtil.inferRoots(originalCG);
-		Context component;
-
+		Context context;
 		Set<CGNode> sRemain = new HashSet<CGNode>(); 
-
 		for (CGNode root : roots) {
-
-			/* Ignore the stand-alone target method nodes */
-			if (!originalCG.isTargetMethod(root)) {
-				component = resolveNode(root);        
-				if (component != null) {
-				} else {
-					component = resolveKnownImplementors(root);
-				}
-				if (component != null) {
-					if (component instanceof Initializer) {
-						resolvedConstructors++;
-					} else {
-						resolvedComponentCount++;
-					}
-					IClass declaringClass = root.getMethod().getDeclaringClass();
-					registerComponent(declaringClass.getReference(), component);
-
-					//E.log(1, "ADDING: " + declaringClass.getReference());
-					resolvedImplementorCount++;
-				} else {
-					sRemain.add(root);
-
-				}
-				totalCallBacks++;
+			//Ignore the stand-alone target method nodes
+			if (originalCG.isTargetMethod(root)) continue;
+			
+			context = resolveFromClass(root);        
+			if (context == null) {
+				context = resolveFromInterface(root);
 			}
+			
+			updateConstructorCount(context);
+			
+			if (context != null) {
+				context.registerCallback(root);
+				IClass declaringClass = root.getMethod().getDeclaringClass();
+				registerComponent(declaringClass.getReference(), context);
+			} else {
+				sRemain.add(root);
+			}
+			totalCallBacks++;
+
 		}
 
 		//Second chance to unresolved -- TODO: run fixpoint??
 		for(CGNode root : sRemain) {
 			IClass klass = root.getMethod().getDeclaringClass();
 			TypeName type = klass.getReference().getName();
-			String methName = root.getMethod().getName().toString();
-			E.log(2, "Declaring class: " + klass.getName().toString());
 			Context comp = componentMap.get(type);
 			if (comp!= null) {
 				//Existing component: just update the callback
-				E.log(2, "OLD:  " + root.getMethod().getSignature().toString() + " -> " + comp.toString() );
 				comp.registerCallback(root);
 			}
 			else {
-				/* Unresolved */
+				// Unresolved
 				unresolvedCallBacks++;
 				unresolvedSB.add(root.getMethod().getSignature().toString());
 				dumpUnresolvedInfo(root);
-				/* We can check now if we should actually care about this callback. */
-				if (graphReachability.getReachableSet(root).size() > 0) {
-					/* Get a path from the node to the target function */
-
-					//unresolvedInterestingCallBacks++; // for which we care
-				}
 			}
 		}
-
+		
+		fixInheritedMethods();
+		
 		if(! Opts.RUN_IN_PARALLEL) {
-			System.out.println();
-			System.out.println( "==========================================");
-			String fst = String.format("%-30s: %d", "Resolved classes", resolvedComponentCount);
-			System.out.println(fst);
-			fst = String.format("%-30s: %d", "Resolved implementors", resolvedImplementorCount);
-			System.out.println(fst);
-			fst = String.format("%-30s: %d", "Resolved constructors", resolvedConstructors);
-			System.out.println(fst);
-			fst = String.format("%-30s: %d (%.2f %%)", "Unresolved callbacks", unresolvedCallBacks,        
-					100 * ((double) unresolvedCallBacks / (double) totalCallBacks));
-			System.out.println(fst);
-			fst = String.format("%-30s: %d (%.2f %%)", "Interesting Unresolved cbs", unresolvedInterestingCallBacks, 
-					100 * ((double) unresolvedInterestingCallBacks / (double) totalCallBacks));
-			System.out.println(fst);
-			System.out.println("------------------------------------------");
-
-			E.log(2, "Unresolved");
-			E.log(2, unresolvedSB);
-			E.log(2, "----------------------------------------------------");
-
-			fst = String.format("%-30s: %d", "Total callbacks", totalCallBacks);
-			System.out.println(fst);
-			fst = String.format("%-30s: %d", "Resolved components", componentMap.size());
-			System.out.println(fst);
-			System.out.println("==========================================\n");
+			resolutionStats();
 		}
 
+	}
+
+	
+	/**
+	 * A callback from a parent class must be inherited to the child class
+	 */
+	private void fixInheritedMethods() {
+		ClassHierarchy classHierarchy = global.getClassHierarchy();
+		LinkedList<IClass> worklist = new LinkedList<IClass>();
+		
+		IClass rootClass = classHierarchy.getRootClass();
+		worklist.add(rootClass);
+		if(DEBUG > 0) {
+			System.out.println("Worklist add: " + rootClass.toString());
+		}
+		while (!worklist.isEmpty()) {
+			
+			IClass c = worklist.remove();
+			
+			Collection<IClass> subs = classHierarchy.getImmediateSubclasses(c);
+			Context parent = componentMap.get(c.getName());
+			if (parent != null) {
+				if(DEBUG > 0) {
+					System.out.println("Doing: " + c.toString());
+				}
+				for(IClass sub : subs) {
+					Context child = componentMap.get(sub.getName());
+					if (child != null) {
+						if(DEBUG > 0) {
+							System.out.println("  child: " + sub.toString());
+						}
+						//transfer all callback methods that are in the parent and are not
+						//in the child component
+						for (CallBack cb : parent.getCallbacks()) {
+							//If the callback is not overridden by the child class
+							if (!child.isCallBack(cb.getSelector())) {
+								child.registerCallback(cb.getNode());
+								if(DEBUG > 0) {
+									System.out.println("Inheriting: " + cb.getName() + " to " + child.toString());
+								}
+							}							
+						}						
+					}					
+				}
+			}
+			worklist.addAll(subs);
+		}
+	}
+
+	private void resolutionStats() {
+		System.out.println();
+		System.out.println( "==========================================");
+		String fst = String.format("%-30s: %d", "Resolved classes", resolvedComponentCount);
+		System.out.println(fst);
+		fst = String.format("%-30s: %d", "Resolved constructors", resolvedConstructors);
+		System.out.println(fst);
+		fst = String.format("%-30s: %d (%.2f %%)", "Unresolved callbacks", unresolvedCallBacks,        
+				100 * ((double) unresolvedCallBacks / (double) totalCallBacks));
+		System.out.println(fst);
+		System.out.println("------------------------------------------");
+
+		E.log(2, "Unresolved");
+		E.log(2, unresolvedSB);
+		E.log(2, "----------------------------------------------------");
+
+		fst = String.format("%-30s: %d", "Total callbacks", totalCallBacks);
+		System.out.println(fst);
+		fst = String.format("%-30s: %d", "Resolved components", componentMap.size());
+		System.out.println(fst);
+		System.out.println("==========================================\n");
+		
+	}
+
+	private void updateConstructorCount(Context component) {
+		if (component != null) {
+			if (component instanceof Initializer) {
+				resolvedConstructors++;
+			}
+		}		
 	}
 
 	private void dumpUnresolvedInfo(CGNode root) {
@@ -280,77 +315,68 @@ public class ComponentManager {
 	}
 
 	/**
-	 * Find out what type of component this class belongs to. E.g. Activity,
+	 * Find out what type of context this class belongs to. E.g. Activity,
 	 * Service, ...
 	 */
-	private  Context resolveNode(CGNode root) {
+	private Context resolveFromClass(CGNode root) {
 
-		IClass klass = root.getMethod().getDeclaringClass();
+		IMethod method = root.getMethod();
+		IClass klass = method.getDeclaringClass();
 		TypeName type = klass.getReference().getName();
-		String methName = root.getMethod().getName().toString();
+		String methName = method.getName().toString();
 		E.log(2, "Declaring class: " + klass.getName().toString());
 
-		Context comp = componentMap.get(type);
-		if (comp == null) {
-			/* A class can only extend one class so order does not matter */
+		Context context = componentMap.get(type);
+		if (context != null) return context;
+			// A class can only extend one class so order does not matter
 			ArrayList<IClass> classAncestors = originalCG.getAppClassHierarchy().getClassAncestors(klass);
 			for (IClass anc : classAncestors) {
 				String ancName = anc.getName().toString();
 				if (ancName.equals("Landroid/app/Activity")) {
-					comp = new Activity(global, root);
+					context = new Activity(global, root);
 				}
 				if (ancName.equals("Landroid/app/Service")) {
-					comp = new Service(global, root);
+					context = new Service(global, root);
 				}
 				if (ancName.equals("Landroid/content/ContentProvider")) {
-					comp = new ContentProvider(global, root);
+					context = new ContentProvider(global, root);
 				}
 				if (ancName.equals("Landroid/content/BroadcastReceiver")) {
-					comp = new BroadcastReceiver(global, root);
+					context = new BroadcastReceiver(global, root);
 				}
 				if (ancName.equals("Landroid/os/AsyncTask")) {
-					comp = new AsyncTask(global, root);
+					context = new AsyncTask(global, root);
 				}
 				if (ancName.equals("Landroid/view/View")) {
-					comp = new View(global, root);
+					context = new View(global, root);
 				}
 				if (ancName.equals("Landroid/app/Application")) {
-					comp = new Application(global, root);
+					context = new Application(global, root);
 				}
 				if (ancName.equals("Landroid/os/Handler")) {
-					comp = new Handler(global, root);
+					context = new Handler(global, root);
 				}
 				if (ancName.equals("Landroid/webkit/WebViewClient")) {
-					comp = new WebViewClient(global, root);
+					context = new WebViewClient(global, root);
 				}
 				if (ancName.equals("Landroid/telephony/PhoneStateListener")) {
-					comp = new PhoneStateListener(global, root);
+					context = new PhoneStateListener(global, root);
 				}
-				if (comp != null) break;
+				if (context != null) break;
 			}
-
-			/* Important: check if this is a real component before going into the
-			 * rest. */
-			if (comp != null) {
-				E.log(2, "PASS: " + root.getMethod().getSignature().toString() + " -> " + comp.toString());
-				return comp;
+			// Important: check if this is a real component before going into the rest.
+			if ((context == null) && methName.equals("<init>") || methName.equals("<clinit>")) {
+				context = new Initializer(global, root);       
 			}
-
-			/* TODO Check to see if this is a constructor. 
-			 * Has to be <init> or something...
-			 * */
-			if (methName.equals("<init>") || methName.equals("<clinit>")) {
-				comp = new Initializer(global, root);       
-			}
-
-			return comp;
-		} else {
-			/* Existing component: just update the callback */
-			E.log(2, "OLD:  " + root.getMethod().getSignature().toString() + " -> " + comp.toString() );
-			comp.registerCallback(root);
+		
+		//else {
+			// Existing component: just update the callback
+			//E.log(2, "OLD:  " + method.getSignature().toString() + " -> " + context.toString() );
+			//context.registerCallback(root);
 			// update the callgraph node set
-			return comp;
-		}
+			//return context;
+		//}
+		return context;
 	}
 
 	/**
@@ -363,7 +389,7 @@ public class ComponentManager {
 	 * @param root
 	 * @return
 	 */
-	private  Context resolveKnownImplementors(CGNode root) {
+	private  Context resolveFromInterface(CGNode root) {
 		IClass klass = root.getMethod().getDeclaringClass();
 		TypeReference reference = klass.getReference();
 		Context comp = componentMap.get(reference);
@@ -475,9 +501,11 @@ public class ComponentManager {
 
 
 	private <T extends AbstractComponent> void solveComponent(T component) {
-		
-		E.log(1, "Solving: " + component.toString());
-		
+
+		if (DEBUG > 0) {
+			System.out.println("Solving: " + component.toString());
+		}
+
 		ComponentPrinter<T> componentPrinter = new ComponentPrinter<T>(component);
 		if (Opts.OUTPUT_COMPONENT_CALLGRAPH) {			
 			componentPrinter.outputNormalCallGraph();

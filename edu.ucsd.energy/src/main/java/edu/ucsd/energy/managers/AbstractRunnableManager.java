@@ -27,7 +27,7 @@ import edu.ucsd.energy.util.SSAProgramPoint;
 
 public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance> extends AbstractDUManager<V> { 
 
-	private final int DEBUG = 1;
+	private final int DEBUG = 0;
 
 	
 	private SparseNumberedGraph<Context> constraintGraph;

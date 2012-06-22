@@ -2,6 +2,7 @@ package edu.ucsd.energy.managers;
 
 import java.io.IOException;
 
+import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 
@@ -28,14 +29,27 @@ public class GlobalManager {
 		this.excludionFile = exclusionFile;		
 	}
 
-	public void createClassHierarchy() throws IOException, WalaException {
-		ch = new AppClassHierarchy(appJar, excludionFile);
+	public void createClassHierarchy() {
+		try {
+			ch = new AppClassHierarchy(appJar, excludionFile);
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (WalaException e) {
+			e.printStackTrace();
+		}
 	}
 
 	public void createAppCallGraph() throws IllegalArgumentException, WalaException, CancelException, IOException {
 		cg = new AppCallGraph(ch);
 	}
 
+	public ClassHierarchy getClassHierarchy() {
+		if (ch == null) {
+			createClassHierarchy();
+		}
+		return ch.getClassHierarchy();
+	}
+	
 	public void createComponentManager() {
 		cm = new ComponentManager(this);
 		cm.prepareReachability();

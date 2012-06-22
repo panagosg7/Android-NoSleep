@@ -33,7 +33,7 @@ import edu.ucsd.energy.util.SSAProgramPoint;
  */
 public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 	
-	private static int DEBUG = 1;
+	private static int DEBUG = 0;
 	
 	public enum RefCount {
 		UNSET,

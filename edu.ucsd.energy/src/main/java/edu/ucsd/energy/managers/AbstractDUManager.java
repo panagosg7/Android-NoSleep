@@ -35,7 +35,7 @@ import edu.ucsd.energy.util.SSAProgramPoint;
 
 public abstract class AbstractDUManager<V extends ObjectInstance>  {
 
-	private int DEBUG = 2;
+	private int DEBUG = 0;
 
 	protected GlobalManager gm;
 

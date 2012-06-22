@@ -36,7 +36,7 @@ import edu.ucsd.energy.util.E;
 
 public class CtxSensLocking {
 
-	static final int DEBUG = 1;
+	static final int DEBUG = 0;
 	
 	/**
 	 * The underlying Inter-procedural Control Flow Graph

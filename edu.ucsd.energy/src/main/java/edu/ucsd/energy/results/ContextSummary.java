@@ -18,7 +18,10 @@ import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.results.ProcessResults.LockUsage;
 
 public class ContextSummary {
-
+	
+	private static final int DEBUG = 0;
+	
+	
 	public class ContextState extends HashMap<Selector, LockUsage> {
 
 		private static final long serialVersionUID = 1L;
@@ -39,6 +42,8 @@ public class ContextSummary {
 			return sb.toString();
 		}
 	}
+
+	
 
 	//A mapping with the state at the exit of every callback 
 	private ContextState callBackExitStates;
@@ -61,9 +66,11 @@ public class ContextSummary {
 		LockUsage map = new LockUsage(st);
 		instances.addAll(st.getWakeLocks());
 		Selector methSel = cb.getNode().getMethod().getSelector();
-		System.out.println("RegisteringState: " + methSel);
-		System.out.println(map.toString());
-		System.out.println(instances);
+		if (DEBUG > 0) {
+			System.out.println("RegisteringState: " + methSel);
+			System.out.println(map.toString());
+			System.out.println(instances);
+		}
 		callBackExitStates.put(methSel, map);
 		
 	}

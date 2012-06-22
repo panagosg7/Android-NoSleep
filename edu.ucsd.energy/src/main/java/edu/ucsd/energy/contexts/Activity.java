@@ -19,7 +19,7 @@ import edu.ucsd.energy.results.ViolationReport;
 
 public class Activity extends Component {
 
-	private static final int DEBUG = 2;
+	private static final int DEBUG = 0;
 	
 	static Selector elements[] = {
 		Interesting.ActivityConstructor,
