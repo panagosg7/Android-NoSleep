@@ -2,7 +2,7 @@ package edu.ucsd.energy.contexts;
 
 import java.util.Set;
 
-import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.types.Selector;
 
 import edu.ucsd.energy.apk.Interesting;
@@ -17,8 +17,8 @@ public class BroadcastReceiver extends Component {
 		return Interesting.broadcastReceiverEntryMethods;
 	}
 
-	public BroadcastReceiver(GlobalManager gm, CGNode root) {
-		super(gm, root);
+	public BroadcastReceiver(GlobalManager gm, IClass c) {
+		super(gm, c);
 	}
 
 	

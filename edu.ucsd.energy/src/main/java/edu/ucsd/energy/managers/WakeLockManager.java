@@ -6,6 +6,8 @@ import java.util.Map.Entry;
 
 import net.sf.json.JSONObject;
 
+import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.shrikeBT.IBinaryOpInstruction.IOperator;
 import com.ibm.wala.shrikeBT.IBinaryOpInstruction.Operator;
 import com.ibm.wala.ssa.DefUse;
@@ -14,7 +16,6 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
-import com.ibm.wala.types.TypeName;
 import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.apk.Interesting;
@@ -64,7 +65,7 @@ public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 		result.put("fields", obj);
 		obj = new JSONObject();
 		if (mCreationRefs != null) {
-			for (Entry<SSAProgramPoint, WakeLockInstance> e : mCreationRefs.entrySet()) {
+			for (Entry<CreationPoint, WakeLockInstance> e : mCreationRefs.entrySet()) {
 				obj.put(e.getKey().toString(), e.getValue().toJSON());
 			}
 		}
@@ -104,12 +105,12 @@ public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 
 
 	@Override
-	Integer interestingMethod(MethodReference declaredTarget) {
+	Integer isTargetMethod(MethodReference declaredTarget) {
 		return Interesting.mWakelockMethods.get(declaredTarget);
 	}
 
 	@Override
-	public	WakeLockInstance newInstance(SSAProgramPoint pp) {
+	public	WakeLockInstance newInstance(CreationPoint pp) {
 		return new WakeLockInstance(pp);
 	}
 
@@ -207,14 +208,26 @@ public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 
 	@Override
 	protected void setInterestingType() {
-		interestingTypes = new HashSet<TypeName>();
-		interestingTypes.add(Interesting.WakeLockType);		
+		interestingTypes = new HashSet<IClass>();
+		IClass lookupClass = gm.getClassHierarchy().lookupClass(Interesting.WakeLockTypeRef);
+		interestingTypes.add(lookupClass);		
 	}
 
 	@Override
 	protected void sanityCheck() {
 		// TODO Auto-generated method stub
 		
+	}
+
+	@Override
+	protected void handleSpecialCalls(SSAInvokeInstruction inv) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public WakeLockInstance newInstance(IMethod m, int v) {
+		return new WakeLockInstance(m,v);
 	}
 
 }

@@ -3,7 +3,7 @@ package edu.ucsd.energy.contexts;
 import java.util.Arrays;
 import java.util.Set;
 
-import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.collections.Pair;
 
@@ -40,12 +40,11 @@ public class Activity extends Component {
 		return Interesting.activityExitMethods;
 	}
 
-	public Activity(GlobalManager global, CGNode root) {
-		super(global, root);
+	public Activity(GlobalManager global, IClass c) {
+		super(global, c);
 		sTypicalCallback.addAll(Arrays.asList(elements));
 		
-		//hard-coding the activity life-cycle edges
-		//as seen here: 
+		//hard-coding the activity life-cycle edges as found here: 
 		//http://developer.android.com/reference/android/app/Activity.html
 		callbackEdges.add(Pair.make(Interesting.ActivityConstructor, Interesting.ActivityOnCreate));
 		callbackEdges.add(Pair.make(Interesting.ActivityOnCreate, Interesting.ActivityOnStart));

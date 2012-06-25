@@ -6,6 +6,7 @@ import java.util.Set;
 
 import net.sf.json.JSONObject;
 
+import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.types.FieldReference;
@@ -23,13 +24,12 @@ import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.GraphUtils;
-import edu.ucsd.energy.util.SSAProgramPoint;
 
 public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance> extends AbstractDUManager<V> { 
 
 	private final int DEBUG = 0;
 
-	
+
 	private SparseNumberedGraph<Context> constraintGraph;
 
 	public AbstractRunnableManager(GlobalManager gm) {
@@ -37,45 +37,11 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 	}
 
 	@Override
-	Integer interestingMethod(MethodReference declaredTarget) {
+	Integer isTargetMethod(MethodReference declaredTarget) {
 		return Interesting.mRunnableMethods.get(declaredTarget.getSelector());
 	}
 
 
-	/**
-	 * Should we fix the call graph here to incorporate the asynchronous intent calls?
-	 * This is not going to be easy...
-	 */
-	/*
-	private void fixCallGraph() {
-		Map<Selector, Set<CallSiteReference>> map = new HashMap<Selector, Set<CallSiteReference>>();
-		for (Entry<Pair<MethodReference, SSAInstruction>, V> e : mInstruction2Instance.entrySet()) {
-			SSAInstruction instr = e.getKey().snd;
-			if(instr instanceof SSAInvokeInstruction) {
-				SSAInvokeInstruction inv = (SSAInvokeInstruction) instr;
-				Set<Selector> entryPoints = e.getValue().getCalledComponent().getEntryPoints();
-				for(Selector ep : entryPoints) {
-					Set<CallSiteReference> set = map.get(ep);
-					if (set == null) {
-						set = new HashSet<CallSiteReference>();
-					}
-					set.add(inv.getCallSite());
-					map.put(ep, set);	
-				}
-			}
-		}
-		for(Iterator<CGNode> it = cg.iterator(); it.hasNext();) {
-			CGNode next = it.next();
-			Selector selector = next.getMethod().getSelector();
-			Set<CallSiteReference> set = map.get(selector);
-			for (CallSiteReference cs : set) {
-				//TODO: add the edges in the callgraph!!!
-			}
-		}
-	}
-	*/
-	
-	
 	public void computeConstraintGraph() {
 		if (DEBUG > 1) {
 			System.out.println("Computing constraint graph for " + getTag());
@@ -144,13 +110,13 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 
 
 	public void dumpInfo() {
-		System.out.println("\nDumping " + getTag());
-		System.out.println("==========================================");
-		for (Entry<SSAProgramPoint, V> e : mCreationRefs.entrySet()) {
+		System.out.println("\nDumping " + getTag() + " Manager");
+		System.out.println("------------------------------------------");
+		for (Entry<CreationPoint, V> e : mCreationRefs.entrySet()) {
 			V value = e.getValue();
 			System.out.println(value.toString());
 		}
-		System.out.println("==========================================");
+		System.out.println("------------------------------------------");
 		for (Entry<Pair<MethodReference, SSAInstruction>, V> e : mInstruction2Instance.entrySet()) {
 			Pair<MethodReference, SSAInstruction> key = e.getKey();
 			V value = e.getValue();
@@ -174,7 +140,7 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 		 */
 		obj = new JSONObject();
 		if (mCreationRefs != null) {
-			for (Entry<SSAProgramPoint, V> e : mCreationRefs.entrySet()) {
+			for (Entry<CreationPoint, V> e : mCreationRefs.entrySet()) {
 				obj.put(e.getKey().toString(), e.getValue().toJSON());
 			}
 		}
@@ -193,7 +159,7 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 					o.put("target type", (comp==null)?"NO_TARGET":comp.toString());
 					FieldReference field = ri.getField();
 					o.put("field", (field==null)?"NO_FIELD":field.toString());
-					SSAProgramPoint pp = ri.getPP();
+					CreationPoint pp = ri.getPP();
 					o.put("created", (pp==null)?"NO_PROG_POINT":pp.toString());
 					obj.put(Integer.toString(i++),o);
 				}
@@ -213,15 +179,46 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 		return constraintGraph;
 	}
 
-	
+
 	protected void sanityCheck() {
-		E.yellow();
-		for (V v : mCreationRefs.values()) {
-			if (!v.isResolved()) {
-				System.out.println("Unresolved " + getTag() + " instance: " + v.toString());
-			}
+		boolean sane = true;
+		for (CGNode n : bottomUpList) {
+			node = n;
+			ir = n.getIR();
+			method = n.getMethod();
+			if (ir == null) continue;		// Null for JNI methods
+			for (SSAInstruction instr : ir.getInstructions()) {
+				if (instr instanceof SSAInvokeInstruction) {
+					SSAInvokeInstruction inv = (SSAInvokeInstruction) instr;
+					if (isTargetMethod(inv.getDeclaredTarget()) != null) {
+						Pair<MethodReference, SSAInvokeInstruction> key = Pair.make(method.getReference(), inv);
+						V v = mInstruction2Instance.get(key);
+						//TODO: check for resolved component -- stronger
+						if ((v != null) && (v.getCalledType() == null)) {
+							sane  = false;
+							//we missed this interesting call
+							E.yellow();
+							System.out.println(getTag() + " in method" + method + " was not resolved successfully.");
+							System.out.println("  target instruction: " +	inv.toString());
+							System.out.println();
+							E.resetColor();					
+						}
+					}
+				}
+			}			
 		}
-		E.resetColor();
+		int size = mInstruction2Instance.size();
+		if (sane) {
+			E.green();			
+			System.out.println("All " + getTag() + " calls (" + size + ") were resolved successfully.\n");
+			E.resetColor();
+		}
+		else {
+			E.yellow();			
+			System.out.println(size + " " + getTag() + " call sites were checked.\n");
+			E.resetColor();
+		}
+		
 	}	
-	
+
 }

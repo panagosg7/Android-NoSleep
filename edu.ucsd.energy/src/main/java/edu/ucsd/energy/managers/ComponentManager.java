@@ -5,7 +5,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,6 +16,7 @@ import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
+import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
@@ -24,14 +24,13 @@ import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.collections.CollectionFilter;
 import com.ibm.wala.util.collections.Filter;
 import com.ibm.wala.util.graph.GraphReachability;
-import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.graph.traverse.DFSPathFinder;
 
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.apk.AppCallGraph;
+import edu.ucsd.energy.apk.AppClassHierarchy;
 import edu.ucsd.energy.component.AbstractComponent;
-import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.component.ComponentPrinter;
 import edu.ucsd.energy.component.SuperComponent;
 import edu.ucsd.energy.contexts.Activity;
@@ -44,7 +43,6 @@ import edu.ucsd.energy.contexts.ContentProvider;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.contexts.DialogInterface;
 import edu.ucsd.energy.contexts.Handler;
-import edu.ucsd.energy.contexts.Initializer;
 import edu.ucsd.energy.contexts.LocationListener;
 import edu.ucsd.energy.contexts.OnCompletionListener;
 import edu.ucsd.energy.contexts.OnSharedPreferenceChangeListener;
@@ -61,13 +59,27 @@ import edu.ucsd.energy.results.ViolationReport;
 import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.GraphUtils;
 
+
+/**
+ * This manager resolves classes of the app class hierearchy 
+ * to Android Contexts/Components.
+ * 
+ * Classes that cannot be resolved are NOT necessarily indeed 
+ * Android sensible Contexts, as they might be just classes that 
+ * have no particular meaning for Android.
+ * 
+ *  TODO: So we need to find a way to determine if there are classes 
+ *  that cannot be resolved, but still are meaningful for Android.
+ *  If these are not resolved, this means that there are going to 
+ *  be callbacks that are never explored. *  
+ * 
+ * @author pvekris
+ *
+ */
 public class ComponentManager {
 
-	private static final int DEBUG = 2;
+	private static final int DEBUG = 0;
 
-	private static final int DUMP_UNRESOLVED_INFO = 2;
-
-	
 	private  HashMap<TypeName, Context> componentMap;
 
 	private List<SuperComponent> superComponents = new ArrayList<SuperComponent>(); 
@@ -89,7 +101,7 @@ public class ComponentManager {
 		return componentMap.values();
 	}
 
-	private  void registerComponent(TypeReference declaringClass, Context comp) {
+	private void registerComponent(TypeReference declaringClass, Context comp) {
 		componentMap.put(declaringClass.getName(), comp);
 	}
 
@@ -109,158 +121,165 @@ public class ComponentManager {
 	}
 
 
-
 	/****************************************************************************
 	 * 
 	 * 						RESOLVE COMPONENTS
 	 * 
 	 ****************************************************************************/
 
-	
 	// Counts
-	int resolvedComponentCount = 0;
-	int totalCallBacks = 0;
+	int resolvedClasses = 0;
+	int unresolvedClasses = 0;
+	int totalClassesChecked = 0;
 	int resolvedConstructors = 0;
-	int unresolvedCallBacks = 0;
-	List<String> unresolvedSB = new ArrayList<String>();
 	
 	public void resolveComponents() {
-		System.out.println("Number of nodes: " + originalCG.getNumberOfNodes());
-		Collection<CGNode>  roots = GraphUtil.inferRoots(originalCG);
-		
-		Context context;
-		Set<CGNode> sRemain = new HashSet<CGNode>(); 
-		for (CGNode root : roots) {
-			//Ignore the stand-alone target method nodes
-			if(DEBUG > 1) {
-				System.out.println("Examining: " + root.getMethod().getSignature());
+
+		ClassHierarchy ch = global.getClassHierarchy();
+		for(IClass c : ch) {
+			
+			//Avoid primordial (system) classes
+			if(c.getClassLoader().getReference().equals(ClassLoaderReference.Primordial)) {
+				continue;
 			}
 			
-			if (originalCG.isTargetMethod(root)) continue;
+			TypeName type = c.getName();
+			//This is probably going to fail
+			Context context = componentMap.get(type);
 			
-			
-			context = resolveFromClass(root);        
 			if (context == null) {
-				context = resolveFromInterface(root);
+				// A class can only extend one class so order does not matter
+				ArrayList<IClass> classAncestors = AppClassHierarchy.getClassAncestors(c);
+				for (IClass anc : classAncestors) {
+					String ancName = anc.getName().toString();
+					if (ancName.equals("Landroid/app/Activity")) {
+						context = new Activity(global, c);
+					}
+					if (ancName.equals("Landroid/app/Service")) {
+						context = new Service(global, c);
+					}
+					if (ancName.equals("Landroid/content/ContentProvider")) {
+						context = new ContentProvider(global, c);
+					}
+					if (ancName.equals("Landroid/content/BroadcastReceiver")) {
+						context = new BroadcastReceiver(global, c);
+					}
+					if (ancName.equals("Landroid/os/AsyncTask")) {
+						context = new AsyncTask(global, c);
+					}
+					if (ancName.equals("Landroid/view/View")) {
+						context = new View(global, c);
+					}
+					if (ancName.equals("Landroid/app/Application")) {
+						context = new Application(global, c);
+					}
+					if (ancName.equals("Landroid/os/Handler")) {
+						context = new Handler(global, c);
+					}
+					if (ancName.equals("Landroid/webkit/WebViewClient")) {
+						context = new WebViewClient(global, c);
+					}
+					if (ancName.equals("Landroid/telephony/PhoneStateListener")) {
+						context = new PhoneStateListener(global, c);
+					}
+				}
+			}
+
+			if (context == null) {
+				//Since a class can implement multiple interfaces we should keep an order of 
+				//in which to decide on which one should be used. The only restriction at 
+				//this moment is Runnable, which should be tested on first. 
+				if (implementsInterface(c, "Ljava/lang/Runnable")) {
+					context = new RunnableThread(global, c);
+				}
+				else if (implementsInterface(c, "Ljava/util/concurrent/Callable")) {
+					context = new Callable(global, c);
+				}
+				else if (implementsInterface(c,"ClickListener")) {
+					context = new ClickListener(global, c);
+				}
+				else if (implementsInterface(c, "Landroid/content/SharedPreferences$OnSharedPreferenceChangeListener")
+						|| implementsInterface(c, "Landroid/preference/Preference$OnPreferenceChangeListener")) {
+					context = new OnSharedPreferenceChangeListener(global, c);
+				}
+				else if (implementsInterface(c, "Landroid/location/LocationListener")) {
+					context = new LocationListener(global, c);
+				}
+				else if (implementsInterface(c, "Landroid/widget/")) {
+					context = new Widget(global, c);
+				}
+				else if (implementsInterface(c, "Landroid/hardware/SensorEventListener")) {
+					context = new SensorEventListener(global, c);
+				}
+				else if (implementsInterface(c, "Landroid/content/ServiceConnection")) {
+					context = new ServiceConnection(global, c);
+				}
+				else if (implementsInterface(c, "Landroid/content/DialogInterface")) {
+					context = new DialogInterface(global, c);
+				}
+				else if (implementsInterface(c, "Landroid/media/MediaPlayer$OnCompletionListener")) {
+					context = new OnCompletionListener(global, c);
+				}
 			}
 			
 			if (context != null) {
-				
-				if(DEBUG > 1) {
-					System.out.println("Registering: " + 
-							root.getMethod().getSelector().toString()+ 
-							" to " + context.toString());
+				//Add the methods declared by this class or any of its super-classes to the 
+				//relevant component. This takes care of the previous bug, where methods 
+				//inherited from super-classes, were missing from the child components
+				for (IMethod m : c.getAllMethods()) {
+					context.addNodes(originalCG.getNodes(m.getReference()));
 				}
+				registerComponent(c.getReference(), context);
+				resolvedClasses++;
 
-				context.registerCallback(root);
-				IClass declaringClass = root.getMethod().getDeclaringClass();
-				registerComponent(declaringClass.getReference(), context);
-			} else {
-				sRemain.add(root);
-			}
-			totalCallBacks++;
-
-		}
-
-		//Second chance to unresolved -- TODO: run fixpoint??
-		for(CGNode root : sRemain) {
-			IClass klass = root.getMethod().getDeclaringClass();
-			TypeName type = klass.getReference().getName();
-			Context comp = componentMap.get(type);
-			if (comp!= null) {
-				//Existing component: just update the callback
-				comp.registerCallback(root);
+				if (DEBUG > 0) {
+					System.out.println("Resolved  : " + context.toString());
+				}
 			}
 			else {
-				// Unresolved
-				unresolvedCallBacks++;
-				unresolvedSB.add(root.getMethod().getSignature().toString());
-				dumpUnresolvedInfo(root);
+				if (DEBUG > 0) {
+					E.yellow();
+					System.out.println("Unresolved: " + c.getName().toString());
+					if (DEBUG > 1) {
+						outputUnresolvedInfo(c);
+					}
+					
+					E.resetColor();
+				}
+				unresolvedClasses++;
 			}
-		}
+		} // for IClass c
 		
-		fixInheritedMethods();
-		
-		if(! Opts.RUN_IN_PARALLEL) {
-			resolutionStats();
-		}
+		resolutionStats();
 
 	}
 
-	
-	
+
 	/**
-	 * A callback from a parent class must be inherited to the child class
-	 * The class hierarchy is NOT going to have cycles.
+	 * A class that does not get resolved does not mean necessarily that we're missing
+	 * stuff. But if it is a callback that actually makes sense it will be included 
+	 * in those missing ones.
 	 */
-	private void fixInheritedMethods() {
-		ClassHierarchy classHierarchy = global.getClassHierarchy();
-		LinkedList<IClass> worklist = new LinkedList<IClass>();
-		
-		IClass rootClass = classHierarchy.getRootClass();
-		worklist.add(rootClass);
-		if(DEBUG > 1) {
-			System.out.println("Worklist add: " + rootClass.toString());
-		}
-		while (!worklist.isEmpty()) {
-			IClass c = worklist.remove();
-			Collection<IClass> subs = classHierarchy.getImmediateSubclasses(c);
-			Context parent = componentMap.get(c.getName());
-			if (parent != null) {
-				if(DEBUG > 1) {
-					System.out.println("Doing: " + c.toString());
-				}
-				for(IClass sub : subs) {
-					Context child = componentMap.get(sub.getName());
-					if (child != null) {
-						if(DEBUG > 1) {
-							System.out.println("  child: " + sub.toString());
-						}
-						//transfer all callback methods that are in the parent and are not
-						//in the child component
-						for (CallBack cb : parent.getCallbacks()) {
-							//If the callback is not overridden by the child class
-							if ((!child.isCallBack(cb.getSelector()))&& (!cb.getNode().getMethod().isPrivate())) {
-								child.registerCallback(cb.getNode());
-								if(DEBUG > 0) {
-									System.out.println("Inheriting: " + cb.getName() + " from " + parent.toString() +
-											" to " + child.toString());
-								}
-							}							
-						}						
-					}					
-				}
-			}
-			worklist.addAll(subs);
-		}
-	}
-
 	private void resolutionStats() {
+		totalClassesChecked = resolvedClasses + unresolvedClasses;
 		System.out.println();
 		System.out.println( "==========================================");
-		String fst = String.format("%-30s: %d", "Resolved classes", resolvedComponentCount);
+		String fst = String.format("%-30s: %d (%.2f %%)", "Resolved classes", resolvedClasses,        
+				100 * ((double) resolvedClasses / (double) totalClassesChecked));
 		System.out.println(fst);
-		fst = String.format("%-30s: %d", "Resolved constructors", resolvedConstructors);
-		System.out.println(fst);
-		fst = String.format("%-30s: %d (%.2f %%)", "Unresolved callbacks", unresolvedCallBacks,        
-				100 * ((double) unresolvedCallBacks / (double) totalCallBacks));
+		fst = String.format("%-30s: %d (%.2f %%)", "Resolved classes", unresolvedClasses,        
+				100 * ((double) unresolvedClasses / (double) totalClassesChecked));
 		System.out.println(fst);
 		System.out.println("------------------------------------------");
 
-		E.log(2, "Unresolved");
-		E.log(2, unresolvedSB);
-		E.log(2, "----------------------------------------------------");
-
-		fst = String.format("%-30s: %d", "Total callbacks", totalCallBacks);
-		System.out.println(fst);
-		fst = String.format("%-30s: %d", "Resolved components", componentMap.size());
+		fst = String.format("%-30s: %d", "Total nodes", originalCG.getNumberOfNodes());
 		System.out.println(fst);
 		System.out.println("==========================================\n");
-		
+
 	}
 
 
-	private void dumpUnresolvedInfo(CGNode root) {
+	private void getPathToTarget(CGNode root) {
 		Filter<CGNode> filter = new Filter<CGNode>() {
 			public boolean accepts(CGNode o) { 
 				return originalCG.isTargetMethod(o);
@@ -269,9 +288,6 @@ public class ComponentManager {
 		//TODO: replace reachability with this?
 		DFSPathFinder<CGNode> pf = new DFSPathFinder<CGNode>(originalCG, root, filter);
 		List<CGNode> path = pf.find();
-
-		/* Output unresolved info just for the interesting callbacks */
-		outputUnresolvedInfo(root, path);	
 	}
 
 	private Map<MethodReference, Set<Context>> method2Component; 
@@ -301,153 +317,17 @@ public class ComponentManager {
 	}
 
 
-	private  void outputUnresolvedInfo(CGNode root, List<CGNode> path) {
-		IClass declaringClass = root.getMethod().getDeclaringClass();
-		Collection<IClass> allImplementedInterfaces = declaringClass.getAllImplementedInterfaces();
-		E.log(DUMP_UNRESOLVED_INFO, "#### UnResolved: " + root.getMethod().getSignature().toString());
-		for (IClass c :  originalCG.getAppClassHierarchy().getClassAncestors(declaringClass)) {
-			E.log(DUMP_UNRESOLVED_INFO, "#### CL: " + c.getName().toString());
+	private  void outputUnresolvedInfo(IClass c) {
+		Collection<IClass> allImplementedInterfaces = c.getAllImplementedInterfaces();
+		for (IClass anc :  AppClassHierarchy.getClassAncestors(c)) {
+			System.out.println("#### CL: " + anc.getName().toString());
 		}
-		for (IClass c : allImplementedInterfaces) {
-			E.log(DUMP_UNRESOLVED_INFO, "#### IF: " + c.getName().toString());
-		}
-		if(path != null) {
-			E.log(1, "==== Path to target:");
-			for (CGNode n : path) {
-				E.log(DUMP_UNRESOLVED_INFO, "---> " + n.getMethod().getSignature().toString());
-			}
+		for (IClass intf : allImplementedInterfaces) {
+			System.out.println("#### IF: " + intf.getName().toString());
 		}
 	}
-
-	/**
-	 * Find out what type of context this class belongs to. E.g. Activity,
-	 * Service, ...
-	 */
-	private Context resolveFromClass(CGNode root) {
-
-		IMethod method = root.getMethod();
-		IClass klass = method.getDeclaringClass();
-		TypeName type = klass.getReference().getName();
-		String methName = method.getName().toString();
-		Context context = componentMap.get(type);
-		if (context != null) return context;
-			// A class can only extend one class so order does not matter
-			ArrayList<IClass> classAncestors = originalCG.getAppClassHierarchy().getClassAncestors(klass);
-			for (IClass anc : classAncestors) {
-				String ancName = anc.getName().toString();
-				if (ancName.equals("Landroid/app/Activity")) {
-					context = new Activity(global, root);
-				}
-				if (ancName.equals("Landroid/app/Service")) {
-					context = new Service(global, root);
-				}
-				if (ancName.equals("Landroid/content/ContentProvider")) {
-					context = new ContentProvider(global, root);
-				}
-				if (ancName.equals("Landroid/content/BroadcastReceiver")) {
-					context = new BroadcastReceiver(global, root);
-				}
-				if (ancName.equals("Landroid/os/AsyncTask")) {
-					context = new AsyncTask(global, root);
-				}
-				if (ancName.equals("Landroid/view/View")) {
-					context = new View(global, root);
-				}
-				if (ancName.equals("Landroid/app/Application")) {
-					context = new Application(global, root);
-				}
-				if (ancName.equals("Landroid/os/Handler")) {
-					context = new Handler(global, root);
-				}
-				if (ancName.equals("Landroid/webkit/WebViewClient")) {
-					context = new WebViewClient(global, root);
-				}
-				if (ancName.equals("Landroid/telephony/PhoneStateListener")) {
-					context = new PhoneStateListener(global, root);
-				}
-				if (context != null) {
-					resolvedComponentCount++;
-					break;
-				}
-			}
-			// Important: check if this is a real component before going into the rest.
-			if ((context == null) && methName.equals("<init>") || methName.equals("<clinit>")) {
-				resolvedConstructors++;
-				context = new Initializer(global, root);
-			}
-		
-		//else {
-			// Existing component: just update the callback
-			//E.log(2, "OLD:  " + method.getSignature().toString() + " -> " + context.toString() );
-			//context.registerCallback(root);
-			// update the callgraph node set
-			//return context;
-		//}
-		return context;
-	}
-
-	/**
-	 * Find out if this class implements a known class. E.g. Runnable
-	 * Since a class can implement multiple interfaces we should keep an order of 
-	 * in which to decide on which one should be used. 
-	 * The only restriction at this moment is Runnable, which should be tested
-	 * on first. 
-	 * 
-	 * @param root
-	 * @return
-	 */
-	private  Context resolveFromInterface(CGNode root) {
-		IClass klass = root.getMethod().getDeclaringClass();
-		TypeReference reference = klass.getReference();
-		Context comp = componentMap.get(reference);
-		if (comp != null) {
-			//Existing component: just update the callback
-			E.log(2, "OLD:  " + root.getMethod().getSignature().toString() + " -> " + comp.toString() );
-			comp.registerCallback(root);
-			return comp;
-		}
-		else {
-			//Runnable needs to stay in the first place of the check.
-			if (implementsInterface(klass, "Ljava/lang/Runnable")) {
-				comp = new RunnableThread(global, root);
-			}
-			else if (implementsInterface(klass, "Ljava/util/concurrent/Callable")) {
-				comp = new Callable(global, root);
-			}
-			else if (implementsInterface(klass,"ClickListener")) {
-				comp = new ClickListener(global, root);
-			}
-			else if (implementsInterface(klass, "Landroid/content/SharedPreferences$OnSharedPreferenceChangeListener")
-					|| implementsInterface(klass, "Landroid/preference/Preference$OnPreferenceChangeListener")) {
-				comp = new OnSharedPreferenceChangeListener(global, root);
-			}
-			else if (implementsInterface(klass, "Landroid/location/LocationListener")) {
-				comp = new LocationListener(global, root);
-			}
-			else if (implementsInterface(klass, "Landroid/widget/")) {
-				comp = new Widget(global, root);
-			}
-			else if (implementsInterface(klass, "Landroid/hardware/SensorEventListener")) {
-				comp = new SensorEventListener(global, root);
-			}
-			else if (implementsInterface(klass, "Landroid/content/ServiceConnection")) {
-				comp = new ServiceConnection(global, root);
-			}
-			else if (implementsInterface(klass, "Landroid/content/DialogInterface")) {
-				comp = new DialogInterface(global, root);
-			}
-			else if (implementsInterface(klass, "Landroid/media/MediaPlayer$OnCompletionListener")) {
-				comp = new OnCompletionListener(global, root);
-			}
-			if (comp != null) {
-				E.log(2, "PASS: " + root.getMethod().getSignature().toString() + " -> " + comp.toString() );
-			}
-			else {
-				E.log(2, "FAIL: " + root.getMethod().getSignature().toString());
-			}      
-			return comp;
-		}
-	}
+	
+	
 
 	public boolean implementsInterface(IClass klass, String string) {
 		for (IClass iI : klass.getAllImplementedInterfaces()) {

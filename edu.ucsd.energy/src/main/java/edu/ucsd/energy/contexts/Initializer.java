@@ -1,6 +1,6 @@
 package edu.ucsd.energy.contexts;
 
-import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.classLoader.IClass;
 
 import edu.ucsd.energy.managers.GlobalManager;
 
@@ -16,8 +16,8 @@ public class Initializer extends Context{
   
 //  static String elements[] = { "<init>", "<clinit>"};
   
-  public Initializer(GlobalManager gm, CGNode root) {
-	    super(gm, root);
+  public Initializer(GlobalManager gm, IClass c) {
+	    super(gm, c);
 //    callbackNames.addAll(Arrays.asList(elements));          
 //    callbackExpectedState = new HashSet<Pair<String,List<String>>>();
 //    callbackExpectedState.add(Pair.make(

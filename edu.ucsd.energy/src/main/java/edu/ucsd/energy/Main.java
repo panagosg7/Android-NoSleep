@@ -714,10 +714,14 @@ public class Main {
 			if (line.hasOption("small-set")) {
 				/* The applications you specify here need to be in apk_collection !!! */
 				//theSet.add("Unit_Wrong_04");
-				//theSet.add("NetCounter");
-				//theSet.add("3D_Level");
-				theSet.add("SpeakWrite");
-				//theSet.add("iZen_Lite");
+				//theSet.add("Unit_Wrong_05");
+				//theSet.add("NetCounter");				//verified
+				//theSet.add("3D_Level");					//verified
+				//theSet.add("SpeakWrite");
+				//theSet.add("iZen_Lite");				//Correctly NOT verified
+				//theSet.add("Audalyzer");				//verified - but missing unresolved stuff
+				//theSet.add("TiltMazes");					//verified
+				theSet.add("SMS_Control_Center");
 				//theSet.add("Gmote");
 			}
 			else if (line.hasOption("unit")) {
@@ -729,7 +733,9 @@ public class Main {
 				theSet.add("Unit_06");
 				theSet.add("Unit_Correct_01");
 				theSet.add("Unit_Wrong_01");
-				theSet.add("Unit_Wrong_01");
+				theSet.add("Unit_Wrong_02");
+				theSet.add("Unit_Wrong_03");
+				theSet.add("Unit_Wrong_04");
 			}
 			else {
 				FileInputStream is = new FileInputStream(acqrelDatabaseFile);

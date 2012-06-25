@@ -51,14 +51,7 @@ public abstract class AbstractComponent extends NodeWithNumber implements IConte
 		originalCallgraph = gm.getAppCallGraph();
 	}
 
-	abstract protected void makeCallGraph();
-
-	public CallGraph getCallGraph() {
-		if (componentCallgraph == null) {
-			makeCallGraph();
-		}
-		return componentCallgraph;	
-	}
+	abstract public CallGraph getCallGraph();
 
 	protected Set<CGNode> getDescendants(CallGraph cg, CGNode node) {
 		Filter<CGNode> filter = IndiscriminateFilter.<CGNode> singleton();

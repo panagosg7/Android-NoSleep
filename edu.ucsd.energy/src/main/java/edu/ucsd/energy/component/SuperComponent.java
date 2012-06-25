@@ -9,6 +9,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
@@ -110,19 +111,6 @@ public class SuperComponent extends AbstractComponent implements INodeWithNumber
 		return new SuperContextCFG(this, edgePairs, mSeeds);
 	}
 
-	protected void makeCallGraph() {
-		Collection<CGNode> nodeSet = new HashSet<CGNode>();
-		for (Context c : sComponent) {
-			c.setContainingSuperComponent(this);
-			// Gather nodes
-			Iterator<CGNode> nItr = c.getNodes();
-			while (nItr.hasNext()) {
-				nodeSet.add(nItr.next());
-			}
-		}
-		componentCallgraph = PartialCallGraph.make(originalCallgraph, nodeSet);
-	}
-
 	//Will be used in case we want to dump something to a file
 	private String fileName;
 
@@ -193,6 +181,23 @@ public class SuperComponent extends AbstractComponent implements INodeWithNumber
 	public CompoundLockState getReturnState(CGNode cgNode) {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	@Override
+	public CallGraph getCallGraph() {
+		if (componentCallgraph == null) {
+			Collection<CGNode> nodeSet = new HashSet<CGNode>();
+			for (Context c : sComponent) {
+				c.setContainingSuperComponent(this);
+				// Gather nodes
+				Iterator<CGNode> nItr = c.getNodes();
+				while (nItr.hasNext()) {
+					nodeSet.add(nItr.next());
+				}
+			}
+			componentCallgraph = PartialCallGraph.make(originalCallgraph, nodeSet);
+		}
+		return componentCallgraph;
 	}
 
 }

@@ -5,9 +5,11 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.Selector;
 import com.ibm.wala.types.TypeName;
+import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.strings.StringStuff;
 
 public class Interesting {
@@ -46,11 +48,17 @@ public class Interesting {
 
 	public final static TypeName WakeLockType = TypeName.string2TypeName("Landroid/os/PowerManager$WakeLock");
 	
+	public  final static TypeReference WakeLockTypeRef = TypeReference.findOrCreate(ClassLoaderReference.Application, WakeLockType);
+	
 	public final static TypeName PowerManagerName = TypeName.string2TypeName("Landroid/os/PowerManager");
 	
 	public  final static TypeName IntentType = TypeName.string2TypeName("Landroid/content/Intent");
 	
+	public  final static TypeReference IntentTypeRef = TypeReference.findOrCreate(ClassLoaderReference.Application, IntentType);
+	
 	public  final static TypeName RunnableType = TypeName.string2TypeName("Ljava/lang/Runnable");
+	
+	public  final static TypeReference RunnableTypeRef = TypeReference.findOrCreate(ClassLoaderReference.Application, RunnableType);
 
 	
 	//Method Selectors
@@ -110,10 +118,11 @@ public class Interesting {
 		mIntentMethods.put(Selector.make("startService(Landroid/content/Intent;)Landroid/content/ComponentName;"), new Integer(1));
 		mIntentMethods.put(Selector.make("startActivityForResult(Landroid/content/Intent;I)V"), new Integer(1));
 		mIntentMethods.put(Selector.make("sendBroadcast(Landroid/content/Intent;)V"), new Integer(1));
-		mIntentMethods.put(Selector.make("getBroadcast(Landroid/content/Context;ILandroid/content/Intent;I)Landroid/app/PendingIntent;"), new Integer(1));
-		mIntentMethods.put(Selector.make("getActivity(Landroid/content/Context;ILandroid/content/Intent;I)Landroid/app/PendingIntent;"), new Integer(1));
 		
-		//bindService
+		//mIntentMethods.put(Selector.make("getBroadcast(Landroid/content/Context;ILandroid/content/Intent;I)Landroid/app/PendingIntent;"), new Integer(1));
+		//mIntentMethods.put(Selector.make("getActivity(Landroid/content/Context;ILandroid/content/Intent;I)Landroid/app/PendingIntent;"), new Integer(1));
+		
+	//bindService
 
 		mRunnableMethods.put(Selector.make("start(Ljava/lang/Runnable;)V"), new Integer(1));
 		mRunnableMethods.put(Selector.make("start(Ljava/lang/Thread;)V"), new Integer(1));

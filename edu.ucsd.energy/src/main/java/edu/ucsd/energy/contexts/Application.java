@@ -1,6 +1,6 @@
 package edu.ucsd.energy.contexts;
 
-import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.classLoader.IClass;
 
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.managers.GlobalManager;
@@ -21,8 +21,8 @@ import edu.ucsd.energy.results.ViolationReport;
  */
 public class Application extends Component {
 
-	public Application(GlobalManager gm, CGNode root) {
-	    super(gm, root);
+	public Application(GlobalManager gm, IClass c) {
+	    super(gm, c);
 	}
 	
 	  public String toString() {	    

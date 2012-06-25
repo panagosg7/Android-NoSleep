@@ -1,22 +1,29 @@
 package edu.ucsd.energy.managers;
 
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.types.FieldReference;
-
-import edu.ucsd.energy.util.SSAProgramPoint;
 
 public abstract class ObjectInstance {
 	
 	//The program point where an object of this instance was created
-	protected SSAProgramPoint creationPP;
+	protected CreationPoint creationPP;
 		
 	protected FieldReference field;
 
-	ObjectInstance(SSAProgramPoint pp) {
+	protected IMethod method;
+	protected int param;
+	
+	ObjectInstance(CreationPoint pp) {
 		this.creationPP = pp;
 	}
 
 	ObjectInstance(FieldReference field) {
 		this.field = field;
+	}
+
+	ObjectInstance(IMethod m, int v) {
+		this.method = m;
+		this.param = v;
 	}
 
 	public int hashCode() {
@@ -31,11 +38,11 @@ public abstract class ObjectInstance {
 		return false;				
 	}
 	
-	public SSAProgramPoint getPP() {
+	public CreationPoint getPP() {
 		return creationPP;
 	}
 	
-	public void setPP(SSAProgramPoint pp) {
+	public void setPP(CreationPoint pp) {
 		this.creationPP = pp;
 	}
 

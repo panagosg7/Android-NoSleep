@@ -3,7 +3,7 @@ package edu.ucsd.energy.contexts;
 import java.util.Arrays;
 import java.util.Set;
 
-import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.types.Selector;
 
 import edu.ucsd.energy.apk.Interesting;
@@ -17,8 +17,8 @@ public class RunnableThread extends Context {
 
 	static Selector elements[] = { Interesting.ThreadRun };
 
-	public RunnableThread(GlobalManager gm, CGNode root) {
-		super(gm, root);
+	public RunnableThread(GlobalManager gm, IClass c) {
+		super(gm, c);
 		sTypicalCallback.addAll(Arrays.asList(elements));
 	}
 

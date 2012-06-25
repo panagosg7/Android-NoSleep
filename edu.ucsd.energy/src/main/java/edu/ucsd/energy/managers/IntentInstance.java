@@ -1,10 +1,7 @@
 package edu.ucsd.energy.managers;
 
-import java.util.ArrayList;
-
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.types.FieldReference;
-
-import edu.ucsd.energy.util.SSAProgramPoint;
 
 /**
  * _Context-insensitive_ notion of an intent
@@ -13,16 +10,20 @@ import edu.ucsd.energy.util.SSAProgramPoint;
  */
 public class IntentInstance extends AbstractRunnableInstance {
 	
-	public IntentInstance(SSAProgramPoint pp) {
+	private String actionString;
+
+	public IntentInstance(CreationPoint pp) {
 		super(pp);
-		new ArrayList<String>();
 	}
 
 	public IntentInstance(FieldReference field) {
 		super(field);
-		new ArrayList<String>();
 	}
 	
+	public IntentInstance(IMethod m, int v) {
+		super(m,v);
+	}
+
 	public int hashCode() {
 		return newInstr.hashCode();
 	}
@@ -33,6 +34,15 @@ public class IntentInstance extends AbstractRunnableInstance {
 			return newInstr.equals(i.getCreationInstruction());
 		}
 		return false;
+	}
+
+	public void setActionString(String constantValue) {
+		this.actionString = constantValue;
 	} 
 		
+	public String toString() {
+		return (super.toString() +  
+				(((actionString!=null)?("ActionString: " + actionString):""))); 
+	}
+	
 }

@@ -9,6 +9,7 @@ import java.util.Set;
 
 import net.sf.json.JSONObject;
 
+import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ssa.DefUse;
@@ -23,15 +24,15 @@ import com.ibm.wala.ssa.SSAPutInstruction;
 import com.ibm.wala.ssa.SSAReturnInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
-import com.ibm.wala.types.TypeName;
+import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.Iterator2List;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.intset.MutableSparseIntSet;
 
 import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.apk.Interesting;
+import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.GraphUtils;
-import edu.ucsd.energy.util.SSAProgramPoint;
 
 public abstract class AbstractDUManager<V extends ObjectInstance>  {
 
@@ -52,13 +53,18 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 
 	protected IR ir;
 
+	
+	//TODO: check that these do not turn into leaks...
+	// --> check sizes in the end 
 	protected Map<FieldReference, V> mFieldRefs;
 
-	protected Map<SSAProgramPoint, V> mCreationRefs;
+	protected Map<CreationPoint, V> mCreationRefs;
 
 	protected Map<MethodReference, V> mMethodReturns;
 
-	protected Set<TypeName> interestingTypes;
+	protected Map<Pair<IMethod, Integer>, V> mParamRefs;
+
+	protected Set<IClass> interestingTypes;
 
 	//A mapping for the instructions that perform the target action on the
 	//particular instance. This would be a startActivity(), etc for Intents, 
@@ -67,11 +73,13 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 
 	Iterator2List<CGNode> bottomUpList;	//TODO: Compute this once for all managers (make static) 
 
+
+
 	public AbstractDUManager(GlobalManager gm) {
 		this.gm = gm;
 		this.cg = gm.getAppCallGraph();
 		this.cm = gm.getComponentManager();
-		mCreationRefs = new HashMap<SSAProgramPoint, V>();
+		mCreationRefs = new HashMap<CreationPoint, V>();
 		mMethodReturns = new HashMap<MethodReference, V>();
 		mInstruction2Instance = new HashMap<Pair<MethodReference,SSAInstruction>, V>();
 		setInterestingType();
@@ -103,12 +111,16 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 			method = n.getMethod();
 			ir = n.getIR();
 			if (ir == null) continue;		// Null for JNI methods
+			
+			scanMethodParameters();
+
 			for (SSAInstruction instr : ir.getInstructions()) {
 				visitInstruction(instr);
 			}
 		}
 	}
 
+	
 	protected void secondPass() {
 		for (CGNode n : bottomUpList) {
 			node = n;
@@ -124,8 +136,8 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 
 	public void dumpInfo() {
 		System.out.println("==========================================\n");
-		for (Entry<SSAProgramPoint, V> e : mCreationRefs.entrySet()) {
-			SSAProgramPoint key = e.getKey();
+		for (Entry<CreationPoint, V> e : mCreationRefs.entrySet()) {
+			CreationPoint key = e.getKey();
 			V value = e.getValue();
 			System.out.println(key.toString() + " :: " + value.toString());
 		}
@@ -154,8 +166,6 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 
 	abstract void visitInvokeInstruction(SSAInvokeInstruction instruction);
 
-	//abstract void visitNewInstruction(SSANewInstruction instruction);	//probably not going to need this
-
 	/**
 	 * Had to return the vi to be used by IntentManager...
 	 * @param inv
@@ -165,10 +175,16 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		if (du == null) {
 			du = new DefUse(ir);
 		}
-		SSAProgramPoint pp = new SSAProgramPoint(node, inv);
-		V vi = findOrCreateInstance(pp);
+		CreationPoint cp = new CreationPoint(node, inv);
+		if (DEBUG > 1) {
+			System.out.println("In Method: " + method.getSignature());
+			System.out.println("CP: " + cp.toString());
+			System.out.println("new Inv: " + inv.toString());
+		}
+		
+		V vi = findOrCreateInstance(cp);
 		if (DEBUG > 0) {
-			System.out.println("NEW INSTANCE: " + vi.toString());
+			System.out.println("New instance: " + vi.toString());
 		}
 		//The use should be an instruction right next to the one creating the instance
 		int defVar = inv.getDef();
@@ -177,19 +193,33 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 			SSAInstruction useInstr = uses.next();
 			if (useInstr instanceof SSAPutInstruction) {
 				FieldReference field = ((SSAPutInstruction) useInstr).getDeclaredField();
-				if (DEBUG > 0) {
-					System.out.println("TRY TO ASSOCIATE WITH: " + field.toString());
+				if (DEBUG > 1) {
+					System.out.println("Try to associate with: " + field.toString());
 				}
-				associate(field,vi);				
+				associate(field,vi);
 				break;		//assume there's just an assignment to a single field
 			}
 		}
 		return vi;
 	}
 
+	
+	/**
+	 * Scan the typical parameters of the method and add the interesting ones 
+	 * in the mCreationRefs mapping for future reference.
+	 */
+	private void scanMethodParameters() {
+		for (int i = 0; i < method.getNumberOfParameters() ; i++) {
+			
+			int paramIndex = method.isStatic()?i:(i+1);
+			
+			findOrCreateInstance(method, paramIndex);
+		}
+	}
+	
 
 	/**
-	 * This refers to methods that are checked after the fields etc have
+	 * This refers to methods that are checked after fields, etc. have
 	 * been resolved.
 	 * @param instr
 	 */
@@ -200,27 +230,28 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 			for(int i = 0 ; i < inv.getNumberOfUses(); i++) {
 				V vi = traceInstanceNoCreate(inv.getUse(i));
 				//This is an interesting method for which we don't know anything yet
-				if ((vi != null) &&	(interestingMethod(inv.getDeclaredTarget()) == null)
+				if ((vi != null) &&	(isTargetMethod(inv.getDeclaredTarget()) == null)
 						//A lot of calls are pruned by this 
 						&& (!(inv.toString().contains("<init>")))
 						&& (!Interesting.ignoreSelectors.contains(inv.getDeclaredTarget().getSelector()))) {
-					if (DEBUG > 0) {
-						System.out.println("Could not identify " + getTag() + " method: " + inv.getDeclaredTarget().getSignature() + " | " + i);
+					if (DEBUG > 1) {
+						System.out.println("Could not identify " + getTag() + 
+								" method: " + inv.getDeclaredTarget().getSignature() + " arg: " + i);
 					}
 				}
 			}
 
-			//Is this an interesting method?
-			Integer arg = interestingMethod(inv.getDeclaredTarget());
+			//Is this an target (interesting) method?
+			Integer arg = isTargetMethod(inv.getDeclaredTarget());
 			if (arg != null) {
-				if (DEBUG > 0) {
+				if (DEBUG > 1) {
 					System.out.println("Examining interesting instr: " + arg);
 				}
 				try {
 					int use = inv.getUse(arg);	//this should be the right argument
 					V vi = traceInstanceNoCreate(use);
 					if (vi != null) {
-						if (DEBUG > 0) {
+						if (DEBUG > 1) {
 							System.out.println("Got interesting method(" + method.getName().toString() + ") : " + inv.toString());
 						}
 						Pair<MethodReference, SSAInstruction> p = Pair.make(method.getReference(), instr);
@@ -231,8 +262,20 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 					//but if it's not, don't sweat it.
 				}
 			}
+
+			//Handle some special cases
+			handleSpecialCalls(inv);
+
 		}
 	}
+
+
+	/**
+	 * Give the opportunity to the specific manager to handle some 
+	 * special method calls. 
+	 * @param inv
+	 */
+	abstract protected void handleSpecialCalls(SSAInvokeInstruction inv);
 
 	/**
 	 * Check to see if the invoked method is an interesting one based on the 
@@ -241,7 +284,7 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 	 * @param declaredTarget
 	 * @return
 	 */
-	abstract Integer interestingMethod(MethodReference declaredTarget);
+	abstract Integer isTargetMethod(MethodReference declaredTarget);
 
 	public V getMethodReturn(MethodReference mr) {
 		if (mMethodReturns != null) {
@@ -257,6 +300,7 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 	public V traceInstance(CGNode n, int var) {
 		node = n;
 		du = new DefUse(n.getIR());
+		method = n.getMethod();
 		//We probably don't want outsiders creating new instances
 		return traceInstanceNoCreate(var);
 	}
@@ -285,26 +329,23 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		if (du == null) {
 			du = new DefUse(ir);
 		}
+
 		SSAInstruction def = null;
 		try {
 			def = du.getDef(var);
 		}
 		catch (ArrayIndexOutOfBoundsException e) { }	//TODO: fix this	
-		if (def == null) {
-			return null;
-		}
 		if (def instanceof SSAGetInstruction) {
 			SSAGetInstruction get = (SSAGetInstruction) def;
 			V vi = create?findOrCreateInstance(get.getDeclaredField()):
-						findInstance(get.getDeclaredField());
+				findInstance(get.getDeclaredField());
 			return vi;
 		}
 		else if (def instanceof SSAInvokeInstruction) {
 			//Try to see if this is a creation site
 			V vi = create?
-					findOrCreateInstance(new SSAProgramPoint(node, def)):
-						findInstance(new SSAProgramPoint(node, def));
-					//V vi = findInstance(new SSAProgramPoint(node, def));
+					findOrCreateInstance(new CreationPoint(node, def)):
+						findInstance(new CreationPoint(node, def));
 					if (vi != null) {
 						return vi;
 					}
@@ -314,8 +355,8 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		}
 		else if (def instanceof SSANewInstruction) {
 			//Try to see if this is a creation site for Intents (for example)
-			V vi = create?findOrCreateInstance(new SSAProgramPoint(node, def)):
-						findInstance(new SSAProgramPoint(node, def));
+			V vi = create?findOrCreateInstance(new CreationPoint(node, def)):
+				findInstance(new CreationPoint(node, def));
 			return vi;
 		}
 		else if (def instanceof SSAPiInstruction) {
@@ -347,10 +388,17 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 			}
 			return null;
 		}
-		return null;
+
+		//Finally check if var is a method parameter or local variable
+		//(def might be null here, so don't exit before checking this)
+		V vi = create ? findOrCreateInstance(method, var) : findInstance(method, var);
+
+		return vi;
+		
 	}
 
-	private void visitInstruction(SSAInstruction instr ){
+
+	private void visitInstruction(SSAInstruction instr ) {
 		if (isNewInstruction(instr)) {
 			visitNewInstance(instr);	
 		}
@@ -362,11 +410,9 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		}
 	}
 
-	/*
-	 * We were able to make this generic
-	 */
+	
 	private void visitReturnInstruction(SSAReturnInstruction ret) {
-		if (isInterestingType(method.getReturnType().getName())) {
+		if (isInterestingType(method.getReturnType())) {
 			int returnedValue = ret.getUse(0);
 			if (du == null) {
 				du = new DefUse(ir);
@@ -374,12 +420,12 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 			V vi = traceInstance(returnedValue);
 			if (vi != null) {
 				mMethodReturns.put(method.getReference(), vi);
-				if (DEBUG > 0) {
+				if (DEBUG > 1) {
 					System.out.println("Associating Return: " + method.getName() + " :: " + vi.toString());
 				}
 			}
 			else {
-				if (DEBUG > 0) {
+				if (DEBUG > 1) {
 					System.out.println("Could not resolve return for: " + method.getSignature());
 				}
 			}
@@ -390,11 +436,13 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		if (DEBUG > 1) {
 			System.out.println("Trying to associate: " + fr.getFieldType().getName().toString() + " with " + interestingTypes.toString());
 		}
-		if (!isInterestingType(fr.getFieldType().getName())) return;	//associate only interesting stuff 
+		if (!isInterestingType(fr.getFieldType())) return;	//associate only interesting stuff 
 		if (mFieldRefs == null) {
 			mFieldRefs = new HashMap<FieldReference, V>();
 		}
-
+		
+		if (vi == null) return;
+		
 		vi.setField(fr);
 		if (DEBUG > 1) {
 			System.out.println("Indeed associating");
@@ -404,11 +452,9 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 	}
 
 	public V findOrCreateInstance(FieldReference field) {
-		if (!isInterestingType(field.getFieldType().getName())) return null;	//only interesting stuff 
-		if (mFieldRefs == null) {
-			mFieldRefs = new HashMap<FieldReference, V>();
-		}
-		V vi = mFieldRefs.get(field);
+		TypeReference fieldType = field.getFieldType();
+		if (!isInterestingType(fieldType)) return null;	//only interesting stuff
+		V vi = findInstance(field);
 		if (vi == null) {
 			vi = newInstance(field);
 			mFieldRefs.put(field, vi);
@@ -416,28 +462,81 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		return vi;
 	}
 
-	protected V findOrCreateInstance(SSAProgramPoint pp) {
-		V vi = findInstance(pp);
+	protected V findOrCreateInstance(CreationPoint cp) {
+		if (!isInterestingType(cp.getType())) return null;	//only interesting stuff
+		V vi = findInstance(cp);
 		if (vi != null) return vi;
-		vi = newInstance(pp);
-		mCreationRefs.put(pp, vi);
+		vi = newInstance(cp);
+		mCreationRefs.put(cp, vi);
 		return vi;
 	}
 
+	/**	Find or create instances that are passed as parameters to
+	 *	the current method.  
+	 * @param method
+	 * @param var
+	 * @return null if the var is not a parameter to this method.
+	 */
+	private V findOrCreateInstance(IMethod method, int var) {
+		
+		int paramIndex = method.isStatic()?var:(var-1);	//getParameterType checks for static methods anyway.
+		
+		try {
+			TypeReference parameterType = method.getParameterType(paramIndex);
+			
+			if (DEBUG > 1) {
+				System.out.println("ParamType: " + parameterType.getName().toString());
+			}
+			
+			if (!isInterestingType(parameterType)) {
+				return null;	//only interesting stuff
+			}
+			
+			V vi = findInstance(method, var);
+			if (vi != null) {
+				return vi;
+			}
+			vi = newInstance(method, var);
+			Pair<IMethod, Integer> p = Pair.make(method, new Integer(var));
+			mParamRefs.put(p, vi);
+			if (DEBUG > 0) {
+				System.out.println("Method: " + method.getSignature());
+				System.out.println("Adding method param: " + vi.toString() + " in mParamRefs");
+				System.out.println("Adding to map: " + p);
+			}
+			return vi;
+		} catch (IllegalArgumentException e) {
+			
+			if (DEBUG > 0) {
+				E.yellow();
+				System.out.println("Method: " + method.getSignature());
+				System.out.println("Static: " + method.isStatic());
+				System.out.println("Var: " + var + " -> " + paramIndex);
+				for (int i = 0; i < method.getNumberOfParameters(); i++) {
+					System.out.println("Param"+ i + ": " + method.getParameterType(i));
+				}
+				System.out.println("Value from symtab " + ir.getSymbolTable().getValueString(var));
+				E.resetColor();
+			}
+			
+			//drop exception
+			return null;
+			//throw e;
+		}
+	}
 
+	
 	public V findInstance(FieldReference field) {
 		if (mFieldRefs == null) {
 			mFieldRefs = new HashMap<FieldReference, V>();
 		}
-		//Check to see if this is a lock created in this method
-		V vi = mFieldRefs.get(field);
-		return vi;
+		return mFieldRefs.get(field);
 	}
 
 
-	public V findInstance(SSAProgramPoint pp) {
+	public V findInstance(CreationPoint pp) {
 		if (mCreationRefs == null) {
-			mCreationRefs = new HashMap<SSAProgramPoint, V>();
+			mCreationRefs = new HashMap<CreationPoint, V>();
 		}
 		//Check to see if this is a lock created in this method
 		V vi = mCreationRefs.get(pp);
@@ -456,32 +555,58 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		return null;
 	}
 
+
+	private V findInstance(IMethod method, int var) {
+		if (mParamRefs == null) {
+			mParamRefs = new HashMap<Pair<IMethod,Integer>, V>();
+		}
+		Pair<IMethod, Integer> p = Pair.make(method, new Integer(var));
+		return mParamRefs.get(p);
+	}
+
+	
+	protected void forgetInstance(V vi) {
+		CreationPoint pp = vi.getPP();
+		mCreationRefs.remove(pp);
+	}
+	
+	
 	public V getInstance(SSAInstruction instr, CGNode node) {
 		MethodReference reference = node.getMethod().getReference();		
 		Pair<MethodReference, SSAInstruction> pair = Pair.make(reference, instr);
 		return mInstruction2Instance.get(pair);		
 	}
 
-	public boolean isInterestingType(TypeName typeName) {
-		//WARNING: TypeName does equals by object id
-		for (TypeName t : interestingTypes) {
-			if (typeName.toString().equals(t.toString())) {
+	
+	public boolean isInterestingType(TypeReference fieldType) {
+		if (fieldType == null) return false;
+		IClass fieldClass = gm.getClassHierarchy().lookupClass(fieldType);
+		if (fieldClass == null) return false;
+		for (IClass interClass : interestingTypes) {
+			if (gm.getClassHierarchy().isSubclassOf(fieldClass, interClass)) {
+				return true;
+			}
+			if (gm.getClassHierarchy().implementsInterface(fieldClass, interClass)) {
 				return true;
 			}
 		}
 		return false;
 	}
 
+	
 	public void setAppCallGraph(AppCallGraph cg){
 		this.cg = cg;
 	}
 
-	abstract public V newInstance(SSAProgramPoint pp);
+	abstract public V newInstance(CreationPoint pp);
 
 	abstract public V newInstance(FieldReference field);
+
+	abstract public V newInstance(IMethod m, int v);
 
 	abstract public JSONObject toJSON();
 
 	abstract public String getTag();
 
 }
+

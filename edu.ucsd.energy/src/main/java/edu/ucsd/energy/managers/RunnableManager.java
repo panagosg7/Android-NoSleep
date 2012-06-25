@@ -1,23 +1,40 @@
 package edu.ucsd.energy.managers;
 
 import java.util.HashSet;
-import java.util.Map;
 
+import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.types.FieldReference;
-import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
-import com.ibm.wala.util.collections.Pair;
+import com.ibm.wala.types.TypeReference;
 
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.contexts.Context;
-import edu.ucsd.energy.contexts.RunnableThread;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ManagerReport;
-import edu.ucsd.energy.util.SSAProgramPoint;
 
+
+
+/**
+ * This manager tries to resolve Runnable calls/posts based on the classes that 
+ * are associated with them.
+ * 
+ * This is a broad category that include all cases where an object that 
+ * implements the class Runnable can be started/posted/run etc. 
+ * 
+ * See the supported list of method calls in Interesting.java
+ * 
+ * Cases that are not supported include:
+ * 	- Cases were the object that is being started cannot be associated with 
+ * 		a single class that implements java/lang/Runnable.
+ * 
+ * 
+ * @author pvekris
+ *
+ */
 public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 
 	private static final int DEBUG = 0;
@@ -26,22 +43,19 @@ public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 		super(gm);
 	}
 	
-	public Map<Pair<MethodReference, SSAInstruction>, RunnableInstance> getGlobalInvocations() {
-		return mInstruction2Instance;
-	}
-	
 	public void prepare() {
 		super.prepare();
-		//dumpInfo();
+		if(DEBUG > 0) {
+			dumpInfo();
+		}
 	}
 	
 	@Override
 	boolean isNewInstruction(SSAInstruction instr) {
 		if (instr instanceof SSANewInstruction) {
 			SSANewInstruction newi = (SSANewInstruction) instr;
-			TypeName concreteType = newi.getConcreteType().getName();
-			Context targetComponent = cm.getComponent(concreteType);
-			return (targetComponent instanceof RunnableThread);
+			TypeReference typeRef = newi.getConcreteType();
+			return isInterestingType(typeRef);
 		}
 		return false;
 	}
@@ -50,17 +64,28 @@ public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 		RunnableInstance ri = super.visitNewInstance(instr);
 		if (instr instanceof SSANewInstruction) {
 			SSANewInstruction newi = (SSANewInstruction) instr;
-			TypeName concreteType = newi.getConcreteType().getName();
+			TypeReference typeRef = newi.getConcreteType();
+			TypeName concreteType = typeRef.getName();
 			if (DEBUG > 0) {
 				System.out.println(getTag() + " new Instance: " + ri.toString());
 			}
 			ri.setCalledType(concreteType);
 			Context target = cm.getComponent(concreteType);
-			if (target instanceof RunnableThread) {
-				if (DEBUG > 0) {
-					System.out.println("Associated with: " + target.toString());
+			if (isInterestingType(typeRef)) {
+				if (target != null) {
+					if (DEBUG > 0) {
+						System.out.println("Associated with: " + target.toString());
+					}
+					ri.setCalledComponent(target);
 				}
-				ri.setCalledComponent(target);
+				else {
+					//If we cannot find the specific context that is called here, 
+					//we should not really have the Runnable Instance in our maps.
+					forgetInstance(ri);
+					if (DEBUG > 0) {
+						System.out.println("Forgetting: " + ri.toString());
+					}
+				}
 			}
 		}
 		return ri;		
@@ -68,7 +93,7 @@ public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 	
 	@Override
 	public String getTag() {
-		return "Runnables";
+		return "Runnable";
 	}
 	
 	public IReport getReport() {
@@ -76,7 +101,7 @@ public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 	}
 
 	@Override
-	public RunnableInstance newInstance(SSAProgramPoint pp) {
+	public RunnableInstance newInstance(CreationPoint pp) {
 		return new RunnableInstance(pp);
 	}
 
@@ -90,7 +115,18 @@ public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 
 	@Override
 	protected void setInterestingType() {
-		interestingTypes = new HashSet<TypeName>();
-		interestingTypes.add(Interesting.RunnableType);
+		interestingTypes = new HashSet<IClass>();
+		interestingTypes.add(gm.getClassHierarchy().lookupClass(Interesting.RunnableTypeRef));
+	}
+
+	@Override
+	protected void handleSpecialCalls(SSAInvokeInstruction inv) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public RunnableInstance newInstance(IMethod m, int v) {
+		return new RunnableInstance(m,v);
 	}	
 }

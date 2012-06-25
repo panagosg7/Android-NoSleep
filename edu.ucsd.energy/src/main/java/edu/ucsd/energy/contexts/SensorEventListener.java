@@ -1,13 +1,13 @@
 package edu.ucsd.energy.contexts;
 
-import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.classLoader.IClass;
 
 import edu.ucsd.energy.managers.GlobalManager;
 
 public class SensorEventListener extends Context{
 
-  public SensorEventListener(GlobalManager gm, CGNode root) {
-	    super(gm, root);
+  public SensorEventListener(GlobalManager gm, IClass c) {
+	    super(gm, c);
 
   }
 

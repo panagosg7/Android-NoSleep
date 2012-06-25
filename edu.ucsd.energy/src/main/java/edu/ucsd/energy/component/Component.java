@@ -2,7 +2,7 @@ package edu.ucsd.energy.component;
 
 import java.util.Iterator;
 
-import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.classLoader.IClass;
 
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.interproc.CompoundLockState;
@@ -12,8 +12,8 @@ import edu.ucsd.energy.results.ViolationReport;
 
 abstract public class Component extends Context {
 
-	protected Component(GlobalManager gm, CGNode root) {
-		super(gm, root);
+	protected Component(GlobalManager gm, IClass c) {
+		super(gm, c);
 	}
 	
 	public ViolationReport assembleReport() {

@@ -3,7 +3,7 @@ package edu.ucsd.energy.contexts;
 import java.util.Arrays;
 import java.util.Set;
 
-import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.collections.Pair;
 
@@ -12,10 +12,10 @@ import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.results.ContextSummary;
-import edu.ucsd.energy.results.Violation;
-import edu.ucsd.energy.results.ViolationReport;
 import edu.ucsd.energy.results.ProcessResults.LockUsage;
 import edu.ucsd.energy.results.ProcessResults.ResultType;
+import edu.ucsd.energy.results.Violation;
+import edu.ucsd.energy.results.ViolationReport;
 
 public class Service extends Component {
 
@@ -27,8 +27,8 @@ public class Service extends Component {
 	};
 
 	
-	public Service(GlobalManager gm, CGNode root) {
-		super(gm, root);
+	public Service(GlobalManager gm, IClass c) {
+		super(gm, c);
 		sTypicalCallback.addAll(Arrays.asList(elements));
 		callbackEdges.add(Pair.make(Interesting.ServiceOnCreate, Interesting.ServiceOnStart));
 		//XXX: the service can't be implementing both, right...?

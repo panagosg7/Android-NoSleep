@@ -1,15 +1,14 @@
 package edu.ucsd.energy.managers;
 
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.types.FieldReference;
-
-import edu.ucsd.energy.util.SSAProgramPoint;
 
 /**
  * _Context-insensitive_ notion of an Runnable
  */
 public class RunnableInstance extends AbstractRunnableInstance {
 	
-	public RunnableInstance(SSAProgramPoint pp) {
+	public RunnableInstance(CreationPoint pp) {
 		super(pp);
 	}
 	
@@ -17,6 +16,10 @@ public class RunnableInstance extends AbstractRunnableInstance {
 		super(fr);
 	}
 	
+	public RunnableInstance(IMethod m, int v) {
+		super(m,v);
+	}
+
 	public int hashCode() {
 		return newInstr.hashCode();
 	}

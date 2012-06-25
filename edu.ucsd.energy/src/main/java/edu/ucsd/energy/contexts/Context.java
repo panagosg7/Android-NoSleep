@@ -11,10 +11,12 @@ import java.util.Set;
 
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.collections.Pair;
+import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 
 import edu.ucsd.energy.component.AbstractComponent;
@@ -35,6 +37,11 @@ public abstract class Context extends AbstractComponent {
 	//These are the ACTUAL callbacks that get resolved
 	private Map<Selector, CallBack> 	mActualCallback;
 
+	//Nodes that belong to the class that created this component
+	//Call Graph construction might bring in more nodes.
+	private Set<CGNode> sNode;
+
+
 	//Typical callbacks specified by API
 	protected Set<Selector> sTypicalCallback;
 
@@ -42,16 +49,15 @@ public abstract class Context extends AbstractComponent {
 	protected HashSet<Pair<Selector, Selector>> callbackEdges;
 
 
-	public void registerCallback(CGNode node) {
-		Selector sel = node.getMethod().getSelector();
-		if (DEBUG > 1) {
-			System.out.println("Registering callback: " + sel.toString() + " to " + this.toString());    
+	/**
+	 * Add a set of nodes to this context
+	 * @param nodes
+	 */
+	public void addNodes(Set<CGNode> nodes) {
+		if(sNode == null) {
+			sNode = new HashSet<CGNode>();
 		}
-		if (mActualCallback == null) {
-			mActualCallback = new HashMap<Selector, CallBack>();
-		}
-		CallBack callBack = new CallBack(node);    
-		mActualCallback.put(sel, callBack);
+		sNode.addAll(nodes);
 	}
 
 
@@ -63,22 +69,25 @@ public abstract class Context extends AbstractComponent {
 		return mActualCallback.containsKey(s);	  
 	}
 
-	protected Context(GlobalManager gm, CGNode root) {
+	protected Context(GlobalManager gm, IClass c) {
 		super(gm);
-		klass = root.getMethod().getDeclaringClass();
+		klass = c;
 		sTypicalCallback = new HashSet<Selector>();
 		callbackEdges = new HashSet<Pair<Selector,Selector>>();
-		registerCallback(root);
 	}
 
-	public void makeCallGraph() {	  
-		HashSet<CGNode> rootSet = new HashSet<CGNode>();    
-		HashSet<CGNode> set = new HashSet<CGNode>();    
-		for (CallBack cb : getCallbacks()) {    	
-			set.addAll(getDescendants(originalCallgraph, cb.getNode()));      
-			rootSet.add(cb.getNode());      
-		}    
-		componentCallgraph = PartialCallGraph.make(originalCallgraph, rootSet, set);
+	
+	public CallGraph getCallGraph() {
+		if (componentCallgraph == null) {
+			HashSet<CGNode> set = new HashSet<CGNode>();    
+			for (CGNode node : sNode ) {    	
+				set.addAll(getDescendants(originalCallgraph, node));      
+			}    
+			//sNode is not really the root set, but this should work,
+			//cause they should work as entry points
+			componentCallgraph = PartialCallGraph.make(originalCallgraph, sNode, set);
+		}
+		return componentCallgraph;
 	}
 
 	public String toString() {
@@ -93,7 +102,7 @@ public abstract class Context extends AbstractComponent {
 		return klass;
 	}
 
-	
+
 	/**
 	 * Is this context defined in an abstract class? 
 	 * @return
@@ -101,12 +110,25 @@ public abstract class Context extends AbstractComponent {
 	public boolean isAbstract() {
 		return getKlass().isAbstract();
 	}
-	
+
+	private void gatherCallBacks() {
+		if (mActualCallback == null) {
+			mActualCallback = new HashMap<Selector, CallBack>();
+			for (CGNode node : GraphUtil.inferRoots(getCallGraph())) {
+				Selector selector = node.getMethod().getSelector();
+				CallBack callback = CallBack.findOrCreateCallBack(node);
+				mActualCallback.put(selector, callback);
+			}
+		}
+	}
+
 	public Collection<CallBack> getCallbacks() {
+		gatherCallBacks();
 		return mActualCallback.values();
 	}
 
 	public CallBack getCallBack(Selector sel) {
+		gatherCallBacks();
 		return mActualCallback.get(sel);
 	}
 
@@ -132,9 +154,9 @@ public abstract class Context extends AbstractComponent {
 		Queue<SensibleCGNode> worklist = new LinkedList<SensibleCGNode>();
 		Set<SensibleCGNode> visited = new HashSet<SensibleCGNode>();
 		Set<CallBack> returnSet = new HashSet<CallBack>();		
-		
+
 		SensibleCGNode initNode = getLifecycleGraph().find(selector);
-		
+
 		if (initNode != null) {
 			worklist.add(initNode);
 			if (DEBUG > 1) {
@@ -142,12 +164,12 @@ public abstract class Context extends AbstractComponent {
 			}
 		}
 		//if the first node is not a callback nothing will be returned
-		
+
 		while (!worklist.isEmpty()) {
 			SensibleCGNode node = worklist.remove();
 			if (visited.contains(node)) continue;		//ensure termination
 			visited.add(node);
-			
+
 			if (node.isEmpty()) {
 				//this node is not overridden, so we need to add 
 				//the predecessor nodes to worklist
@@ -176,7 +198,7 @@ public abstract class Context extends AbstractComponent {
 		}
 		return returnSet;
 	}
-	
+
 
 	public HashSet<Pair<Selector, Selector>> getCallbackEdges() {
 		return callbackEdges;
@@ -194,7 +216,7 @@ public abstract class Context extends AbstractComponent {
 		}
 		return implicitGraph;
 	}
-	
+
 	public SparseNumberedGraph<SensibleCGNode> getFullLifecycleGraph() {
 		return getLifecycleGraph().getFullLifeCycleGraph();
 	}
@@ -279,24 +301,7 @@ public abstract class Context extends AbstractComponent {
 		else {
 			return getExitState(cgNode);
 		}
-		/*
-		Iterator<BasicBlockInContext<IExplodedBasicBlock>> predNodes = icfg.getPredNodes(exitBB);
-		HashSet<CompoundLockState> set = new HashSet<CompoundLockState>();
-		while(predNodes.hasNext()) {
-			BasicBlockInContext<IExplodedBasicBlock> bb = predNodes.next();
-			if (!icfg.isExceptionalEdge(bb, exitBB)) {
-				IExplodedBasicBlock ebb = bb.getDelegate();
-				set.add(mEBBState.get(ebb));
-			}
-		}
-		CompoundLockState merged = CompoundLockState.merge(set);
-		 */
-		//IExplodedBasicBlock exit = exitBB.getDelegate();
-
-		//Do not search by instruction cause that might be null
 	}
-
-
 
 
 }

@@ -3,6 +3,8 @@ package edu.ucsd.energy.managers;
 import java.util.HashSet;
 import java.util.Iterator;
 
+import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSALoadMetadataInstruction;
@@ -10,31 +12,57 @@ import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.Selector;
-import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
 
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ManagerReport;
 import edu.ucsd.energy.util.E;
-import edu.ucsd.energy.util.SSAProgramPoint;
 
+
+/**
+ * This manager tries to resolve Intent calls based on the classes that 
+ * are associated with them.
+ * 
+ *  Cases that are not going to work:
+ *  - Wherever the corresponding component is determined by 
+ *  	PackageManager.resolveActivity()
+ *  - The class passed as a parameter to the creation of the Intent cannot 
+ *  	be resolved
+ *  - The constructor of the intent is Intent(). In these it is hard to guess 
+ *  	what the target Component is.
+ *  - Intent info is passed as a parameter to the current method, and therefore 
+ *  	cannot be specified, as we're not performing an inter-procedural analysis
+ *  	at this point. 
+ *  
+ *  Also, cases where an explicit Action is specified at the creation of 
+ *  the Intent are ignored, as the target Component cannot be determined. 
+ *
+ *  TODO: for the cases where the Component called cannot be resolved, we can 
+ *  try all possible Components.
+ *  
+ *  ***OR, only report a problem if the call-site of the Intent (startActivity, 
+ *  etc), is done while the lock is held. Otherwise, it will be the called Context's 
+ *  responsibility to behave well, and that Context will be examined separately.
+ *  So what we need to do is remember the unresolved call-sites and perform the 
+ *  checks after the analysis has run (in all possible contexts)
+ *  
+ *   
+ * @author pvekris
+ *
+ */
 public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 
-	//Intent specific	
-	private static final Selector INIT_SELECTOR = 
-			Selector.make("<init>(Landroid/content/Context;Ljava/lang/Class;)V");
+	private static int DEBUG = 0;	
 	
 	/**
 	 * Using the Selector for the comparison because the class might 
 	 * not be the default android one
 	 */
 	@Override
-	Integer interestingMethod(MethodReference declaredTarget) {
+	Integer isTargetMethod(MethodReference declaredTarget) {
 		return Interesting.mIntentMethods.get(declaredTarget.getSelector());
 	}
-	
-	private static int DEBUG = 0;
 	
 	public IntentManager(GlobalManager cm) {
 		super(cm);
@@ -45,6 +73,7 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 		if(DEBUG > 0) {
 			dumpInfo();
 		}
+		
 	}
 	
 	
@@ -52,17 +81,20 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 		IntentInstance ii = super.visitNewInstance(instr);
 		//Get all uses just to check...
 		int def = instr.getDef();
+		
 		for (Iterator<SSAInstruction> uses = du.getUses(def); uses.hasNext(); ) {
 			SSAInstruction use = uses.next();
 			if (use instanceof SSAInvokeInstruction) {
 				SSAInvokeInstruction inv = (SSAInvokeInstruction) use;
-				if (inv.getDeclaredTarget().getSelector().equals(INIT_SELECTOR)) {
-					visitIntentInit(use, ii);
+				MethodReference declaredTarget = inv.getDeclaredTarget();
+				if (declaredTarget.isInit()) {
+					visitIntentInit(inv, ii);
 				}
 			}
 		}
 		return ii;
 	}
+	
 	
 	/**
 	 * Try to figure out what kind of class is associated with this Intent. 
@@ -74,7 +106,40 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
      * 	paramDialogInterface = new android/content/Intent;
      * 	paramDialogInterface.<init>("android.intent.action.VIEW", paramInt);
 	 */
-	private void visitIntentInit(SSAInstruction inv, IntentInstance ii) {		
+	private void visitIntentInit(SSAInvokeInstruction inv, IntentInstance ii) {
+		MethodReference declaredTarget = inv.getDeclaredTarget();
+		Selector selector = declaredTarget.getSelector();
+		
+		if (selector.equals(Selector.make("<init>(Landroid/content/Context;Ljava/lang/Class;)V"))) {
+			//The second argument specifies the called component class
+			setCalledType(inv, 2, ii);
+		}
+		else if (	selector.equals(Selector.make("<init>(Ljava/lang/String;Landroid/net/Uri;)V")) ||
+							selector.equals(Selector.make("<init>(Ljava/lang/String;)V"))) {
+			int use = inv.getUse(1);
+			if (ir.getSymbolTable().isConstant(use)) {
+				Object constantValue = ir.getSymbolTable().getConstantValue(use);
+				ii.setActionString((String) constantValue);
+			}
+		}
+		else if (	selector.equals(Selector.make("<init>()V"))) {
+			
+		}
+		else if (	selector.equals(Selector.make("<init>(Ljava/lang/String;" +
+				"Landroid/net/Uri;Landroid/content/Context;Ljava/lang/Class;)V"))) {
+		//The fourth argument specifies the called component class
+			setCalledType(inv, 4, ii);
+		}
+		else {
+			E.yellow();
+			System.out.println("Intent selector not handled: " + selector);
+			System.out.println(inv.toString());
+			E.resetColor();
+		}
+		
+	}
+
+	private void setCalledType(SSAInvokeInstruction inv, int i, IntentInstance ii) {
 		SSAInstruction def = du.getDef(inv.getUse(2));
 		if (def instanceof SSALoadMetadataInstruction) {
 			SSALoadMetadataInstruction meta = (SSALoadMetadataInstruction) def;
@@ -82,18 +147,63 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 				TypeReference calledType = (TypeReference) meta.getToken();
 				ii.setCalledType(calledType.getName());
 				if (DEBUG > 0) {
-					E.log(1, "META: " + ii.toString());
+					System.out.println("Added meta to: " + ii.toString());
 				}
 			}
 			catch(Exception e) {
 				//This is to act against the case that 
 				//token is not a TypeReference
 			}
-		}
+		}		
 	}
 
 	@Override
-	public IntentInstance newInstance(SSAProgramPoint pp) {
+	protected void handleSpecialCalls(SSAInvokeInstruction inv) {
+		String methName = inv.getDeclaredTarget().getName().toString();
+		if (methName.contains("setComponent")) {
+			//TODO: this will not be so easy due to resolving ComponentName
+			E.yellow();
+			System.out.println("Setting Component: " + method);
+			System.out.println("  " + inv.toString());
+			E.resetColor();
+		}
+		if (methName.contains("setClassName")) {
+			//TODO
+			E.yellow();
+			System.out.println("Setting Component: " + inv.toString());
+			E.resetColor();
+		}
+		/*
+		 * public Intent setClass (Context packageContext, Class<?> cls)
+		 */
+		if (methName.contains("setClass")) {
+
+			//the Intent is the 0th parameter
+			IntentInstance ii = traceInstanceNoCreate(inv.getUse(0));
+			
+			if (ii != null) {
+				if (DEBUG > 0) {
+					System.out.println("Meth: " + methName);
+					System.out.println("Setting Component: " + inv.toString());
+				}
+				setCalledType(inv, 2, ii);	
+			}
+			else {
+				//XXX: warm for something here
+				if (DEBUG > 0) {
+					E.yellow();
+					System.out.println("Could not resolve: " + method);
+					System.out.println("  calling: " + inv.toString());
+					E.resetColor();
+				}
+			}
+			
+		}
+	}
+
+	
+	@Override
+	public IntentInstance newInstance(CreationPoint pp) {
 		return new IntentInstance(pp);
 	}
 
@@ -102,6 +212,12 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 		return new IntentInstance(field);
 	}
 
+	@Override
+	public IntentInstance newInstance(IMethod m, int v) {
+		return new IntentInstance(m,v);
+	}
+
+	
 	@Override
 	boolean isNewInstruction(SSAInstruction instr) {
 		if (instr instanceof SSANewInstruction) {
@@ -132,7 +248,7 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 
 	@Override
 	public String getTag() {
-		return "Intents";
+		return "Intent";
 	}
 
 	@Override
@@ -141,9 +257,12 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 
 	@Override
 	protected void setInterestingType() {
-		interestingTypes = new HashSet<TypeName>();
-		interestingTypes.add(Interesting.IntentType);		
+		interestingTypes = new HashSet<IClass>();
+		interestingTypes.add(gm.getClassHierarchy().lookupClass(Interesting.IntentTypeRef));		
 	}
+
+
 
 	
 }
+

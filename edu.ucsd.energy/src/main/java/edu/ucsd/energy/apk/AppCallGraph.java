@@ -101,10 +101,6 @@ public class AppCallGraph implements CallGraph {
 	private PointerAnalysis pointerAnalysis;
 
 
-	public AppClassHierarchy getAppClassHierarchy() {
-		return cha;
-	}
-	
 	public Hashtable<String, IClass> getTargetClassHash() {
 		return targetClassHash;
 	}
@@ -117,9 +113,7 @@ public class AppCallGraph implements CallGraph {
 		return targetCGNodeHash;
 	}
 
-	public AppCallGraph(AppClassHierarchy cha)
-			throws IllegalArgumentException, WalaException, CancelException,
-			IOException {
+	public AppCallGraph(AppClassHierarchy cha) throws IllegalArgumentException, WalaException, CancelException,	IOException {
 		this.cha = cha;
 		String appJar = cha.getAppJar();
 		String exclusionFile = cha.getExclusionFileName();
@@ -264,7 +258,7 @@ public class AppCallGraph implements CallGraph {
 	 * @param cg
 	 * @return
 	 */
-	private  CallGraph pruneLockIrrelevantNodes(CallGraph cg) {
+	private CallGraph pruneLockIrrelevantNodes(CallGraph cg) {
 
 		HashSet<CGNode> keepNodes = new HashSet<CGNode>();
 		Queue<CGNode> q = new LinkedList<CGNode>();
@@ -337,26 +331,13 @@ public class AppCallGraph implements CallGraph {
 		int appNodes = 0;
 		int primNodes = 0;
 		while (iterator.hasNext()) {
-			if (isAppNode(iterator.next())) {
-				appNodes++;
-			} else {
-				primNodes++;
-			}
+			if (isAppNode(iterator.next()))	appNodes++;
+			else primNodes++;
 		}
 		E.log(1, "");
 		E.log(1, "AppNodes:\t" + appNodes + "/" + (appNodes + primNodes));
 		E.log(1, "PrimNodes:\t" + primNodes + "/" + (appNodes + primNodes));
 		E.log(1, "");
-	}
-
-	@SuppressWarnings("unused")
-	private  HashSet<CGNode> getFakeRootSuccessors(CallGraph cg) {
-		HashSet<CGNode> roots = new HashSet<CGNode>();
-		Iterator<CGNode> rootIter = cg.getSuccNodes(cg.getFakeRootNode());
-		while (rootIter.hasNext()) {
-			roots.add(rootIter.next());
-		}
-		return roots;
 	}
 
 	/**
@@ -439,45 +420,10 @@ public class AppCallGraph implements CallGraph {
 		}
 	}
 
-	@SuppressWarnings("unused")
-	private  void printNodeCollectionFull(Collection<CGNode> nodes,
-			String title) {
-		int i = 0;
-		E.log(0, title);
-		for (CGNode kn : nodes) {
-			E.log(0, i++ + " : " + kn.getMethod().toString());
-		}
-		E.log(0, "");
-	}
-
-	@SuppressWarnings("unused")
-	private  void printNodeCollectionNames(Collection<CGNode> nodes,
-			String title) {
-		int i = 0;
-		E.log(0, title);
-		for (CGNode kn : nodes) {
-			E.log(0, i++ + " : " + kn.getMethod().getName().toString());
-		}
-		E.log(0, "");
-	}
-
-	@SuppressWarnings("unused")
-	private  Collection<CGNode> getApplicationNodes(
-			Collection<CGNode> nodeSet) {
-		Collection<CGNode> appNodes = new HashSet<CGNode>();
-		for (CGNode n : nodeSet) {
-			if (isAppNode(n)) {
-				appNodes.add(n);
-			}
-		}
-		return appNodes;
-	}
-
-	private  boolean isAppNode(CGNode n) {
-		if (n.getMethod().toString().contains("< Application")) {
-			return true;
-		}
-		return false;
+	private boolean isAppNode(CGNode n) {
+		ClassLoaderReference classLoader = n.getMethod().getDeclaringClass().getReference().getClassLoader();
+		return classLoader.equals(ClassLoaderReference.Application);
+		//n.getMethod().toString().contains("< Application"))
 	}
 
 	/**

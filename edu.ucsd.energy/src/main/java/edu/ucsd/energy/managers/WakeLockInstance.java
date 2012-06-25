@@ -6,10 +6,10 @@ import java.util.HashSet;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.types.FieldReference;
 
 import edu.ucsd.energy.managers.WakeLockManager.RefCount;
-import edu.ucsd.energy.util.SSAProgramPoint;
 
 public class WakeLockInstance extends ObjectInstance {
 
@@ -69,7 +69,7 @@ public class WakeLockInstance extends ObjectInstance {
 	
 	private WakeLockInfo info;
 	
-	public WakeLockInstance(SSAProgramPoint pp) {
+	public WakeLockInstance(CreationPoint pp) {
 		super(pp);
 		this.info = new WakeLockInfo();
 	}
@@ -79,6 +79,11 @@ public class WakeLockInstance extends ObjectInstance {
 		this.info = new WakeLockInfo();
 	}
 
+
+	public WakeLockInstance(IMethod m, int v) {
+		super(m,v);
+		this.info = new WakeLockInfo();
+	}
 
 	public int hashCode() {
 		return creationPP.hashCode();
@@ -92,7 +97,7 @@ public class WakeLockInstance extends ObjectInstance {
 		return false;				
 	}
 	
-	public SSAProgramPoint getPP() {
+	public CreationPoint getPP() {
 		return creationPP;
 	}
 
@@ -101,8 +106,9 @@ public class WakeLockInstance extends ObjectInstance {
 	}
 	
 	public String toString() {
-		return (((field!=null)?field.toString():"NO_FIELD") + 
-				" Created: " + ((creationPP!=null)?creationPP.toString():"null")); 
+		return (((field!=null)?field.toString():"") 
+				+ ((creationPP!=null)?("\nCreated: " + creationPP.toString()):"")
+				+ ((method!=null)?("\nTypParam: " + method.getSelector().toString() + " - " + param):"")); 
 	}
 	
 	public String toShortString() {

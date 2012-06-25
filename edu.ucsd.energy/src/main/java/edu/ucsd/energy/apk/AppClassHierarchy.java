@@ -79,7 +79,7 @@ public class AppClassHierarchy {
    * @param klass
    * @return
    */
-  public ArrayList<IClass> getClassAncestors(IClass klass) {
+  public static ArrayList<IClass> getClassAncestors(IClass klass) {
     ArrayList<IClass> classList = new ArrayList<IClass>();
     IClass currentClass = klass;
     IClass superClass;

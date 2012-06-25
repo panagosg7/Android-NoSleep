@@ -1,22 +1,26 @@
 package edu.ucsd.energy.managers;
 
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.TypeName;
 
 import edu.ucsd.energy.contexts.Context;
-import edu.ucsd.energy.util.SSAProgramPoint;
 
 public abstract class AbstractRunnableInstance extends ObjectInstance {
 
 	protected SSANewInstruction newInstr;	
 
-	public AbstractRunnableInstance(SSAProgramPoint pp) {
+	public AbstractRunnableInstance(CreationPoint pp) {
 		super(pp);
 	}
 
 	public AbstractRunnableInstance(FieldReference field) {
 		super(field);
+	}
+
+	public AbstractRunnableInstance(IMethod m, int v) {
+		super(m,v);
 	}
 
 	public SSANewInstruction getCreationInstruction() {
@@ -29,10 +33,10 @@ public abstract class AbstractRunnableInstance extends ObjectInstance {
 	private Context calledComponent;
 	
 	public String toString() {
-		return (" - CREATE: " + ((creationPP!=null)?creationPP.toString():"null") 
-				+ "\n" + "   CALLEE: " + ((callee!=null)?callee.toString():"null")
-				+ "\n" + "   FIELD : " + ((field!=null)?field.toString():"null")
-			);
+		return (((field!=null)?("Field: " + field.toString()):"") 
+				+ ((creationPP!=null)?("\nCreated: " + creationPP.toString()):"")
+				+ ((callee!=null)?("\nCalleeType: " + callee.toString()):"")
+				+ ((method!=null)?("\nTypParam: " + method.getSelector().toString() + " - " + param):""));
 	}
 
 	public void setCalledType(TypeName calledType) {

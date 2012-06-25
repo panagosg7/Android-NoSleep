@@ -98,5 +98,9 @@ public class E {
   public static void resetColor() {
   	System.out.print("\033[0m");
   }
+
+	public static void green() {
+		System.out.print("\033[32m");		
+	}
   
 }
