@@ -1,6 +1,8 @@
 package edu.ucsd.energy.component;
 
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -11,11 +13,14 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
+import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.collections.Filter;
 import com.ibm.wala.util.collections.IndiscriminateFilter;
 import com.ibm.wala.util.collections.Pair;
+import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.graph.GraphReachability;
 import com.ibm.wala.util.graph.impl.NodeWithNumber;
 import com.ibm.wala.util.intset.IntIterator;
@@ -31,14 +36,16 @@ import edu.ucsd.energy.interproc.LockingTabulationSolver.LockingResult;
 import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
+import edu.ucsd.energy.util.E;
 import edu.ucsd.energy.util.Util;
 
-public abstract class AbstractComponent extends NodeWithNumber implements IContext {
+public abstract class AbstractContext extends NodeWithNumber implements IContext {
 
 	protected GlobalManager 	global;  
 
 	protected CallGraph 		componentCallgraph;
 
+	//The whole application call graph
 	protected AppCallGraph 		originalCallgraph;
 
 	protected AbstractContextCFG icfg = null;
@@ -46,12 +53,28 @@ public abstract class AbstractComponent extends NodeWithNumber implements IConte
 	protected ISupergraph<BasicBlockInContext<IExplodedBasicBlock>, CGNode> supergraph = null;
 
 
-	public AbstractComponent(GlobalManager gm) {
+	public AbstractContext(GlobalManager gm) {
 		global = gm;
 		originalCallgraph = gm.getAppCallGraph();
 	}
 
-	abstract public CallGraph getCallGraph();
+	/**
+	 * The callgraph of the specific abstract context - not the whole application 
+	 */
+	abstract public CallGraph getContextCallGraph();
+	
+	private Set<MethodReference> sMethRef;
+	
+	public Set<MethodReference> getMethodReferences() {
+		if(sMethRef == null) {
+			sMethRef = new HashSet<MethodReference>();
+			for (Iterator<CGNode> it = getContextCallGraph().iterator(); it.hasNext(); ) {
+				sMethRef.add(it.next().getMethod().getReference());			
+			}
+		}
+		return sMethRef;
+	}
+		
 
 	protected Set<CGNode> getDescendants(CallGraph cg, CGNode node) {
 		Filter<CGNode> filter = IndiscriminateFilter.<CGNode> singleton();
@@ -94,6 +117,7 @@ public abstract class AbstractComponent extends NodeWithNumber implements IConte
 		csSolver = lockingProblem.analyze();    
 		csDomain = lockingProblem.getDomain();
 		cacheStates();
+		solved  = true;
 	}
 
 	//No so elegant way to keep the states for every method in the graph
@@ -101,11 +125,12 @@ public abstract class AbstractComponent extends NodeWithNumber implements IConte
 	private HashMap<IExplodedBasicBlock, CompoundLockState> mEBBState;
 	private HashMap<BasicBlockInContext<IExplodedBasicBlock>, CompoundLockState> mBBICState;
 
+	private boolean solved = false;
+
 	private void cacheStates() {
 		mInstrState = new HashMap<SSAInstruction, CompoundLockState>();
 		mEBBState = new HashMap<IExplodedBasicBlock, CompoundLockState>();
 		mBBICState = new HashMap<BasicBlockInContext<IExplodedBasicBlock>, CompoundLockState>();
-
 		Iterator<BasicBlockInContext<IExplodedBasicBlock>> iterator = getSupergraph().iterator();
 		while (iterator.hasNext()) {
 			BasicBlockInContext<IExplodedBasicBlock> bb = iterator.next();
@@ -122,7 +147,6 @@ public abstract class AbstractComponent extends NodeWithNumber implements IConte
 			}
 			mEBBState.put(bb.getDelegate(), q);
 			mBBICState.put(bb, q);
-			//E.log(1, bb.toShortString() + " : " + q.toShortString());
 		}
 
 	}
@@ -136,19 +160,75 @@ public abstract class AbstractComponent extends NodeWithNumber implements IConte
 
 	
 	public CompoundLockState getExitState(CGNode n) {
+		needsSolved();
 		return mBBICState.get(getICFG().getExit(n));
 	}
 
 	public CompoundLockState getState(BasicBlockInContext<IExplodedBasicBlock> i) {
+		needsSolved();
 		return mBBICState.get(i);
 	}
 
 	public CompoundLockState getState(IExplodedBasicBlock i) {
+		needsSolved();
 		return mEBBState.get(i);
 	}
 
 	public CompoundLockState getState(SSAInstruction i) {
+		needsSolved();
 		return mInstrState.get(i);
 	}
+	
+	protected void needsSolved() {
+		if (solved) {
+			return;
+		}
+		Assertions.UNREACHABLE("Need to solve the component before querying state.");
+	}
 
+	
+	private Set<Pair<MethodReference, SSAInvokeInstruction>> unresolvedHighState;
+	
+	/**
+	 * We need to ensure that we are not missing a high energy state propagation due 
+	 * to failure to resolve an Intent. 
+	 * 
+	 * @return
+	 */
+	public Set<Pair<MethodReference, SSAInvokeInstruction>> getHightStateUnresolvedIntents(
+			Collection<Pair<MethodReference, SSAInvokeInstruction>> unresolvedInstrucions) {
+
+		needsSolved();
+		
+
+		if (unresolvedHighState == null) {
+			unresolvedHighState = new HashSet<Pair<MethodReference,SSAInvokeInstruction>>();
+			for (Pair<MethodReference, SSAInvokeInstruction> p : unresolvedInstrucions) {
+				MethodReference mr = p.fst;
+				if(getMethodReferences().contains(mr)) {
+					//This method belongs to this context, so check instruction
+					CompoundLockState state = getState(p.snd);
+					if (!state.isEmpty()) {
+						if (state.simplify().acquired()) {
+							unresolvedHighState.add(p);
+							E.log(1, this.toString());
+							E.log(1, "ADDING:" + p.toString());
+						}
+						else {
+							E.log(1, this.toString());
+							E.log(1, "NOT ADDING:" + p.toString());
+						}
+					}
+					else {
+						E.log(1, this.toString());
+						E.log(1, "NOT ADDING:" + p.toString());
+					}
+				}
+			}
+		}
+		return unresolvedHighState;
+		
+	}
+
+	
 }

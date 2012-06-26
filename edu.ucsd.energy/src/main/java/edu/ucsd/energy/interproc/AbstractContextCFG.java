@@ -18,7 +18,7 @@ import com.ibm.wala.ssa.analysis.ExplodedControlFlowGraph;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.util.collections.Pair;
 
-import edu.ucsd.energy.component.AbstractComponent;
+import edu.ucsd.energy.component.AbstractContext;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.util.E;
 
@@ -30,7 +30,7 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 
 	private static final int DEBUG = 2;
 
-	protected AbstractComponent component;
+	protected AbstractContext component;
 
 	protected CallGraph callgraph;
 
@@ -160,7 +160,7 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 		return explodedBasicBlock;
 	}
 
-	public AbstractComponent getComponent() {
+	public AbstractContext getComponent() {
 		return component;
 	}
 

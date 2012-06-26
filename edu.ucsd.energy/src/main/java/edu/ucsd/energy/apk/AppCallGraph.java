@@ -19,7 +19,6 @@ import com.ibm.wala.cfg.cdg.ControlDependenceGraph;
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
-import com.ibm.wala.core.tests.callGraph.CallGraphTestUtil;
 import com.ibm.wala.examples.drivers.PDFTypeHierarchy;
 import com.ibm.wala.examples.properties.WalaExamplesProperties;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
@@ -56,7 +55,6 @@ import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.collections.CollectionFilter;
 import com.ibm.wala.util.collections.Filter;
-import com.ibm.wala.util.config.AnalysisScopeReader;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphUtil;
@@ -87,7 +85,7 @@ public class AppCallGraph implements CallGraph {
 	// Analysis parameters
 	private AnalysisScope scope = null;
 	private AnalysisOptions options = null;
-	private AppClassHierarchy cha = null;
+	private ClassHierarchy cha = null;
 	
 	private HashSet<Entrypoint> entrypoints = null;
 	private AnalysisCache cache = null;
@@ -113,12 +111,13 @@ public class AppCallGraph implements CallGraph {
 		return targetCGNodeHash;
 	}
 
-	public AppCallGraph(AppClassHierarchy cha) throws IllegalArgumentException, WalaException, CancelException,	IOException {
-		this.cha = cha;
-		String appJar = cha.getAppJar();
-		String exclusionFile = cha.getExclusionFileName();
+	public AppCallGraph(ClassHierarchy ch) throws IllegalArgumentException, WalaException, CancelException,	IOException {
+		this.cha = ch;
+		//String appJar = cha.getAppJar();
+		//String exclusionFile = cha.getExclusionFileName();
+		
 		// Get the graph on which we will work
-		g = buildPrunedCallGraph(appJar, FileProvider.getFile(exclusionFile));
+		g = buildPrunedCallGraph(/*appJar, FileProvider.getFile(exclusionFile)*/);
 		if (Opts.OUTPUT_CG_DOT_FILE) {
 			outputCallGraphToDot(g);
 			outputCFGs();
@@ -162,17 +161,18 @@ public class AppCallGraph implements CallGraph {
 	 * @throws IllegalArgumentException
 	 * @throws IOException
 	 */
-	private CallGraph buildPrunedCallGraph(String appJar, File exclusionFile)
+	private CallGraph buildPrunedCallGraph(/*String appJar, File exclusionFile*/)
 			throws WalaException, IllegalArgumentException, CancelException,
 			IOException {
 
 		// Get application scope
-		scope = AnalysisScopeReader.makeJavaBinaryAnalysisScope(appJar,
-				exclusionFile != null ? exclusionFile : new File(CallGraphTestUtil.REGRESSION_EXCLUSIONS));
+		
+		scope = cha.getScope();
+		//AnalysisScopeReader.makeJavaBinaryAnalysisScope(appJar,
+		//	exclusionFile != null ? exclusionFile : new File(CallGraphTestUtil.REGRESSION_EXCLUSIONS));
 
 		// Must use this - WALA assumes that entry point is just main
-		ClassHierarchy classHierarchy = cha.getClassHierarchy();
-		entrypoints = new AllApplicationEntrypoints(scope, classHierarchy);
+		entrypoints = new AllApplicationEntrypoints(scope, cha);
 		options = new AnalysisOptions(scope, entrypoints);
 		cache = new AnalysisCache();
 		targetCGNodeHash = new Hashtable<String, CGNode>();
@@ -180,7 +180,7 @@ public class AppCallGraph implements CallGraph {
 		E.log(0, "#Nodes: " + entrypoints.size());
 
 		/* Build the call graph */
-		CallGraphBuilder builder = Util.makeZeroCFABuilder(options, cache, classHierarchy, scope);
+		CallGraphBuilder builder = Util.makeZeroCFABuilder(options, cache, cha, scope);
 		
 		ExplicitCallGraph cg = (ExplicitCallGraph) builder.makeCallGraph(options, null);
 		
@@ -447,7 +447,7 @@ public class AppCallGraph implements CallGraph {
 		while ((str = targetBuffer.readLine()) != null) {
 			targetMethods.add(str);
 		}
-		for (IClass iclass : cha.getClassHierarchy()) {
+		for (IClass iclass : cha) {
 			TypeName clname = iclass.getName();
 			for (String targetMethodName : targetMethods) {
 				String targetClassName = "L"

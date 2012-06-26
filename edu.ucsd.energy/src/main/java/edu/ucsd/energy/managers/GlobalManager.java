@@ -1,13 +1,9 @@
 package edu.ucsd.energy.managers;
 
-import java.io.IOException;
-
 import com.ibm.wala.ipa.cha.ClassHierarchy;
-import com.ibm.wala.util.CancelException;
-import com.ibm.wala.util.WalaException;
 
 import edu.ucsd.energy.apk.AppCallGraph;
-import edu.ucsd.energy.apk.AppClassHierarchy;
+import edu.ucsd.energy.apk.ClassHierarchyUtils;
 import edu.ucsd.energy.conditions.SpecialConditions;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ViolationReport;
@@ -16,7 +12,7 @@ public class GlobalManager {
 
 	private String appJar;
 	private String excludionFile;
-	private AppClassHierarchy ch;
+	private ClassHierarchy ch;
 	private AppCallGraph cg;
 	private ComponentManager cm;
 	private WakeLockManager wakeLockManager;
@@ -29,25 +25,15 @@ public class GlobalManager {
 		this.excludionFile = exclusionFile;		
 	}
 
-	public void createClassHierarchy() {
-		try {
-			ch = new AppClassHierarchy(appJar, excludionFile);
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (WalaException e) {
-			e.printStackTrace();
-		}
-	}
-
-	public void createAppCallGraph() throws IllegalArgumentException, WalaException, CancelException, IOException {
-		cg = new AppCallGraph(ch);
-	}
-
 	public ClassHierarchy getClassHierarchy() {
 		if (ch == null) {
-			createClassHierarchy();
+			try {
+				ch = ClassHierarchyUtils.make(appJar, excludionFile);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
-		return ch.getClassHierarchy();
+		return ch;
 	}
 	
 	public void createComponentManager() {
@@ -103,6 +89,13 @@ public class GlobalManager {
 	}
 
 	public AppCallGraph getAppCallGraph() {
+		if (cg == null) {
+			try {
+				cg = new AppCallGraph(getClassHierarchy());
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
 		return cg;
 	}
 

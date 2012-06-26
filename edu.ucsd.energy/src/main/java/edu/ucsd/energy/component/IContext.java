@@ -12,7 +12,7 @@ public interface IContext {
 
 	public AbstractContextCFG makeCFG();
 	
-	public CallGraph getCallGraph();
+	public CallGraph getContextCallGraph();
 	
 	public void solve();
 	

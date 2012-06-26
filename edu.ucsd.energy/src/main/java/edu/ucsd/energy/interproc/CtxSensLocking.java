@@ -26,7 +26,7 @@ import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 
 import edu.ucsd.energy.apk.Interesting;
-import edu.ucsd.energy.component.AbstractComponent;
+import edu.ucsd.energy.component.AbstractContext;
 import edu.ucsd.energy.conditions.SpecialConditions;
 import edu.ucsd.energy.conditions.SpecialConditions.SpecialCondition;
 import edu.ucsd.energy.interproc.LockingTabulationSolver.LockingResult;
@@ -41,7 +41,7 @@ public class CtxSensLocking {
 	/**
 	 * The underlying Inter-procedural Control Flow Graph
 	 */
-	private AbstractComponent component;
+	private AbstractContext component;
 	
 	private AbstractContextCFG icfg;	
 	
@@ -72,7 +72,7 @@ public class CtxSensLocking {
 		}
 	}
 
-	public CtxSensLocking(AbstractComponent comp) {
+	public CtxSensLocking(AbstractContext comp) {
 		 //We already have created our SensibleExplodedInterproceduralCFG which
 		 //contains extra edges compared to the exploded i-cfg WALA usually creates
 		this.component = comp;

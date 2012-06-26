@@ -14,7 +14,7 @@ import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.collections.HashSetMultiMap;
 import com.ibm.wala.util.collections.Pair;
 
-import edu.ucsd.energy.component.AbstractComponent;
+import edu.ucsd.energy.component.AbstractContext;
 import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.contexts.Context;
 
@@ -67,15 +67,15 @@ public class SuperContextCFG extends AbstractContextCFG {
 	
 	public SuperContextCFG(
 		//the abstract component
-		AbstractComponent component,
+		AbstractContext component,
 		//Pairs of edges within the same context
 		Set<Pair<CGNode, CGNode>> packedEdges,
 		//Edges between different contexts
 		Map<SSAInstruction, Context> seeds) {
 		
-		  super(component.getCallGraph());
+		  super(component.getContextCallGraph());
 		  this.component = component;
-		  this.callgraph = component.getCallGraph();
+		  this.callgraph = component.getContextCallGraph();
 		  /* Will only work like this - loses laziness. */
 		  constructFullGraph();
 		  

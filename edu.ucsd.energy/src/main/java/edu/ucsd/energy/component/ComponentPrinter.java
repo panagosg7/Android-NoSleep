@@ -29,7 +29,7 @@ import edu.ucsd.energy.util.SystemUtil;
 import edu.ucsd.energy.viz.GraphDotUtil;
 import edu.ucsd.energy.viz.IColorNodeDecorator;
 
-public class ComponentPrinter<T extends AbstractComponent> {
+public class ComponentPrinter<T extends AbstractContext> {
 
 	Properties p = WalaExamplesProperties.properties;
 
@@ -45,7 +45,7 @@ public class ComponentPrinter<T extends AbstractComponent> {
 
 	public ComponentPrinter(T component) {
 		this.component = component;
-		this.componentCallgraph = component.getCallGraph();
+		this.componentCallgraph = component.getContextCallGraph();
 		this.icfg = component.getICFG();
 	}
 
@@ -57,7 +57,7 @@ public class ComponentPrinter<T extends AbstractComponent> {
 		else if (component instanceof SuperComponent) {
 			prefix = "supercomponent_callgraphs";
 		}
-		outputCallGraph(component.getCallGraph(), prefix);
+		outputCallGraph(component.getContextCallGraph(), prefix);
 	}
 
 	private void outputCallGraph(CallGraph cg, String prefix) {

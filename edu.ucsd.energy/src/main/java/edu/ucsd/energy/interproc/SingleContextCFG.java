@@ -8,7 +8,7 @@ import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
 
-import edu.ucsd.energy.component.AbstractComponent;
+import edu.ucsd.energy.component.AbstractContext;
 import edu.ucsd.energy.contexts.Context;
 
 public class SingleContextCFG extends AbstractContextCFG {
@@ -17,10 +17,10 @@ public class SingleContextCFG extends AbstractContextCFG {
 	   * Constructor that the component and the pairs of methods (Signatures) that need to 
 	   * be connected.
 	   */
-	  public SingleContextCFG(AbstractComponent component, Set<Pair<CGNode, CGNode>> packedEdges) {
-		  super(component.getCallGraph());
+	  public SingleContextCFG(AbstractContext component, Set<Pair<CGNode, CGNode>> packedEdges) {
+		  super(component.getContextCallGraph());
 		  this.component = component;
-		  this.callgraph = component.getCallGraph();
+		  this.callgraph = component.getContextCallGraph();
 		  /* Will only work like this - loses laziness. */
 		  constructFullGraph();
 		  addReturnToEntryEdge(packedEdges);  

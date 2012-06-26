@@ -50,6 +50,11 @@ public class CompoundLockState {
 		return result;
 	}
 	
+	/**
+	 * Simplified version of a CompoundLockState. 
+	 * Handy for doing simple "is high energy state" checks.
+	 * @return
+	 */
 	public SingleLockState simplify() {
 		SingleLockState result = null;
 		for (SingleLockState e : map.values()) {

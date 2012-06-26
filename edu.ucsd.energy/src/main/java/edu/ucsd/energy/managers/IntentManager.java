@@ -98,24 +98,19 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 	
 	/**
 	 * Try to figure out what kind of class is associated with this Intent. 
-	 * There are cases where this depends heavily on dynamic info, like for 
-	 * example:
-	 * NetCounter:
-	 * net/jaqpot/netcounter/activity/NetCounterActivity$2.onClick:
-	 * 	paramInt = Uri.parse(this.this$0.getString(2131099665));
-     * 	paramDialogInterface = new android/content/Intent;
-     * 	paramDialogInterface.<init>("android.intent.action.VIEW", paramInt);
 	 */
 	private void visitIntentInit(SSAInvokeInstruction inv, IntentInstance ii) {
 		MethodReference declaredTarget = inv.getDeclaredTarget();
 		Selector selector = declaredTarget.getSelector();
 		
 		if (selector.equals(Selector.make("<init>(Landroid/content/Context;Ljava/lang/Class;)V"))) {
+			//Create an intent for a specific component.
 			//The second argument specifies the called component class
 			setCalledType(inv, 2, ii);
 		}
 		else if (	selector.equals(Selector.make("<init>(Ljava/lang/String;Landroid/net/Uri;)V")) ||
 							selector.equals(Selector.make("<init>(Ljava/lang/String;)V"))) {
+			//Create an intent with a given action (and data Uri)
 			int use = inv.getUse(1);
 			if (ir.getSymbolTable().isConstant(use)) {
 				Object constantValue = ir.getSymbolTable().getConstantValue(use);
@@ -123,10 +118,11 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 			}
 		}
 		else if (	selector.equals(Selector.make("<init>()V"))) {
-			
+			//No information is passed here
 		}
 		else if (	selector.equals(Selector.make("<init>(Ljava/lang/String;" +
 				"Landroid/net/Uri;Landroid/content/Context;Ljava/lang/Class;)V"))) {
+		//Create an intent for a specific component with a specified action and data.
 		//The fourth argument specifies the called component class
 			setCalledType(inv, 4, ii);
 		}
@@ -159,31 +155,33 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 
 	@Override
 	protected void handleSpecialCalls(SSAInvokeInstruction inv) {
-		String methName = inv.getDeclaredTarget().getName().toString();
-		if (methName.contains("setComponent")) {
+		Selector methSel = inv.getDeclaredTarget().getSelector();
+		
+		if (methSel.equals(Selector.make("setComponent(Landroid/content/ComponentName;)Landroid/content/Intent"))) {
 			//TODO: this will not be so easy due to resolving ComponentName
 			E.yellow();
 			System.out.println("Setting Component: " + method);
 			System.out.println("  " + inv.toString());
 			E.resetColor();
 		}
-		if (methName.contains("setClassName")) {
+		if (methSel.toString().contains("setClassName")) {
 			//TODO
 			E.yellow();
-			System.out.println("Setting Component: " + inv.toString());
+			System.out.println("Could not handle special Intent call to: " + methSel.toString());
+			System.out.println("  in method: " + method);
 			E.resetColor();
 		}
 		/*
 		 * public Intent setClass (Context packageContext, Class<?> cls)
 		 */
-		if (methName.contains("setClass")) {
+		if (methSel.toString().contains("setClass")) {
 
 			//the Intent is the 0th parameter
 			IntentInstance ii = traceInstanceNoCreate(inv.getUse(0));
 			
 			if (ii != null) {
 				if (DEBUG > 0) {
-					System.out.println("Meth: " + methName);
+					System.out.println("Meth: " + methSel.toString());
 					System.out.println("Setting Component: " + inv.toString());
 				}
 				setCalledType(inv, 2, ii);	
@@ -260,8 +258,6 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 		interestingTypes = new HashSet<IClass>();
 		interestingTypes.add(gm.getClassHierarchy().lookupClass(Interesting.IntentTypeRef));		
 	}
-
-
 
 	
 }

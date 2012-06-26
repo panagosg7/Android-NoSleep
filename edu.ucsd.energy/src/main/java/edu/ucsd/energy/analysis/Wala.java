@@ -31,8 +31,6 @@ public class Wala {
 			edu.ucsd.energy.util.Util.printLabel(mPath.getAbsolutePath());	
 		}
 		GlobalManager gm = new GlobalManager(appJar, exclusionFile);
-		gm.createClassHierarchy();
-		gm.createAppCallGraph();
 		gm.createComponentManager();
 		
 		gm.createWakeLockManager();
@@ -57,8 +55,6 @@ public class Wala {
 			edu.ucsd.energy.util.Util.printLabel(mPath.getAbsolutePath());	
 		}
 		GlobalManager gm = new GlobalManager(appJar, exclusionFile);
-		gm.createClassHierarchy();
-		gm.createAppCallGraph();
 		gm.createComponentManager();
 		
 		gm.createWakeLockManager();
@@ -92,8 +88,6 @@ public class Wala {
 			edu.ucsd.energy.util.Util.printLabel(mPath.getAbsolutePath());	
 		}
 		GlobalManager gm = new GlobalManager(appJar, exclusionFile);
-		gm.createClassHierarchy();
-		gm.createAppCallGraph();
 		gm.createComponentManager();
 		
 		gm.createWakeLockManager();

@@ -16,6 +16,8 @@ import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
+import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
@@ -23,14 +25,18 @@ import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.collections.CollectionFilter;
 import com.ibm.wala.util.collections.Filter;
+import com.ibm.wala.util.collections.HashSetMultiMap;
+import com.ibm.wala.util.collections.Iterator2Collection;
+import com.ibm.wala.util.collections.Iterator2Set;
+import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.graph.GraphReachability;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.graph.traverse.DFSPathFinder;
 
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.apk.AppCallGraph;
-import edu.ucsd.energy.apk.AppClassHierarchy;
-import edu.ucsd.energy.component.AbstractComponent;
+import edu.ucsd.energy.apk.ClassHierarchyUtils;
+import edu.ucsd.energy.component.AbstractContext;
 import edu.ucsd.energy.component.ComponentPrinter;
 import edu.ucsd.energy.component.SuperComponent;
 import edu.ucsd.energy.contexts.Activity;
@@ -48,6 +54,7 @@ import edu.ucsd.energy.contexts.OnCompletionListener;
 import edu.ucsd.energy.contexts.OnSharedPreferenceChangeListener;
 import edu.ucsd.energy.contexts.PhoneStateListener;
 import edu.ucsd.energy.contexts.RunnableThread;
+import edu.ucsd.energy.contexts.SQLiteOpenHelper;
 import edu.ucsd.energy.contexts.SensorEventListener;
 import edu.ucsd.energy.contexts.Service;
 import edu.ucsd.energy.contexts.ServiceConnection;
@@ -132,24 +139,30 @@ public class ComponentManager {
 	int unresolvedClasses = 0;
 	int totalClassesChecked = 0;
 	int resolvedConstructors = 0;
-	
+
+	int danglingMethods = 0;
+
 	public void resolveComponents() {
 
 		ClassHierarchy ch = global.getClassHierarchy();
+
+		//Keep the nodes that belong to some context
+		Set<CGNode> sNodes = new HashSet<CGNode>();
+
 		for(IClass c : ch) {
-			
+
 			//Avoid primordial (system) classes
 			if(c.getClassLoader().getReference().equals(ClassLoaderReference.Primordial)) {
 				continue;
 			}
-			
+
 			TypeName type = c.getName();
 			//This is probably going to fail
 			Context context = componentMap.get(type);
-			
+
 			if (context == null) {
 				// A class can only extend one class so order does not matter
-				ArrayList<IClass> classAncestors = AppClassHierarchy.getClassAncestors(c);
+				ArrayList<IClass> classAncestors = ClassHierarchyUtils.getClassAncestors(c);
 				for (IClass anc : classAncestors) {
 					String ancName = anc.getName().toString();
 					if (ancName.equals("Landroid/app/Activity")) {
@@ -181,6 +194,9 @@ public class ComponentManager {
 					}
 					if (ancName.equals("Landroid/telephony/PhoneStateListener")) {
 						context = new PhoneStateListener(global, c);
+					}
+					if (ancName.equals("Landroid/database/sqlite/SQLiteOpenHelper")) {
+						context = new SQLiteOpenHelper(global, c);
 					}
 				}
 			}
@@ -221,14 +237,16 @@ public class ComponentManager {
 					context = new OnCompletionListener(global, c);
 				}
 			}
-			
+
 			if (context != null) {
 				//Add the methods declared by this class or any of its super-classes to the 
 				//relevant component. This takes care of the previous bug, where methods 
 				//inherited from super-classes, were missing from the child components
 				for (IMethod m : c.getAllMethods()) {
-					context.addNodes(originalCG.getNodes(m.getReference()));
+					Set<CGNode> nodes = originalCG.getNodes(m.getReference());
+					context.addNodes(nodes);
 				}
+				sNodes.addAll(Iterator2Collection.toSet(context.getContextCallGraph().iterator()));
 				registerComponent(c.getReference(), context);
 				resolvedClasses++;
 
@@ -243,13 +261,27 @@ public class ComponentManager {
 					if (DEBUG > 1) {
 						outputUnresolvedInfo(c);
 					}
-					
+
 					E.resetColor();
 				}
 				unresolvedClasses++;
 			}
 		} // for IClass c
+
 		
+		//Find the dangling nodes - these nodes might actually not be reachable at all ...
+		Collection<CGNode> allNodes = Iterator2Collection.toSet(global.getAppCallGraph().iterator());
+		for (CGNode n : allNodes ) {
+			if (!sNodes.contains(n)) {
+				danglingMethods++;
+				if (DEBUG > 0) {
+					E.red();
+					System.out.println("Not in any context: " + n.getMethod().getSignature());
+					E.resetColor();
+				}
+			}
+		}
+
 		resolutionStats();
 
 	}
@@ -267,11 +299,13 @@ public class ComponentManager {
 		String fst = String.format("%-30s: %d (%.2f %%)", "Resolved classes", resolvedClasses,        
 				100 * ((double) resolvedClasses / (double) totalClassesChecked));
 		System.out.println(fst);
-		fst = String.format("%-30s: %d (%.2f %%)", "Resolved classes", unresolvedClasses,        
+		fst = String.format("%-30s: %d (%.2f %%)", "UnResolved classes", unresolvedClasses,        
 				100 * ((double) unresolvedClasses / (double) totalClassesChecked));
 		System.out.println(fst);
 		System.out.println("------------------------------------------");
 
+		fst = String.format("%-30s: %d", "Dangling nodes", danglingMethods);
+		System.out.println(fst);
 		fst = String.format("%-30s: %d", "Total nodes", originalCG.getNumberOfNodes());
 		System.out.println(fst);
 		System.out.println("==========================================\n");
@@ -295,7 +329,7 @@ public class ComponentManager {
 	private void fillMethod2Component() {
 		method2Component =  new HashMap<MethodReference, Set<Context>>();
 		for (Context comp : getComponents()) {
-			for (Iterator<CGNode> it = comp.getCallGraph().iterator(); it.hasNext(); ) {
+			for (Iterator<CGNode> it = comp.getContextCallGraph().iterator(); it.hasNext(); ) {
 				CGNode node = it.next();
 				MethodReference mr = node.getMethod().getReference();
 				Set<Context> sComponents = method2Component.get(mr);
@@ -319,15 +353,15 @@ public class ComponentManager {
 
 	private  void outputUnresolvedInfo(IClass c) {
 		Collection<IClass> allImplementedInterfaces = c.getAllImplementedInterfaces();
-		for (IClass anc :  AppClassHierarchy.getClassAncestors(c)) {
+		for (IClass anc :  ClassHierarchyUtils.getClassAncestors(c)) {
 			System.out.println("#### CL: " + anc.getName().toString());
 		}
 		for (IClass intf : allImplementedInterfaces) {
 			System.out.println("#### IF: " + intf.getName().toString());
 		}
 	}
-	
-	
+
+
 
 	public boolean implementsInterface(IClass klass, String string) {
 		for (IClass iI : klass.getAllImplementedInterfaces()) {
@@ -359,22 +393,25 @@ public class ComponentManager {
 		SparseNumberedGraph<Context> constraintGraph = GraphUtils.merge(rCG,iCG);
 		GraphUtils.dumpConstraintGraph(constraintGraph, "all_constraints");
 
+		Collection<? extends AbstractContext> componentSet;
+
 		if (!Opts.ANALYZE_SUPERCOMPONENTS) {
-			//Components
+			//Run the analysis just on the Components
 			Iterator<Context> bottomUpIterator = GraphUtils.topDownIterator(constraintGraph);
 			// Analyze the components based on this graph
 			while (bottomUpIterator.hasNext()) {
 				Context ctx = bottomUpIterator.next();
 				solveComponent(ctx);
 			}
+			componentSet = getComponents();
 		}
 		else {
 			//Create SuperComponents based on component constraints
 			Iterator<Set<Context>> scItr = GraphUtils.connectedComponentIterator(constraintGraph);
 			//SuperComponents: the sequence does not matter
 			while(scItr.hasNext()) {
-				Set<Context> next = scItr.next();	//The set of components that construct this supercomponent
-				SuperComponent superComponent = new SuperComponent(global, next);
+				Set<Context> sCtx = scItr.next();	//The set of components that construct this supercomponent
+				SuperComponent superComponent = new SuperComponent(global, sCtx);
 				if (DEBUG > 0) {
 					superComponent.dumpContainingComponents();
 				}
@@ -382,12 +419,28 @@ public class ComponentManager {
 				printer.outputSupergraph();
 				superComponents.add(superComponent);			
 				solveComponent(superComponent);
+
+			}
+			componentSet = getSuperComponents();
+		}
+
+		//Populate unresolved Intent on high state map.
+		mUnresIntents = new HashSetMultiMap<MethodReference, SSAInstruction>();
+		Collection<Pair<MethodReference, SSAInvokeInstruction>> unresolvedInstructions = 
+				global.getIntentManager().getUnresolvedCallSites();
+
+		//Warning: Be careful to use the correct set of contexts (super or regular)	
+		for (AbstractContext c : componentSet) {
+			for (Pair<MethodReference, SSAInvokeInstruction> p :
+				c.getHightStateUnresolvedIntents(unresolvedInstructions)) {
+				mUnresIntents.put(p.fst, p.snd);
 			}
 		}
+
 	}
 
 
-	private <T extends AbstractComponent> void solveComponent(T component) {
+	private <T extends AbstractContext> void solveComponent(T component) {
 
 		if (DEBUG > 0) {
 			System.out.println("Solving: " + component.toString());
@@ -413,6 +466,7 @@ public class ComponentManager {
 			}
 		}
 		component.solve();
+
 		if(Opts.OUTPUT_COLOR_CFG_DOT) {
 			componentPrinter.outputColoredCFGs();
 		}      
@@ -421,6 +475,16 @@ public class ComponentManager {
 		}
 	}
 
+
+	private HashSetMultiMap<MethodReference, SSAInstruction> mUnresIntents;
+
+	public HashSetMultiMap<MethodReference, SSAInstruction> getImportantUnresolvedIntents() {
+		if (mUnresIntents == null) {
+			solveComponents();
+		}
+		return mUnresIntents;
+
+	}
 
 	public ViolationReport getAnalysisResults() {
 		return new ProcessResults(this).processExitStates();

@@ -19,7 +19,7 @@ import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 
-import edu.ucsd.energy.component.AbstractComponent;
+import edu.ucsd.energy.component.AbstractContext;
 import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.component.SuperComponent;
 import edu.ucsd.energy.interproc.CompoundLockState;
@@ -28,7 +28,7 @@ import edu.ucsd.energy.interproc.LifecycleGraph.SensibleCGNode;
 import edu.ucsd.energy.interproc.SingleContextCFG;
 import edu.ucsd.energy.managers.GlobalManager;
 
-public abstract class Context extends AbstractComponent {
+public abstract class Context extends AbstractContext {
 
 	private static final int DEBUG = 0;
 
@@ -40,6 +40,7 @@ public abstract class Context extends AbstractComponent {
 	//Nodes that belong to the class that created this component
 	//Call Graph construction might bring in more nodes.
 	private Set<CGNode> sNode;
+
 
 
 	//Typical callbacks specified by API
@@ -77,7 +78,7 @@ public abstract class Context extends AbstractComponent {
 	}
 
 	
-	public CallGraph getCallGraph() {
+	public CallGraph getContextCallGraph() {
 		if (componentCallgraph == null) {
 			HashSet<CGNode> set = new HashSet<CGNode>();    
 			for (CGNode node : sNode ) {    	
@@ -114,7 +115,7 @@ public abstract class Context extends AbstractComponent {
 	private void gatherCallBacks() {
 		if (mActualCallback == null) {
 			mActualCallback = new HashMap<Selector, CallBack>();
-			for (CGNode node : GraphUtil.inferRoots(getCallGraph())) {
+			for (CGNode node : GraphUtil.inferRoots(getContextCallGraph())) {
 				Selector selector = node.getMethod().getSelector();
 				CallBack callback = CallBack.findOrCreateCallBack(node);
 				mActualCallback.put(selector, callback);
@@ -279,7 +280,7 @@ public abstract class Context extends AbstractComponent {
 
 
 	public Iterator<CGNode> getNodes() {
-		return getCallGraph().iterator();
+		return getContextCallGraph().iterator();
 	}
 
 	public String toFileName() {
@@ -302,6 +303,5 @@ public abstract class Context extends AbstractComponent {
 			return getExitState(cgNode);
 		}
 	}
-
 
 }

@@ -24,7 +24,7 @@ import edu.ucsd.energy.interproc.SuperContextCFG;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.util.E;
 
-public class SuperComponent extends AbstractComponent implements INodeWithNumber {
+public class SuperComponent extends AbstractContext implements INodeWithNumber {
 
 	private static final int DEBUG = 0;
 
@@ -149,7 +149,7 @@ public class SuperComponent extends AbstractComponent implements INodeWithNumber
 
 	public void dumpContainingComponents() {
 		E.log(1, "========================================");
-		E.log(1, "SuperComponent (#nodes: " + getCallGraph().getNumberOfNodes() + ") containing:");
+		E.log(1, "SuperComponent (#nodes: " + getContextCallGraph().getNumberOfNodes() + ") containing:");
 		for (Context c : sComponent) {
 			E.log(1, "\t" + c.toString());			
 		}
@@ -184,7 +184,7 @@ public class SuperComponent extends AbstractComponent implements INodeWithNumber
 	}
 
 	@Override
-	public CallGraph getCallGraph() {
+	public CallGraph getContextCallGraph() {
 		if (componentCallgraph == null) {
 			Collection<CGNode> nodeSet = new HashSet<CGNode>();
 			for (Context c : sComponent) {

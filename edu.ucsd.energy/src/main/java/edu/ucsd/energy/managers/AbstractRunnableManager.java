@@ -1,6 +1,7 @@
 package edu.ucsd.energy.managers;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -32,8 +33,12 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 
 	private SparseNumberedGraph<Context> constraintGraph;
 
+	private Collection<Pair<MethodReference, SSAInvokeInstruction>> unresolvedCallSites;
+
+
 	public AbstractRunnableManager(GlobalManager gm) {
 		super(gm);
+		unresolvedCallSites = new HashSet<Pair<MethodReference,SSAInvokeInstruction>>();
 	}
 
 	@Override
@@ -181,7 +186,8 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 
 
 	protected void sanityCheck() {
-		boolean sane = true;
+
+		
 		for (CGNode n : bottomUpList) {
 			node = n;
 			ir = n.getIR();
@@ -195,7 +201,7 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 						V v = mInstruction2Instance.get(key);
 						//TODO: check for resolved component -- stronger
 						if ((v != null) && (v.getCalledType() == null)) {
-							sane  = false;
+							unresolvedCallSites.add(key);
 							//we missed this interesting call
 							E.yellow();
 							System.out.println(getTag() + " in method" + method + " was not resolved successfully.");
@@ -208,17 +214,25 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 			}			
 		}
 		int size = mInstruction2Instance.size();
-		if (sane) {
+		if (unresolvedCallSites.size() == 0) {
 			E.green();			
-			System.out.println("All " + getTag() + " calls (" + size + ") were resolved successfully.\n");
+			System.out.println("All " + getTag() + " calls (" + size + 
+					") were resolved successfully.\n");
 			E.resetColor();
 		}
 		else {
 			E.yellow();			
-			System.out.println(size + " " + getTag() + " call sites were checked.\n");
+			System.out.println(unresolvedCallSites.size() + " out of " + size + " " + getTag() + 
+					" call sites were not resolved.\n");
 			E.resetColor();
+		}	
+	}
+
+	public Collection<Pair<MethodReference, SSAInvokeInstruction>> getUnresolvedCallSites() {
+		if (unresolvedCallSites == null) {
+			sanityCheck();
 		}
-		
-	}	
+		return unresolvedCallSites;
+	}
 
 }

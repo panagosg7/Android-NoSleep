@@ -102,5 +102,9 @@ public class E {
 	public static void green() {
 		System.out.print("\033[32m");		
 	}
+
+	public static void red() {
+		System.out.print("\033[31m");		
+	}
   
 }
