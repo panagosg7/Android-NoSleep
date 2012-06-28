@@ -28,7 +28,7 @@ import edu.ucsd.energy.util.GraphUtils;
 
 public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance> extends AbstractDUManager<V> { 
 
-	private final int DEBUG = 0;
+	private final int DEBUG = 2;
 
 
 	private SparseNumberedGraph<Context> constraintGraph;

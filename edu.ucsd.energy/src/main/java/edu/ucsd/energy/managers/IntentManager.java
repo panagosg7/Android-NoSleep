@@ -174,6 +174,8 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 		/*
 		 * public Intent setClass (Context packageContext, Class<?> cls)
 		 */
+		
+		
 		if (methSel.toString().contains("setClass")) {
 
 			//the Intent is the 0th parameter
@@ -197,6 +199,27 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 			}
 			
 		}
+		
+		
+		//Explicit stop of a service
+		if (methSel.equals(Selector.make("stopService(Landroid/content/Intent;)Z"))) {
+		//if (methSel.toString().contains("stopService")) {
+			
+			IntentInstance ii = traceInstanceNoCreate(inv.getUse(0));
+			if (ii != null) {
+				E.green();
+				System.out.println("Meth: " + methSel.toString());
+				System.out.println("Stopping Component: " + inv.toString());
+				System.out.println(ii.toString());
+			}
+			else {
+				E.red();
+				System.out.println("Meth: " + methSel.toString());
+				System.out.println("Stopping An Unresolved Intent Component: " + inv.toString());
+			}
+			E.resetColor();
+		}
+		
 	}
 
 	

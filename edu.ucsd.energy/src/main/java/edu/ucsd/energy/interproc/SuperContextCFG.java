@@ -20,7 +20,7 @@ import edu.ucsd.energy.contexts.Context;
 
 public class SuperContextCFG extends AbstractContextCFG {
 
-	private static final int DEBUG = 0;
+	private static final int DEBUG = 2;
 
 	//Keeps all the edges that connect different contexts
 	//Helps distinguish from function calls

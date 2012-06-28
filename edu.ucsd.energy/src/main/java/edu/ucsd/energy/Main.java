@@ -715,14 +715,15 @@ public class Main {
 				/* The applications you specify here need to be in apk_collection !!! */
 				//theSet.add("Unit_Wrong_04");
 				//theSet.add("Unit_Wrong_05");
-				//theSet.add("NetCounter");				//verified
-				//theSet.add("3D_Level");					//verified
-				//theSet.add("SpeakWrite");
-				//theSet.add("iZen_Lite");				//Correctly NOT verified
-				//theSet.add("Audalyzer");				//verified - but missing unresolved stuff
-				//theSet.add("TiltMazes");					//verified
-				theSet.add("SMS_Control_Center");
-				//theSet.add("Gmote");
+				theSet.add("Unit_Wrong_06");
+//				theSet.add("NetCounter");					//verified
+//				theSet.add("3D_Level");						//verified
+//				theSet.add("SpeakWrite");
+//				theSet.add("iZen_Lite");					//Correctly NOT verified
+//				theSet.add("Audalyzer");					//verified - but missing unresolved stuff
+//				theSet.add("TiltMazes");					//verified
+//				theSet.add("SMS_Control_Center");
+//				theSet.add("Gmote");
 			}
 			else if (line.hasOption("unit")) {
 				theSet.add("Unit_01");

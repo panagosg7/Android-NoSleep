@@ -37,7 +37,7 @@ import edu.ucsd.energy.results.ManagerReport;
  */
 public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 
-	private static final int DEBUG = 0;
+	private static final int DEBUG = 1;
 
 	public RunnableManager(GlobalManager gm) {
 		super(gm);

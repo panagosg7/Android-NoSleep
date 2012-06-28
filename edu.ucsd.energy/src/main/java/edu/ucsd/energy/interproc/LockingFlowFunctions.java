@@ -149,8 +149,22 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 					MutableSparseIntSet result = MutableSparseIntSet.makeEmpty();
 					if (releasedWL.equals(mappedObject.fst)) {
 						SingleLockState oldSt = mappedObject.snd;
-						SingleLockState newSt = new SingleLockState(false, false, oldSt.async());
-						result.add(ctxSensLocking.getDomain().add(Pair.make(releasedWL, newSt)));
+						
+
+
+						if (oldSt.async()) {
+							//If the incoming state is an asynchronous acquire then
+							//we cannot guarantee that this release is going to take 
+							//care of it, so we _ignore_ the relase operation.
+							result.add(d1);
+						}
+						else {
+							//If it is not an asynchronous operation then release is 
+							//used normally. 
+						
+							SingleLockState newSt = new SingleLockState(false, false, oldSt.async());
+							result.add(ctxSensLocking.getDomain().add(Pair.make(releasedWL, newSt)));
+						}
 					} 
 					else {
 						result.add(d1);

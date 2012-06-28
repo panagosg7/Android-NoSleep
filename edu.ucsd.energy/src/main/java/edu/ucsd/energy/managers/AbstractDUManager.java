@@ -36,7 +36,7 @@ import edu.ucsd.energy.util.GraphUtils;
 
 public abstract class AbstractDUManager<V extends ObjectInstance>  {
 
-	private int DEBUG = 0;
+	private int DEBUG = 2;
 
 	protected GlobalManager gm;
 
@@ -483,10 +483,6 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		
 		try {
 			TypeReference parameterType = method.getParameterType(paramIndex);
-			
-			if (DEBUG > 1) {
-				System.out.println("ParamType: " + parameterType.getName().toString());
-			}
 			
 			if (!isInterestingType(parameterType)) {
 				return null;	//only interesting stuff
