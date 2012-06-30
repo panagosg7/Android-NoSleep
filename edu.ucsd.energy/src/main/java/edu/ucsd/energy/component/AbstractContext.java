@@ -28,6 +28,7 @@ import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.OrdinalSet;
 
 import edu.ucsd.energy.apk.AppCallGraph;
+import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.interproc.AbstractContextCFG;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.CtxSensLocking;
@@ -197,10 +198,10 @@ public abstract class AbstractContext extends NodeWithNumber implements IContext
 	 */
 	public Set<Pair<MethodReference, SSAInvokeInstruction>> getHightStateUnresolvedIntents(
 			Collection<Pair<MethodReference, SSAInvokeInstruction>> unresolvedInstrucions) {
-
+		if (!callsInteresting()) {
+			return new HashSet<Pair<MethodReference,SSAInvokeInstruction>>();
+		}
 		needsSolved();
-		
-
 		if (unresolvedHighState == null) {
 			unresolvedHighState = new HashSet<Pair<MethodReference,SSAInvokeInstruction>>();
 			for (Pair<MethodReference, SSAInvokeInstruction> p : unresolvedInstrucions) {
@@ -230,5 +231,6 @@ public abstract class AbstractContext extends NodeWithNumber implements IContext
 		
 	}
 
+	abstract public Set<Context> getContainingContexts(CGNode node);
 	
 }

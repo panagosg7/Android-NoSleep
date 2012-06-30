@@ -9,16 +9,19 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 
+import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.AbstractContext;
 import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.component.SuperComponent;
@@ -48,6 +51,8 @@ public abstract class Context extends AbstractContext {
 
 	//This is going to be needed for the construction of the sensible graph
 	protected HashSet<Pair<Selector, Selector>> callbackEdges;
+
+	private Boolean callsInteresting = null;
 
 
 	/**
@@ -91,6 +96,37 @@ public abstract class Context extends AbstractContext {
 		return componentCallgraph;
 	}
 
+	
+	
+	/**
+	 * Determines if this context calls any interesting methods.
+	 * If it doesn't we don't really need to solve the component.
+	 * 
+	 * @return true is there are calls to interesting methods
+	 */
+	public boolean callsInteresting() {
+		if (callsInteresting == null) {
+			CallGraph cg = getContextCallGraph();
+			Iterator<CGNode> iterator = cg.iterator();
+			while(iterator.hasNext()) {
+				CGNode next = iterator.next();
+				Iterator<CallSiteReference> it = next.getIR().iterateCallSites();
+				while(it.hasNext()) {
+					MethodReference target = it.next().getDeclaredTarget();
+					if (Interesting.sInterestingMethods.contains(target)) {
+						callsInteresting = new Boolean(true);
+						return true;
+					}
+				}
+			}
+			callsInteresting = new Boolean(false);
+			return false;
+		}
+		return callsInteresting .booleanValue();
+		
+	}
+	
+	
 	public String toString() {
 		StringBuffer b = new StringBuffer();
 		String name = this.getClass().getName().toString();
@@ -303,5 +339,13 @@ public abstract class Context extends AbstractContext {
 			return getExitState(cgNode);
 		}
 	}
+	
+	
+	public Set<Context> getContainingContexts(CGNode node) {
+		HashSet<Context> hashSet = new HashSet<Context>();
+		hashSet.add(this);
+		return hashSet;		
+	}
+	
 
 }

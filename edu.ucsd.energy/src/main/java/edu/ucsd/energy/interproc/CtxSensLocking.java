@@ -1,6 +1,7 @@
 package edu.ucsd.energy.interproc;
 
 import java.util.Collection;
+import java.util.Set;
 
 import com.ibm.wala.dataflow.IFDS.ICFGSupergraph;
 import com.ibm.wala.dataflow.IFDS.IMergeFunction;
@@ -29,6 +30,7 @@ import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.AbstractContext;
 import edu.ucsd.energy.conditions.SpecialConditions;
 import edu.ucsd.energy.conditions.SpecialConditions.SpecialCondition;
+import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.interproc.LockingTabulationSolver.LockingResult;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.managers.WakeLockManager;
@@ -161,7 +163,7 @@ public class CtxSensLocking {
 	class LockingProblem implements	PartiallyBalancedTabulationProblem<
 		BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<WakeLockInstance, SingleLockState>> {
 
-		private Collection<PathEdge<BasicBlockInContext<IExplodedBasicBlock>>> initialSeeds = collectInitialSeeds();
+		private Collection<PathEdge<BasicBlockInContext<IExplodedBasicBlock>>> initialSeeds ;
 		
 		private LockingFlowFunctions flowFunctions;
 
@@ -171,6 +173,11 @@ public class CtxSensLocking {
 		
 		public LockingProblem() {
 			flowFunctions = new LockingFlowFunctions(CtxSensLocking.this);
+			initialSeeds = collectInitialSeeds();
+		}
+		
+		public boolean noSeeds() {
+			return initialSeeds.isEmpty();
 		}
 		
 		/**
@@ -189,7 +196,10 @@ public class CtxSensLocking {
 					if (DEBUG > 0) {
 						System.out.println("Adding timed acquire seed: " + bb.toString());
 					}
-					SingleLockState sls = new SingleLockState(true, true, false);
+					//Get all the possible contexts that this bb might belong to 
+					CGNode node = supergraph.getProcOf(bb);
+					Set<Context> contCtxs = component.getContainingContexts(node);
+					SingleLockState sls = new SingleLockState(true, true, false, contCtxs);
 					Pair<WakeLockInstance, SingleLockState> fact = Pair.make(timedAcquiredWL, sls);					
 					int factNum = domain.add(fact);
 					BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(bb.getNode());
@@ -201,7 +211,9 @@ public class CtxSensLocking {
 					if (DEBUG > 0) {
 						System.out.println("Adding acquire seed: " + bb.toString());
 					}
-					SingleLockState sls = new SingleLockState(true, false, false);
+					CGNode node = supergraph.getProcOf(bb);
+					Set<Context> contCtxs = component.getContainingContexts(node);
+					SingleLockState sls = new SingleLockState(true, false, false, contCtxs);
 					Pair<WakeLockInstance, SingleLockState> fact = Pair.make(acquiredWL, sls);					
 					int factNum = domain.add(fact);
 					BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(bb.getNode());
@@ -269,7 +281,8 @@ public class CtxSensLocking {
 	 * perform the tabulation analysis and return the {@link TabulationResult}
 	 */
 	public LockingResult analyze() {
-		LockingTabulationSolver solver = new LockingTabulationSolver(new LockingProblem(), null, getICFG());
+		LockingProblem problem = new LockingProblem();
+		LockingTabulationSolver solver = new LockingTabulationSolver(problem, null, getICFG());
 		LockingResult result = null;
 		try {
 			result = solver.solve();

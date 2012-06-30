@@ -67,7 +67,7 @@ public class GraphUtils {
 	
 	public static <T> void dumpConstraintGraph(Graph<T> constraintGraph, String tag) {
 		try {
-			E.log(1, "Dumping constraint graph for " + tag + "... ");
+			//E.log(1, "Dumping constraint graph for " + tag + "... ");
 			Properties p = null;
 			p = WalaExamplesProperties.loadProperties();
 			p.putAll(WalaProperties.loadProperties());
@@ -89,7 +89,7 @@ public class GraphUtils {
 	}
 
 	public static void dumpConnectedComponents(SparseNumberedGraph<Context> g) {
-		E.log(1, "Dumping connecting components... ");
+		//E.log(1, "Dumping connecting components... ");
 		Iterator<Set<Context>> ccIt = GraphUtils.connectedComponentIterator(g);
 	    while(ccIt.hasNext()) {
 	    	Set<Context> sComp = ccIt.next();    	

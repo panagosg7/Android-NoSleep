@@ -62,7 +62,7 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 				}
 			}
 		}
-		
+
 		public String toString() {
 			StringBuffer sb = new StringBuffer();
 			if (!entrySet().isEmpty()) {
@@ -158,17 +158,17 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 	public Set<Context> getContexts() {
 		return sComponent;
 	}
-	
-	
+
+
 	//ID accounting	
 	private static int counter = 0;
-	
+
 	private int id; 
-	
+
 	private int getNextId() {
 		return counter ++;
 	}
-	
+
 	public int getGraphNodeId() {
 		return id;
 	}
@@ -200,4 +200,36 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 		return componentCallgraph;
 	}
 
+
+	private Boolean callsInteresting = null;
+
+	public boolean callsInteresting() {
+		if (callsInteresting == null) {
+			for (Context c : sComponent) {
+				if (c.callsInteresting()) {
+					callsInteresting = new Boolean(true);
+					return true;
+				}
+			}
+			callsInteresting = new Boolean(false);
+			return false;
+		}
+		return callsInteresting.booleanValue();
+	}
+
+	/**
+	 * Return a set with all the contexts that contain node in them
+	 */
+	public Set<Context> getContainingContexts(CGNode node) {
+		HashSet<Context> hashSet = new HashSet<Context>();
+		for (Context c : sComponent) {
+			if (c.getContextCallGraph().containsNode(node)) {
+				hashSet.add(c);
+			}
+		}
+		return hashSet;
+	}
+	
+
+	
 }

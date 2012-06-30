@@ -39,7 +39,7 @@ public class Interesting {
 	public static Set<Selector> runnableExitMethods = new HashSet<Selector>();
 	
 	
-	public static Set<Selector> ignoreSelectors = new HashSet<Selector>();
+	public static Set<Selector> ignoreIntentSelectors = new HashSet<Selector>();
 	
 	public static Set<Selector> broadcastReceiverCallbackMethods = new HashSet<Selector>();
 	public static Set<Selector> broadcastReceiverEntryMethods = new HashSet<Selector>();
@@ -64,7 +64,7 @@ public class Interesting {
 	//Method Selectors
 	public final static Selector ThreadRun = Selector.make("run()V");
 	
-	public static final Selector ActivityConstructor = Selector.make("<init>()V");
+	public static final Selector ActivityConstructor = Selector.make("<AAAinit>()V");
 	public static final Selector ActivityOnCreate = Selector.make("onCreate(Landroid/os/Bundle;)V");
 	public static final Selector ActivityOnDestroy = Selector.make("onDestroy()V");
 	public static final Selector ActivityOnPause = Selector.make("onPause()V");
@@ -78,14 +78,30 @@ public class Interesting {
 	public static final Selector ServiceOnCreate = Selector.make("onCreate()V");
 	public static final Selector ServiceOnStartCommand = Selector.make("onStartCommand(Landroid/content/Intent;II)I");
 	public static final Selector ServiceOnStart = Selector.make("onStart(Landroid/content/Intent;I)V");
+	public static final Selector ServiceOnBind = Selector.make("onBind(Landroid/content/Intent;)Landroid/os/IBinder");
+	public static final Selector ServiceOnUnbind = Selector.make("onUnbind(Landroid/content/Intent;)Z");
+	public static final Selector ServiceOnRebind = Selector.make("onRebind(Landroid/content/Intent;)V");
 	public static final Selector ServiceOnDestroy = Selector.make("onDestroy()V");
+	
+	public static final Selector ServiceOnHandleIntent = Selector.make("onHandleIntent(Landroid/content/Intent;)V");
 	
 	public static final Selector BroadcastReceiverOnReceive = 
 			Selector.make("onReceive(Landroid/content/Context;Landroid/content/Intent;)V");
 	
+	
 	static {
 
 	//WakeLocks
+		wakelockAcquire = StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.acquire()V");
+		wakelockTimedAcquire = StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.acquire(J)V");
+		wakelockRelease = StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.release()V");
+		
+		mWakelockMethods.put(wakelockAcquire, new Integer(0));
+		mWakelockMethods.put(wakelockRelease, new Integer(0));
+		mWakelockMethods.put(wakelockTimedAcquire, new Integer(0));
+		
+		sInterestingMethods.addAll(mWakelockMethods.keySet());
+		
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.app.AlarmManager.set(IJLandroid/app/PendingIntent;)V"));
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.app.AlarmManager.cancel(Landroid/app/PendingIntent;)V"));
 		
@@ -100,14 +116,6 @@ public class Interesting {
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.media.MediaPlayer.prepareAsync()V"));
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.media.MediaPlayer.release()V"));
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.media.MediaPlayer.start()V"));
-		
-		wakelockAcquire = StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.acquire()V");
-		wakelockTimedAcquire = StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.acquire(J)V");
-		wakelockRelease = StringStuff.makeMethodReference("android.os.PowerManager$WakeLock.release()V");
-		
-		mWakelockMethods.put(wakelockAcquire, new Integer(0));
-		mWakelockMethods.put(wakelockRelease, new Integer(0));
-		mWakelockMethods.put(wakelockTimedAcquire, new Integer(0));
 		
 		/*
 		 * Needed a selector for the Intents because the class appearing in the signature of
@@ -134,7 +142,7 @@ public class Interesting {
 		mRunnableMethods.put(Selector.make("postDelayed(Ljava/lang/Runnable;J)Z"), new Integer(1));
 		//TODO: may have to extend this list with more calls
 		
-		sInterestingMethods.addAll(mWakelockMethods.keySet());
+		
 		
 	//Activity
 		activityCallbackMethods.add(Selector.make("<init>()V"));	//Should this be an entry point?
@@ -174,28 +182,31 @@ public class Interesting {
 		
 		
 	//Ignore these selectors when invoking a def-use manager
-		ignoreSelectors.add(Selector.make("putExtra(Ljava/lang/String;I)Landroid/content/Intent;"));
-		ignoreSelectors.add(Selector.make("setFlags(I)Landroid/content/Intent;"));
-		ignoreSelectors.add(Selector.make("putExtra(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;"));
-		ignoreSelectors.add(Selector.make("setData(Landroid/net/Uri;)Landroid/content/Intent;"));
-		ignoreSelectors.add(Selector.make("putExtra(Ljava/lang/String;Landroid/os/Parcelable;)Landroid/content/Intent;"));
-		ignoreSelectors.add(Selector.make("setType(Ljava/lang/String;)Landroid/content/Intent;"));
-		ignoreSelectors.add(Selector.make("createChooser(Landroid/content/Intent;Ljava/lang/CharSequence;)Landroid/content/Intent;"));
-		ignoreSelectors.add(Selector.make("addFlags(I)Landroid/content/Intent;"));
-		ignoreSelectors.add(Selector.make("setResult(ILandroid/content/Intent;)V"));
-		ignoreSelectors.add(Selector.make("queryIntentActivities(Landroid/content/Intent;I)Ljava/util/List;"));
-		ignoreSelectors.add(Selector.make("submitIntent(Landroid/content/Intent;)V"));
+		ignoreIntentSelectors.add(Selector.make("putExtra(Ljava/lang/String;I)Landroid/content/Intent;"));
+		ignoreIntentSelectors.add(Selector.make("setFlags(I)Landroid/content/Intent;"));
+		ignoreIntentSelectors.add(Selector.make("putExtra(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;"));
+		ignoreIntentSelectors.add(Selector.make("setData(Landroid/net/Uri;)Landroid/content/Intent;"));
+		ignoreIntentSelectors.add(Selector.make("putExtra(Ljava/lang/String;Landroid/os/Parcelable;)Landroid/content/Intent;"));
+		ignoreIntentSelectors.add(Selector.make("setType(Ljava/lang/String;)Landroid/content/Intent;"));
+		ignoreIntentSelectors.add(Selector.make("createChooser(Landroid/content/Intent;Ljava/lang/CharSequence;)Landroid/content/Intent;"));
+		ignoreIntentSelectors.add(Selector.make("addFlags(I)Landroid/content/Intent;"));
+		ignoreIntentSelectors.add(Selector.make("setResult(ILandroid/content/Intent;)V"));
+		ignoreIntentSelectors.add(Selector.make("queryIntentActivities(Landroid/content/Intent;I)Ljava/util/List;"));
+		ignoreIntentSelectors.add(Selector.make("submitIntent(Landroid/content/Intent;)V"));
 		
 		
+	//These are all the possible callbacks were a state from a service callee can be propagated
+		serviceEntryMethods.add(ServiceOnCreate);
+		serviceEntryMethods.add(ServiceOnStart);
+		serviceEntryMethods.add(ServiceOnStartCommand);
+		serviceEntryMethods.add(ServiceOnHandleIntent);
+		serviceEntryMethods.add(ServiceOnBind);
 		
-		serviceEntryMethods.add(Selector.make("onCreate()V"));
-		serviceEntryMethods.add(Selector.make("onStart(Landroid/content/Intent;I)V"));
-		serviceEntryMethods.add(Selector.make("onStartCommand(Landroid/content/Intent;II)V"));
-		serviceEntryMethods.add(Selector.make("onHandleIntent(Landroid/content/Intent;)V"));
-		serviceEntryMethods.add(Selector.make("bindService(Landroid/content/Intent;Landroid/content/ServiceConnection;I)Z"));
-		
-		serviceExitMethods.add(Selector.make("onDestroy()V"));
-		serviceExitMethods.add(Selector.make("onHandleIntent(Landroid/content/Intent;)V"));
+		serviceExitMethods.add(ServiceOnStart);
+		serviceExitMethods.add(ServiceOnStartCommand);
+		serviceExitMethods.add(ServiceOnUnbind);
+		serviceExitMethods.add(ServiceOnHandleIntent);
+
 		
 	//Runnables
 		runnableCallbackMethods.add(ThreadRun);
@@ -207,4 +218,5 @@ public class Interesting {
 		broadcastReceiverCallbackMethods.add(BroadcastReceiverOnReceive);
 	}
 }
+
 

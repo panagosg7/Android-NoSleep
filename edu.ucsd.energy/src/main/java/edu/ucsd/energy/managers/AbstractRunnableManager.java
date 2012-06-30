@@ -28,7 +28,7 @@ import edu.ucsd.energy.util.GraphUtils;
 
 public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance> extends AbstractDUManager<V> { 
 
-	private final int DEBUG = 2;
+	private final int DEBUG = 0;
 
 
 	private SparseNumberedGraph<Context> constraintGraph;
@@ -217,13 +217,13 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 		if (unresolvedCallSites.size() == 0) {
 			E.green();			
 			System.out.println("All " + getTag() + " calls (" + size + 
-					") were resolved successfully.\n");
+					") were resolved successfully.");
 			E.resetColor();
 		}
 		else {
 			E.yellow();			
 			System.out.println(unresolvedCallSites.size() + " out of " + size + " " + getTag() + 
-					" call sites were not resolved.\n");
+					" call sites were not resolved.");
 			E.resetColor();
 		}	
 	}

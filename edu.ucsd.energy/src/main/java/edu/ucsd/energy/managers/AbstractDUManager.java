@@ -36,7 +36,7 @@ import edu.ucsd.energy.util.GraphUtils;
 
 public abstract class AbstractDUManager<V extends ObjectInstance>  {
 
-	private int DEBUG = 2;
+	private int DEBUG = 0;
 
 	protected GlobalManager gm;
 
@@ -72,7 +72,6 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 	protected Map<Pair<MethodReference, SSAInstruction>, V> mInstruction2Instance;
 
 	Iterator2List<CGNode> bottomUpList;	//TODO: Compute this once for all managers (make static) 
-
 
 
 	public AbstractDUManager(GlobalManager gm) {
@@ -233,7 +232,7 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 				if ((vi != null) &&	(isTargetMethod(inv.getDeclaredTarget()) == null)
 						//A lot of calls are pruned by this 
 						&& (!(inv.toString().contains("<init>")))
-						&& (!Interesting.ignoreSelectors.contains(inv.getDeclaredTarget().getSelector()))) {
+						&& (!Interesting.ignoreIntentSelectors.contains(inv.getDeclaredTarget().getSelector()))) {
 					if (DEBUG > 1) {
 						System.out.println("Could not identify " + getTag() + 
 								" method: " + inv.getDeclaredTarget().getSignature() + " arg: " + i);

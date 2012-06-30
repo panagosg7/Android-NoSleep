@@ -171,11 +171,10 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 			System.out.println("  in method: " + method);
 			E.resetColor();
 		}
+
 		/*
 		 * public Intent setClass (Context packageContext, Class<?> cls)
 		 */
-		
-		
 		if (methSel.toString().contains("setClass")) {
 
 			//the Intent is the 0th parameter

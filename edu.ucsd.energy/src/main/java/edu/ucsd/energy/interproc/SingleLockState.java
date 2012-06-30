@@ -1,6 +1,9 @@
 package edu.ucsd.energy.interproc;
 
+import java.util.HashSet;
 import java.util.Set;
+
+import edu.ucsd.energy.contexts.Context;
 /**
  * State of a program point - very simple at the moment
  * @author pvekris
@@ -14,6 +17,10 @@ public class SingleLockState  {
 	private boolean acquired;
 	private boolean timed;
 	private boolean async;
+	
+	
+	//All the possible contexts that this state can originate from
+	private Set<Context> originContexts;
 
 	private LockStateDescription lockStateColor;
 
@@ -40,15 +47,17 @@ public class SingleLockState  {
 		private LockStateDescription(String c) { color = c; }
 	}
 
-	public SingleLockState(boolean a, boolean t, boolean as) {
+	public SingleLockState(boolean a, boolean t, boolean as, Set<Context> sc) {
 		acquired = a;
 		timed = t;
 		async = as;   
+		originContexts = sc;
 	}
 
 	@Override
 	public int hashCode() {
-		return 1 * (timed?1:0) +  2 * (acquired?1:0) + 4 * (async?1:0);
+		return 1 * (timed?1:0) +  2 * (acquired?1:0) + 4 * (async?1:0) + 
+				originContexts.size();
 	}
 
 	@Override
@@ -57,7 +66,10 @@ public class SingleLockState  {
 			SingleLockState l = (SingleLockState) o;			
 			return ((acquired() == l.acquired()) &&
 					(timed() == l.timed()) &&
-					(async() == l.async()));			
+					(async() == l.async()) &&
+					originContexts.containsAll(l.originContexts()) &&
+					l.originContexts.containsAll(originContexts))
+					;
 		}
 		return false;		
 	}
@@ -70,15 +82,28 @@ public class SingleLockState  {
 		return sb.toString();
 	}
 
+	
 	public SingleLockState merge(SingleLockState l) {
 		if (l == null) {
 			return this;
 		}		
 		//Obviously we need a may analysis here
+		HashSet<Context> sOrig = new HashSet<Context>();
+		sOrig.addAll(l.originContexts());
+		sOrig.addAll(originContexts());
+		
 		return new SingleLockState(	
-			acquired || l.acquired(), timed && l.timed(), async || l.async());
+			acquired || l.acquired(), 
+			timed && l.timed(), 
+			async || l.async(),
+			sOrig);
+		
 	}
 
+
+	public Set<Context> originContexts() {
+		return originContexts;
+	}
 
 	public boolean acquired() {
 		return acquired;

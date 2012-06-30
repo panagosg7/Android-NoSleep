@@ -19,7 +19,7 @@ public class SingleContextCFG extends AbstractContextCFG {
 	   */
 	  public SingleContextCFG(AbstractContext component, Set<Pair<CGNode, CGNode>> packedEdges) {
 		  super(component.getContextCallGraph());
-		  this.component = component;
+		  this.absCtx = component;
 		  this.callgraph = component.getContextCallGraph();
 		  /* Will only work like this - loses laziness. */
 		  constructFullGraph();

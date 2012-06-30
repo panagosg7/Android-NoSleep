@@ -23,5 +23,7 @@ public interface IContext {
 	public CompoundLockState getState(SSAInstruction i);
 	
 	public String toFileName();
+
+	public boolean callsInteresting();
 	
 }

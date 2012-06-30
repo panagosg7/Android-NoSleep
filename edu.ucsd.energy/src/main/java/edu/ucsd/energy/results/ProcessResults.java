@@ -1,16 +1,14 @@
 package edu.ucsd.energy.results;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Set;
 
+import net.sf.json.JSONObject;
+
 import com.ibm.wala.ssa.SSAInstruction;
-import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.collections.HashSetMultiMap;
-import com.ibm.wala.util.collections.Pair;
 
-import net.sf.json.JSONObject;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.component.SuperComponent;
 import edu.ucsd.energy.contexts.Context;
@@ -145,6 +143,12 @@ public class ProcessResults {
 		}
 		
 		for (SuperComponent superComponent : componentManager.getSuperComponents()) {
+			
+			if (!superComponent.callsInteresting()) {
+				System.out.println(superComponent.toString() + " is uninteresting - moving on...");
+				continue;
+			}
+			
 			//Each context should belong to exactly one SuperComponent
 			for (Context context : superComponent.getContexts()) {
 				
@@ -153,10 +157,12 @@ public class ProcessResults {
 				//Do not analyze abstract classes (they will have to be 
 				//extended in order to be used)
 				if (context.isAbstract()) {
-					E.log(1, context.toString() + " is abstract - moving on...");
+					E.grey();
+					System.out.println(context.toString() + " is abstract - moving on...");
+					E.resetColor();
 					continue;
 				}
-				E.log(1, context.toString() + " - processing ...");
+				System.out.println(context.toString() + " - processing ...");
 				Component component = (Component) context;
 				report.mergeReport(component.assembleReport());		
 			}

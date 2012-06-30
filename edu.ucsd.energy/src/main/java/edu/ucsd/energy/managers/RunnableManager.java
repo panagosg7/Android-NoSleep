@@ -17,7 +17,6 @@ import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ManagerReport;
 
 
-
 /**
  * This manager tries to resolve Runnable calls/posts based on the classes that 
  * are associated with them.
@@ -37,7 +36,7 @@ import edu.ucsd.energy.results.ManagerReport;
  */
 public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 
-	private static final int DEBUG = 1;
+	private static final int DEBUG = 0;
 
 	public RunnableManager(GlobalManager gm) {
 		super(gm);

@@ -450,6 +450,7 @@ public class ComponentManager {
 		if (Opts.OUTPUT_COMPONENT_CALLGRAPH) {			
 			componentPrinter.outputNormalCallGraph();
 		}
+
 		if (Opts.ONLY_ANALYSE_LOCK_REACHING_CALLBACKS) {
 			/* Use reachability results to see if we can actually get to a 
 			 * wifi/wake lock call from here */
@@ -465,6 +466,12 @@ public class ComponentManager {
 					return;
 			}
 		}
+		
+		if (!component.callsInteresting()) {
+			System.out.println(component.toString() + " does not deal with resource management. Moving on ...");
+			return;
+		}
+		
 		component.solve();
 
 		if(Opts.OUTPUT_COLOR_CFG_DOT) {

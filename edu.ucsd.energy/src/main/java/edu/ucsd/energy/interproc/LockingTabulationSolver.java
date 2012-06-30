@@ -39,7 +39,7 @@ public class LockingTabulationSolver  extends PartiallyBalancedTabulationSolver<
 BasicBlockInContext<IExplodedBasicBlock>, 
 CGNode, Pair<WakeLockInstance, SingleLockState>> {
 
-	//Toggle this to 
+	//Toggle this to enable context sensitive asynchronous calls to contexts
 	private static final boolean ENABLE_CTX_SENS = false;
 	
 	private static final int DEBUG = 1;

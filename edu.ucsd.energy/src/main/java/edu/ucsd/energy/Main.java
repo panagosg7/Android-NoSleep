@@ -111,8 +111,7 @@ public class Main {
 
 		public void run() {
 			try {
-				System.out.println("\n");
-				LOGGER.info("Starting: " + apk.getName());
+				//LOGGER.info("Starting: " + apk.getName());
 				String app_name = apk.getName();
 				IReport res;
 				if (apk.successfullyOptimized()) {
@@ -713,9 +712,6 @@ public class Main {
 			//Define the set of apps to run the analysis on
 			if (line.hasOption("small-set")) {
 				/* The applications you specify here need to be in apk_collection !!! */
-				//theSet.add("Unit_Wrong_04");
-				//theSet.add("Unit_Wrong_05");
-				theSet.add("Unit_Wrong_06");
 //				theSet.add("NetCounter");					//verified
 //				theSet.add("3D_Level");						//verified
 //				theSet.add("SpeakWrite");
@@ -724,6 +720,9 @@ public class Main {
 //				theSet.add("TiltMazes");					//verified
 //				theSet.add("SMS_Control_Center");
 //				theSet.add("Gmote");
+//				theSet.add("apMemo_Lite");
+//				theSet.add("GO_SMS");
+				theSet.add("Unit_02");
 			}
 			else if (line.hasOption("unit")) {
 				theSet.add("Unit_01");
@@ -737,6 +736,8 @@ public class Main {
 				theSet.add("Unit_Wrong_02");
 				theSet.add("Unit_Wrong_03");
 				theSet.add("Unit_Wrong_04");
+				theSet.add("Unit_Wrong_05");
+				theSet.add("Unit_Wrong_06");
 			}
 			else {
 				FileInputStream is = new FileInputStream(acqrelDatabaseFile);

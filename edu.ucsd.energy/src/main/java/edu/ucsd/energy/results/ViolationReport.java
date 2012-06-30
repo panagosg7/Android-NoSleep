@@ -8,6 +8,7 @@ import net.sf.json.JSONObject;
 import com.ibm.wala.util.collections.HashSetMultiMap;
 
 import edu.ucsd.energy.contexts.Context;
+import edu.ucsd.energy.util.E;
 
 public class ViolationReport implements IReport {
 	
@@ -57,10 +58,15 @@ public class ViolationReport implements IReport {
 	
 	public void dump() {
 		if (!hasViolations()) {
-			System.out.print("\033[1;32m");
+			E.boldGreen();
 			System.out.println("NO VIOLATIONS");
-      System.out.print("\033[0m");
+      E.resetColor();
       return;
+		}
+		else {
+			E.boldRed();
+			System.out.println("VIOLATES POLICIES:");
+      E.resetColor();
 		}
 		for (Context r : violations.keySet()) {
 			Set<Violation> set = violations.get(r);

@@ -28,9 +28,9 @@ import edu.ucsd.energy.util.E;
  */
 abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 
-	private static final int DEBUG = 2;
+	private static final int DEBUG = 0;
 
-	protected AbstractContext component;
+	protected AbstractContext absCtx;
 
 	protected CallGraph callgraph;
 
@@ -161,10 +161,16 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 	}
 
 	public AbstractContext getComponent() {
-		return component;
+		return absCtx;
 	}
 
 
+	public Set<Context> getContainingContext(BasicBlockInContext<IExplodedBasicBlock> bb) {
+		CGNode cgNode = getCGNode(bb);
+		return absCtx.getContainingContexts(cgNode);
+	}
+	
+	
 
 	//Super CFG will have to override these
 	

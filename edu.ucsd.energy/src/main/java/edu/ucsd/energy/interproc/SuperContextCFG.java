@@ -20,7 +20,7 @@ import edu.ucsd.energy.contexts.Context;
 
 public class SuperContextCFG extends AbstractContextCFG {
 
-	private static final int DEBUG = 2;
+	private static final int DEBUG = 0;
 
 	//Keeps all the edges that connect different contexts
 	//Helps distinguish from function calls
@@ -74,7 +74,7 @@ public class SuperContextCFG extends AbstractContextCFG {
 		Map<SSAInstruction, Context> seeds) {
 		
 		  super(component.getContextCallGraph());
-		  this.component = component;
+		  this.absCtx = component;
 		  this.callgraph = component.getContextCallGraph();
 		  /* Will only work like this - loses laziness. */
 		  constructFullGraph();
@@ -107,8 +107,8 @@ public class SuperContextCFG extends AbstractContextCFG {
 				//a successor of the invoke instruction
 				Set<Selector> exitPoints = targetComp.getExitPoints();
 				//E.log(1, "To: " + targetComp.toString());
-				for (Selector sel : exitPoints) {
-					CallBack callBack = targetComp.getCallBack(sel);
+				for (Selector exitSel : exitPoints) {
+					CallBack callBack = targetComp.getCallBack(exitSel);
 					//Continue only if this callback is indeed overridden
 					if (callBack != null) {
 						CGNode node = callBack.getNode();

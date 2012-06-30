@@ -106,5 +106,17 @@ public class E {
 	public static void red() {
 		System.out.print("\033[31m");		
 	}
-  
+
+	public static void boldGreen() {
+		System.out.print("\033[1;32m");		
+	}
+	
+	public static void boldRed() {
+		System.out.print("\033[1;31m");		
+	}
+
+	public static void grey() {
+		System.out.print("\033[37m");		
+	}
+	
 }
