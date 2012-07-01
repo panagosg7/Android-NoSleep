@@ -3,6 +3,7 @@ package edu.ucsd.energy.managers;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import net.sf.json.JSONObject;
 
@@ -16,6 +17,7 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
+import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.apk.Interesting;
@@ -105,7 +107,7 @@ public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 
 
 	@Override
-	Integer isTargetMethod(MethodReference declaredTarget) {
+	Pair<Integer, Set<Selector>> getTargetMethods(MethodReference declaredTarget) {
 		return Interesting.mWakelockMethods.get(declaredTarget);
 	}
 

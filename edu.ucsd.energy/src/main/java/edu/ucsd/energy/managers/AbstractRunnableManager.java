@@ -12,6 +12,7 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
+import com.ibm.wala.types.Selector;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
@@ -42,7 +43,7 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 	}
 
 	@Override
-	Integer isTargetMethod(MethodReference declaredTarget) {
+	Pair<Integer, Set<Selector>> getTargetMethods(MethodReference declaredTarget) {
 		return Interesting.mRunnableMethods.get(declaredTarget.getSelector());
 	}
 
@@ -196,7 +197,7 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 			for (SSAInstruction instr : ir.getInstructions()) {
 				if (instr instanceof SSAInvokeInstruction) {
 					SSAInvokeInstruction inv = (SSAInvokeInstruction) instr;
-					if (isTargetMethod(inv.getDeclaredTarget()) != null) {
+					if (getTargetMethods(inv.getDeclaredTarget()) != null) {
 						Pair<MethodReference, SSAInvokeInstruction> key = Pair.make(method.getReference(), inv);
 						V v = mInstruction2Instance.get(key);
 						//TODO: check for resolved component -- stronger

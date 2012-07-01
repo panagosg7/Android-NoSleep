@@ -722,7 +722,7 @@ public class Main {
 //				theSet.add("Gmote");
 //				theSet.add("apMemo_Lite");
 //				theSet.add("GO_SMS");
-				theSet.add("Unit_02");
+				theSet.add("Unit_Correct_02");
 			}
 			else if (line.hasOption("unit")) {
 				theSet.add("Unit_01");

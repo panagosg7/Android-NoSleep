@@ -1,6 +1,7 @@
 package edu.ucsd.energy.contexts;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 
 import com.ibm.wala.classLoader.IClass;
@@ -58,21 +59,55 @@ public class Service extends Component {
 	}
 
 	public Set<Selector> getEntryPoints() {
-		return Interesting.serviceEntryMethods;
+		HashSet<Selector> ret = new HashSet<Selector>();
+		ret.addAll(getStartedEntryPoints());
+		ret.addAll(getBoundEntryPoints());
+		ret.addAll(getIntentEntryPoints());
+		return ret;
 	}
 	
+
 	public Set<Selector> getExitPoints() {
-		return Interesting.serviceExitMethods;
+		HashSet<Selector> ret = new HashSet<Selector>();
+		ret.addAll(getStartedExitPoints());
+		ret.addAll(getBoundExitPoints());
+		ret.addAll(getIntentExitPoints());
+		return ret;
 	}
+	
+	public static Set<Selector> getStartedEntryPoints() {
+		return Interesting.startedServiceEntryMethods;
+	}
+	
+	public static Set<Selector> getStartedExitPoints() {
+		return Interesting.startedServiceExitMethods;
+	}
+	
+	public static Set<Selector> getBoundEntryPoints() {
+		return Interesting.startedServiceEntryMethods;
+	}
+	
+	public static Set<Selector> getBoundExitPoints() {
+		return Interesting.startedServiceExitMethods;
+	}
+
+	public static Set<Selector> getIntentEntryPoints() {
+		return Interesting.intentServiceEntryMethods;
+	}
+
+	public static Set<Selector> getIntentExitPoints() {
+		return Interesting.intentServiceExitMethods;
+	}
+
+	
 	
 	public String toString() {
-
 		StringBuffer b = new StringBuffer();
 		b.append("Service: ");
 		b.append(getKlass().getName().toString());
-
 		return b.toString();
 	}
+	
 	
 	public ViolationReport gatherViolations(ContextSummary summary) {
 		Set<LockUsage> onStartStates = summary.getCallBackState(Interesting.ServiceOnStart);
@@ -103,3 +138,4 @@ public class Service extends Component {
 
 
 }
+

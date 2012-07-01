@@ -2,6 +2,7 @@ package edu.ucsd.energy.managers;
 
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
@@ -13,6 +14,7 @@ import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.Selector;
 import com.ibm.wala.types.TypeReference;
+import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.results.IReport;
@@ -60,7 +62,7 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 	 * not be the default android one
 	 */
 	@Override
-	Integer isTargetMethod(MethodReference declaredTarget) {
+	Pair<Integer, Set<Selector>> getTargetMethods(MethodReference declaredTarget) {
 		return Interesting.mIntentMethods.get(declaredTarget.getSelector());
 	}
 	

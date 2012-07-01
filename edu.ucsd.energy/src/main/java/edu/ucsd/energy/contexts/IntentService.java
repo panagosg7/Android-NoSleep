@@ -14,7 +14,7 @@ import edu.ucsd.energy.results.ViolationReport;
 public class IntentService extends Component {
 
 	public Set<Selector> getEntryPoints() {
-		return Interesting.serviceEntryMethods;
+		return Interesting.intentServiceEntryMethods;
 	}
 
 	public IntentService(GlobalManager gm, IClass c) {

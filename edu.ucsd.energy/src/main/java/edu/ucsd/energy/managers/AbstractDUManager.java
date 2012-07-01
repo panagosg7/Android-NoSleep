@@ -24,6 +24,7 @@ import com.ibm.wala.ssa.SSAPutInstruction;
 import com.ibm.wala.ssa.SSAReturnInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
+import com.ibm.wala.types.Selector;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.Iterator2List;
 import com.ibm.wala.util.collections.Pair;
@@ -229,7 +230,7 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 			for(int i = 0 ; i < inv.getNumberOfUses(); i++) {
 				V vi = traceInstanceNoCreate(inv.getUse(i));
 				//This is an interesting method for which we don't know anything yet
-				if ((vi != null) &&	(isTargetMethod(inv.getDeclaredTarget()) == null)
+				if ((vi != null) &&	(getTargetMethods(inv.getDeclaredTarget()) == null)
 						//A lot of calls are pruned by this 
 						&& (!(inv.toString().contains("<init>")))
 						&& (!Interesting.ignoreIntentSelectors.contains(inv.getDeclaredTarget().getSelector()))) {
@@ -241,13 +242,10 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 			}
 
 			//Is this an target (interesting) method?
-			Integer arg = isTargetMethod(inv.getDeclaredTarget());
-			if (arg != null) {
-				if (DEBUG > 1) {
-					System.out.println("Examining interesting instr: " + arg);
-				}
+			Pair<Integer, Set<Selector>> targs = getTargetMethods(inv.getDeclaredTarget());
+			if (targs != null) {
 				try {
-					int use = inv.getUse(arg);	//this should be the right argument
+					int use = inv.getUse(targs.fst);
 					V vi = traceInstanceNoCreate(use);
 					if (vi != null) {
 						if (DEBUG > 1) {
@@ -283,7 +281,7 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 	 * @param declaredTarget
 	 * @return
 	 */
-	abstract Integer isTargetMethod(MethodReference declaredTarget);
+	abstract Pair<Integer, Set<Selector>> getTargetMethods(MethodReference declaredTarget);
 
 	public V getMethodReturn(MethodReference mr) {
 		if (mMethodReturns != null) {
