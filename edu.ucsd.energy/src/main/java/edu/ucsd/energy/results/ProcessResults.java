@@ -1,6 +1,7 @@
 package edu.ucsd.energy.results;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
 
 import net.sf.json.JSONObject;
@@ -28,11 +29,26 @@ public class ProcessResults {
 			super();
 		}
 		
+		
+		Set<Context> relevant;
+		
 		public LockUsage(CompoundLockState cls) {
 			super(cls.getLockStateMap());
+			relevant = new HashSet<Context>();			
+			for (SingleLockState ls : cls.getLockStateMap().values()) {
+				relevant.addAll(ls.involvedContexts());				
+			}
 		}
 		
+		public boolean relevant(Context c) {
+			return relevant.contains(c);
+		}
 
+		public Set<Context> getRelevantCtxs() {
+			return relevant;
+		}
+
+		
 		public String toString() {
 			StringBuffer sb = new StringBuffer();
 			for(java.util.Map.Entry<WakeLockInstance, SingleLockState> e : entrySet()) {
@@ -97,7 +113,8 @@ public class ProcessResults {
 		//Analysis results
 		OPTIMIZATION_FAILURE(2),
 		ANALYSIS_FAILURE(2),
-		UNIMPLEMENTED_FAILURE(2);
+		UNIMPLEMENTED_FAILURE(2), 
+		INTENTSERVICE_ONHANDLEINTENT(2);
 		
 		int level;		//the level of seriousness of the condition
 		

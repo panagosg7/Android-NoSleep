@@ -108,11 +108,14 @@ public class Interesting {
 	
 	//Intent Calls
 	public static final Selector StartActivity = Selector.make("startActivity(Landroid/content/Intent;)V");
-	public static final Selector StartService = Selector.make("startService(Landroid/content/Intent;)Landroid/content/ComponentName;");
 	public static final Selector StartActivityForResult = Selector.make("startActivityForResult(Landroid/content/Intent;I)V");
+	
+	public static final Selector StartService = Selector.make("startService(Landroid/content/Intent;)Landroid/content/ComponentName;");
+	public static final Selector BindService = Selector.make("bindService(Landroid/content/Intent;Landroid/content/ServiceConnection;I)Z");
+	
 	public static final Selector SendBroadcast = Selector.make("sendBroadcast(Landroid/content/Intent;)V");
 	
-	public static final Selector BindService = Selector.make("bindService(Landroid/content/Intent;Landroid/content/ServiceConnection;I)Z");
+	
 	
 
 	//Fill in the sets and maps
@@ -199,8 +202,8 @@ public class Interesting {
 		
 		
 	//These are all the possible callbacks were a state from a service callee can be propagated
+		//We don't need to include onCreate in the entry methods, because 
 	//Started service
-		startedServiceEntryMethods.add(ServiceOnCreate);
 		startedServiceEntryMethods.add(ServiceOnStart);
 		startedServiceEntryMethods.add(ServiceOnStartCommand);
 		startedServiceExitMethods.add(ServiceOnStartCommand);

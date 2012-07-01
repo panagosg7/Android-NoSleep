@@ -98,15 +98,7 @@ public class Wala {
 		gm.solveComponents();
 		
 		CompoundReport report = new CompoundReport();
-		//report.register(gm.getWakeLockReport());
-		
-		/*
-		//Disabling cause I am not solving anything
-		IReport[] analysisReport = gm.getAnalysisReport();	//meh
-		for(int i = 0; i < analysisReport.length; i++) {
-			report.register(analysisReport[i]);	
-		}
-		*/
+
 		return report;
 	}
 	

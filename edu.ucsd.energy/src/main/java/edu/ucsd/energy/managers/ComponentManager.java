@@ -49,6 +49,7 @@ import edu.ucsd.energy.contexts.ContentProvider;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.contexts.DialogInterface;
 import edu.ucsd.energy.contexts.Handler;
+import edu.ucsd.energy.contexts.IntentService;
 import edu.ucsd.energy.contexts.LocationListener;
 import edu.ucsd.energy.contexts.OnCompletionListener;
 import edu.ucsd.energy.contexts.OnSharedPreferenceChangeListener;
@@ -165,40 +166,59 @@ public class ComponentManager {
 				ArrayList<IClass> classAncestors = ClassHierarchyUtils.getClassAncestors(c);
 				for (IClass anc : classAncestors) {
 					String ancName = anc.getName().toString();
+					
+					System.out.println("Hierarchy: " + ancName);
+					
 					if (ancName.equals("Landroid/app/Activity")) {
 						context = new Activity(global, c);
+						break;
 					}
+					if (ancName.equals("Landroid/app/IntentService")) {
+						context = new IntentService(global, c);
+						break;
+					}					
 					if (ancName.equals("Landroid/app/Service")) {
 						context = new Service(global, c);
+						break;
 					}
 					if (ancName.equals("Landroid/content/ContentProvider")) {
 						context = new ContentProvider(global, c);
+						break;
 					}
 					if (ancName.equals("Landroid/content/BroadcastReceiver")) {
 						context = new BroadcastReceiver(global, c);
+						break;
 					}
 					if (ancName.equals("Landroid/os/AsyncTask")) {
 						context = new AsyncTask(global, c);
+						break;
 					}
 					if (ancName.equals("Landroid/view/View")) {
 						context = new View(global, c);
+						break;
 					}
 					if (ancName.equals("Landroid/app/Application")) {
 						context = new Application(global, c);
+						break;
 					}
 					if (ancName.equals("Landroid/os/Handler")) {
 						context = new Handler(global, c);
+						break;
 					}
 					if (ancName.equals("Landroid/webkit/WebViewClient")) {
 						context = new WebViewClient(global, c);
+						break;
 					}
 					if (ancName.equals("Landroid/telephony/PhoneStateListener")) {
 						context = new PhoneStateListener(global, c);
+						break;
 					}
 					if (ancName.equals("Landroid/database/sqlite/SQLiteOpenHelper")) {
 						context = new SQLiteOpenHelper(global, c);
+						break;
 					}
 				}
+				System.out.println("---");
 			}
 
 			if (context == null) {
@@ -207,34 +227,44 @@ public class ComponentManager {
 				//this moment is Runnable, which should be tested on first. 
 				if (implementsInterface(c, "Ljava/lang/Runnable")) {
 					context = new RunnableThread(global, c);
+					break;
 				}
 				else if (implementsInterface(c, "Ljava/util/concurrent/Callable")) {
 					context = new Callable(global, c);
+					break;
 				}
 				else if (implementsInterface(c,"ClickListener")) {
 					context = new ClickListener(global, c);
+					break;
 				}
 				else if (implementsInterface(c, "Landroid/content/SharedPreferences$OnSharedPreferenceChangeListener")
 						|| implementsInterface(c, "Landroid/preference/Preference$OnPreferenceChangeListener")) {
 					context = new OnSharedPreferenceChangeListener(global, c);
+					break;
 				}
 				else if (implementsInterface(c, "Landroid/location/LocationListener")) {
 					context = new LocationListener(global, c);
+					break;
 				}
 				else if (implementsInterface(c, "Landroid/widget/")) {
 					context = new Widget(global, c);
+					break;
 				}
 				else if (implementsInterface(c, "Landroid/hardware/SensorEventListener")) {
 					context = new SensorEventListener(global, c);
+					break;
 				}
 				else if (implementsInterface(c, "Landroid/content/ServiceConnection")) {
 					context = new ServiceConnection(global, c);
+					break;
 				}
 				else if (implementsInterface(c, "Landroid/content/DialogInterface")) {
 					context = new DialogInterface(global, c);
+					break;
 				}
 				else if (implementsInterface(c, "Landroid/media/MediaPlayer$OnCompletionListener")) {
 					context = new OnCompletionListener(global, c);
+					break;
 				}
 			}
 

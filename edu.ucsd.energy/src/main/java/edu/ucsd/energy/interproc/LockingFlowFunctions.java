@@ -1,5 +1,6 @@
 package edu.ucsd.energy.interproc;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import com.ibm.wala.dataflow.IFDS.IFlowFunction;
@@ -150,20 +151,39 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 				public IntSet getTargets(int d1) {
 					Pair<WakeLockInstance, SingleLockState> mappedObject = ctxSensLocking.getDomain().getMappedObject(d1);
 					MutableSparseIntSet result = MutableSparseIntSet.makeEmpty();
+					//If the incoming state operates on the same lock... 
 					if (releasedWL.equals(mappedObject.fst)) {
 						SingleLockState oldSt = mappedObject.snd;
-
+						Set<Context> releaseCtxs = ctxSensLocking.getICFG().getContainingContext(src);
+						Set<Context> oldCtxs = oldSt.involvedContexts();
 						if (oldSt.async()) {
 							//If the incoming state is an asynchronous acquire then
 							//we cannot guarantee that this release is going to take 
 							//care of it, so we _ignore_ the release operation, and 
 							//just add the original factoid
-							result.add(d1);
+							//We will add the context to the involved contexts.
+							//It is ok to mutate the original state, since we are being 
+							//conservative by adding an "involved" context 
+							oldSt.addContexts(releaseCtxs);
+							boolean acquired = oldSt.acquired();
+							boolean timed = oldSt.timed();
+							boolean async = true;
+							//Do not create a new state if the state is already there
+							if (oldCtxs.containsAll(releaseCtxs)) {
+								result.add(d1);
+							}
+							else {
+								Set<Context> newCtxs = new HashSet<Context>(oldCtxs);
+								newCtxs.addAll(releaseCtxs);
+								SingleLockState newSt = new SingleLockState(acquired, timed, async, newCtxs);
+								result.add(ctxSensLocking.getDomain().add(Pair.make(releasedWL, newSt)));
+							}
+							
 						}
 						else {
 							//If it is not an asynchronous operation then release is used normally.
-							Set<Context> releaseCtxs = ctxSensLocking.getICFG().getContainingContext(src);
-							Set<Context> acquireCtxs = oldSt.originContexts();
+							
+							Set<Context> acquireCtxs = oldCtxs;
 							
 							//It suffices to have the release in a superset of the contexts that the 
 							//acquire can belong to. In the case the release is in the same context
@@ -171,7 +191,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 							//rather the same state as before. Otherwise, it should propagate "asynchronous".
 							boolean async = (releaseCtxs.containsAll(acquireCtxs))?oldSt.async():true;
  
-							SingleLockState newSt = new SingleLockState(false, false, async, oldSt.originContexts());
+							SingleLockState newSt = new SingleLockState(false, false, async, oldCtxs);
 							result.add(ctxSensLocking.getDomain().add(Pair.make(releasedWL, newSt)));
 						}
 					} 
@@ -199,9 +219,9 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 		
 		//Returning from a context ASYNCHRONOUSLY
 		if (icfg.isReturnFromContextEdge(src, dest)) {
-//			if(DEBUG > 0) {
+			if(DEBUG > 0) {
 				System.out.println("UNBALANCED RETURN FROM CTX: " + src.toString() + " -> " + dest.toString());
-//			}
+			}
 			return new IUnaryFlowFunction() {
 				public IntSet getTargets(int d1) {
 					Pair<WakeLockInstance, SingleLockState> mappedObject = ctxSensLocking.getDomain().getMappedObject(d1);
@@ -213,7 +233,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 					//XXX: we are keeping the same async state cause we might be returning back
 					//to the same context after visiring a context that did not change the state
 					//at all
-					SingleLockState newSt = new SingleLockState(oldSt.acquired(), oldSt.timed(), oldSt.async(), oldSt.originContexts());
+					SingleLockState newSt = new SingleLockState(oldSt.acquired(), oldSt.timed(), oldSt.async(), oldSt.involvedContexts());
 					//This is probably unknown to the domain so far, so we have to add it
 					//getMappedIndex returns -1 if the value is not in the domain
 					result.add(ctxSensLocking.getDomain().add(Pair.make(mappedObject.fst, newSt)));
@@ -247,9 +267,9 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 		
 		if (ctxSensLocking.getICFG().isReturnFromContextEdge(src, dest)) {
 			
-//		if(DEBUG > 0) {
+		if(DEBUG > 0) {
 			System.out.println("RETURN FROM CTX: " + src.toString() + " -> " + dest.toString());
-//		}
+		}
 			
 			return new IUnaryFlowFunction() {
 				public IntSet getTargets(int d1) {
@@ -259,7 +279,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 					//XXX: we are keeping the same async state cause we might be returning back
 					//to the same context after visiring a context that did not change the state
 					//at all
-					SingleLockState newSt = new SingleLockState(oldSt.acquired(), oldSt.timed(), oldSt.async(), oldSt.originContexts());
+					SingleLockState newSt = new SingleLockState(oldSt.acquired(), oldSt.timed(), oldSt.async(), oldSt.involvedContexts());
 					result.add(ctxSensLocking.getDomain().add(Pair.make(mappedObject.fst, newSt)));							
 					return result;
 				}

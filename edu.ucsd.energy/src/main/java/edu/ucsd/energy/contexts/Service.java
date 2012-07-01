@@ -1,7 +1,6 @@
 package edu.ucsd.energy.contexts;
 
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Set;
 
 import com.ibm.wala.classLoader.IClass;
@@ -58,47 +57,26 @@ public class Service extends Component {
 		callbackEdges.add(Pair.make(Interesting.ServiceOnUnbind, Interesting.ServiceOnDestroy));
 	}
 
-	public Set<Selector> getEntryPoints() {
-		HashSet<Selector> ret = new HashSet<Selector>();
-		ret.addAll(getStartedEntryPoints());
-		ret.addAll(getBoundEntryPoints());
-		ret.addAll(getIntentEntryPoints());
-		return ret;
+	public Set<Selector> getEntryPoints(Selector callSelector) {
+		if (callSelector.equals(Interesting.StartService)) {
+			return Interesting.startedServiceEntryMethods;
+		}
+		else if (callSelector.equals(Interesting.BindService)) {
+			return Interesting.boundServiceEntryMethods; 
+		}
+		return null;
 	}
 	
 
-	public Set<Selector> getExitPoints() {
-		HashSet<Selector> ret = new HashSet<Selector>();
-		ret.addAll(getStartedExitPoints());
-		ret.addAll(getBoundExitPoints());
-		ret.addAll(getIntentExitPoints());
-		return ret;
+	public Set<Selector> getExitPoints(Selector callSelector) {
+		if (callSelector.equals(Interesting.StartService)) {
+			return Interesting.startedServiceExitMethods;
+		}
+		else if (callSelector.equals(Interesting.BindService)) {
+			return Interesting.boundServiceExitMethods;
+		}
+		return null;
 	}
-	
-	public static Set<Selector> getStartedEntryPoints() {
-		return Interesting.startedServiceEntryMethods;
-	}
-	
-	public static Set<Selector> getStartedExitPoints() {
-		return Interesting.startedServiceExitMethods;
-	}
-	
-	public static Set<Selector> getBoundEntryPoints() {
-		return Interesting.startedServiceEntryMethods;
-	}
-	
-	public static Set<Selector> getBoundExitPoints() {
-		return Interesting.startedServiceExitMethods;
-	}
-
-	public static Set<Selector> getIntentEntryPoints() {
-		return Interesting.intentServiceEntryMethods;
-	}
-
-	public static Set<Selector> getIntentExitPoints() {
-		return Interesting.intentServiceExitMethods;
-	}
-
 	
 	
 	public String toString() {
@@ -114,9 +92,13 @@ public class Service extends Component {
 		Set<LockUsage> onStartCommandStates = summary.getCallBackState(Interesting.ServiceOnStartCommand);
 		
 		ViolationReport report = new ViolationReport();
-
+		if (DEBUG > 0) {
+			System.out.println("Gathering violations for: " + this.toString());
+		}
+		
 		for (WakeLockInstance wli : summary.lockInstances()) {
 			if (DEBUG > 0) {
+				
 				System.out.println("Checking policies for lock: " + wli.toShortString());
 				System.out.println("onStartStates: " + onStartStates.size());
 				System.out.println("onDestroyStates: " + onStartCommandStates.size());
@@ -125,8 +107,9 @@ public class Service extends Component {
 			for (LockUsage st : onStartStates) {
 				if (DEBUG > 0) {
 					System.out.println("Examining: " + st.toString());
+					System.out.println("Relevant ctxs: " + st.getRelevantCtxs());
 				}
-				if (st.locking(wli)) {
+				if (relevant(st) && st.locking(wli)) {
 					report.insertViolation(this, new Violation(ResultType.SERVICE_ONSTART));
 				}	
 			}
@@ -135,6 +118,7 @@ public class Service extends Component {
 		
 		return report;
 	}
+
 
 
 }

@@ -9,6 +9,7 @@ import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.collections.HashSetMultiMap;
@@ -20,7 +21,7 @@ import edu.ucsd.energy.contexts.Context;
 
 public class SuperContextCFG extends AbstractContextCFG {
 
-	private static final int DEBUG = 0;
+	private static final int DEBUG = 2;
 
 	//Keeps all the edges that connect different contexts
 	//Helps distinguish from function calls
@@ -102,10 +103,15 @@ public class SuperContextCFG extends AbstractContextCFG {
 					System.out.println("Adding ASYNC: " + caller.toString() + " to " + 
 							targetComp.toString());	
 				}
-				//For the moment, we propagate the information from all exit points
+				
+				if (!(instr instanceof SSAInvokeInstruction)) continue;
+				SSAInvokeInstruction inv = (SSAInvokeInstruction) instr;					
+				Selector callSelector = inv.getDeclaredTarget().getSelector();
+				
+				//Exit points might depend on the call method to the specific component
 				//Return edges must be added first to avoid having the entry method as
 				//a successor of the invoke instruction
-				Set<Selector> exitPoints = targetComp.getExitPoints();
+				Set<Selector> exitPoints = targetComp.getExitPoints(callSelector);
 				//E.log(1, "To: " + targetComp.toString());
 				for (Selector exitSel : exitPoints) {
 					CallBack callBack = targetComp.getCallBack(exitSel);
@@ -136,7 +142,7 @@ public class SuperContextCFG extends AbstractContextCFG {
 						}
 					}
 				}
-				Set<Selector> entryPoints = targetComp.getEntryPoints();
+				Set<Selector> entryPoints = targetComp.getEntryPoints(callSelector);
 				
 				for (Selector sel : entryPoints) {
 					CallBack callBack = targetComp.getCallBack(sel);

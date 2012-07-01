@@ -71,9 +71,9 @@ public class Main {
 
 	public static void runVerifyAnalysis() 
 			throws ApkException, IOException, RetargetException, WalaException, CancelException, InterruptedException {
-		JobPool<PatternAnalysisTask> jobPool = new JobPool<PatternAnalysisTask>() {
-			protected PatternAnalysisTask newTask(ApkInstance apk) {
-				return new PatternAnalysisTask(apk); 
+		JobPool<VerifyTask> jobPool = new JobPool<VerifyTask>() {
+			protected VerifyTask newTask(ApkInstance apk) {
+				return new VerifyTask(apk); 
 			} 
 		};
 		doAnalysis(jobPool);
@@ -103,9 +103,11 @@ public class Main {
 
 	}
 
-	private static class PatternAnalysisTask extends RunnableTask {
+	
+	// --verify
+	private static class VerifyTask extends RunnableTask {
 
-		PatternAnalysisTask(ApkInstance apk) {
+		VerifyTask(ApkInstance apk) {
 			super(apk);
 		}
 
@@ -143,6 +145,7 @@ public class Main {
 	}
 
 
+	// --usage
 	private static class UsageAnalysisTask extends RunnableTask {
 
 		UsageAnalysisTask(ApkInstance apk) {
@@ -184,6 +187,8 @@ public class Main {
 		}
 	}
 
+	
+	//--wakelock-info
 	private static class WakeLockCreationTask extends RunnableTask {
 
 		WakeLockCreationTask(ApkInstance apk) {
@@ -267,11 +272,12 @@ public class Main {
 
 		System.out.println("Thread pool size: " + numberOfThreads) ;
 		System.out.println("Input set size: " + theSet.size()) ;
+		
 		ThreadPoolExecutor tPoolExec = 
-				new ThreadPoolExecutor(numberOfThreads, numberOfThreads,
-						keepAliveTime, unit, workQueue);
+				new ThreadPoolExecutor(numberOfThreads, numberOfThreads, keepAliveTime, unit, workQueue);
 		for (RunnableTask job: (Set<? extends RunnableTask>) jobPool.getPool()) {
 			try {
+				//tPoolExec.invokeAll(tasks, timeout, unit)
 				tPoolExec.execute(job);
 			}
 			catch (RejectedExecutionException e) {

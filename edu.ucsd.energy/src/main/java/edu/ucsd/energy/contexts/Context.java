@@ -303,14 +303,25 @@ public abstract class Context extends AbstractContext {
 		return sSeed;
 	}
 
+	
+	/* Whoever really needs these will have to override it. */
+	
 	/**
-	 * Whoever really needs these will have to override it.
+	 * The set of exit points might depend on the call method used 
+	 * for this component call
 	 */
-	public Set<Selector> getEntryPoints() {
+	public Set<Selector> getEntryPoints(Selector callSelector) {
 		return null;
 	}
 
-	public Set<Selector> getExitPoints() {
+	
+	/**
+	 * The set of exit points might depend on the call method used 
+	 * for this component call
+	 * @param callSelector
+	 * @return
+	 */
+	public Set<Selector> getExitPoints(Selector callSelector) {
 		return null;
 	}
 

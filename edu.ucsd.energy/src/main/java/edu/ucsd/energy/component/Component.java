@@ -9,6 +9,7 @@ import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.results.ContextSummary;
 import edu.ucsd.energy.results.ViolationReport;
+import edu.ucsd.energy.results.ProcessResults.LockUsage;
 
 abstract public class Component extends Context {
 
@@ -29,5 +30,11 @@ abstract public class Component extends Context {
 	}
 	
 	abstract protected ViolationReport gatherViolations(ContextSummary ctx);
+	
+	
+	protected boolean relevant(LockUsage st) {
+		return st.relevant(this);
+	}
+
 	
 }

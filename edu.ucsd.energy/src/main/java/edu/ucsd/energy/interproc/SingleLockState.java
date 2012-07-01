@@ -9,7 +9,7 @@ import edu.ucsd.energy.contexts.Context;
  * @author pvekris
  *
  */
-public class SingleLockState  {
+public class SingleLockState {
 
 	SingleLockState UNDEFINED;
 
@@ -18,9 +18,9 @@ public class SingleLockState  {
 	private boolean timed;
 	private boolean async;
 	
-	
 	//All the possible contexts that this state can originate from
-	private Set<Context> originContexts;
+	//or contexts that operate on this state
+	private Set<Context> involvedContexts;
 
 	private LockStateDescription lockStateColor;
 
@@ -51,13 +51,13 @@ public class SingleLockState  {
 		acquired = a;
 		timed = t;
 		async = as;   
-		originContexts = sc;
+		involvedContexts = sc;
 	}
 
 	@Override
 	public int hashCode() {
 		return 1 * (timed?1:0) +  2 * (acquired?1:0) + 4 * (async?1:0) + 
-				originContexts.size();
+				involvedContexts.size();
 	}
 
 	@Override
@@ -67,11 +67,10 @@ public class SingleLockState  {
 			return ((acquired() == l.acquired()) &&
 					(timed() == l.timed()) &&
 					(async() == l.async()) &&
-					originContexts.containsAll(l.originContexts()) &&
-					l.originContexts.containsAll(originContexts))
-					;
+					involvedContexts.containsAll(l.involvedContexts()) &&
+					l.involvedContexts.containsAll(involvedContexts));
 		}
-		return false;		
+		return false;
 	}
 
 	public String toString () {
@@ -89,8 +88,8 @@ public class SingleLockState  {
 		}		
 		//Obviously we need a may analysis here
 		HashSet<Context> sOrig = new HashSet<Context>();
-		sOrig.addAll(l.originContexts());
-		sOrig.addAll(originContexts());
+		sOrig.addAll(l.involvedContexts());
+		sOrig.addAll(involvedContexts());
 		
 		return new SingleLockState(	
 			acquired || l.acquired(), 
@@ -101,8 +100,12 @@ public class SingleLockState  {
 	}
 
 
-	public Set<Context> originContexts() {
-		return originContexts;
+	public Set<Context> involvedContexts() {
+		return involvedContexts;
+	}
+	
+	public void addContexts(Set<Context> ctxs) {
+		involvedContexts.addAll(ctxs);		
 	}
 
 	public boolean acquired() {
@@ -168,6 +171,8 @@ public class SingleLockState  {
 	public void setAcquired(boolean b) {
 		acquired = b;		
 	}
+
+	
 
 
 }

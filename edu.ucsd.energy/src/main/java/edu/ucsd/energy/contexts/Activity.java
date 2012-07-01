@@ -32,11 +32,16 @@ public class Activity extends Component {
 		Interesting.ActivityOnRestart
 	};
 
-	public Set<Selector> getEntryPoints() {
+	
+	/**
+	 * Activities can only be called with a single method - startActivity
+	 * So the result is independent of the call method selector
+	 */
+	public Set<Selector> getEntryPoints(Selector callSelector) {
 		return Interesting.activityEntryMethods;
 	}
 
-	public Set<Selector> getExitPoints() {
+	public Set<Selector> getExitPoints(Selector callSelector) {
 		return Interesting.activityExitMethods;
 	}
 
