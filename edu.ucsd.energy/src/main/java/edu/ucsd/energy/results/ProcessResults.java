@@ -114,7 +114,8 @@ public class ProcessResults {
 		OPTIMIZATION_FAILURE(2),
 		ANALYSIS_FAILURE(2),
 		UNIMPLEMENTED_FAILURE(2), 
-		INTENTSERVICE_ONHANDLEINTENT(2);
+		INTENTSERVICE_ONHANDLEINTENT(2), 
+		IOEXCEPTION_FAILURE(2);
 		
 		int level;		//the level of seriousness of the condition
 		

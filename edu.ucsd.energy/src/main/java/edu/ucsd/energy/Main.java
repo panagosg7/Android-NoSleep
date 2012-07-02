@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -43,10 +44,10 @@ import com.ibm.wala.util.debug.UnimplementedError;
 import edu.ucsd.energy.ApkCollection.ApkApplication;
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.apk.ApkInstance;
-import edu.ucsd.energy.results.Violation;
 import edu.ucsd.energy.results.FailReport;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ProcessResults.ResultType;
+import edu.ucsd.energy.results.Violation;
 import edu.ucsd.energy.util.SystemUtil;
 
 public class Main {
@@ -66,17 +67,18 @@ public class Main {
 		JobPool<WakeLockCreationTask> jobPool = new JobPool<WakeLockCreationTask>() {
 			protected WakeLockCreationTask newTask(ApkInstance apk) { return new WakeLockCreationTask(apk); } 
 		};
-		doAnalysis(jobPool);
+		runAnalysis(jobPool);
 	}
 
 	public static void runVerifyAnalysis() 
-			throws ApkException, IOException, RetargetException, WalaException, CancelException, InterruptedException {
+			throws ApkException, IOException, RetargetException, 
+			WalaException, CancelException, InterruptedException {
 		JobPool<VerifyTask> jobPool = new JobPool<VerifyTask>() {
 			protected VerifyTask newTask(ApkInstance apk) {
 				return new VerifyTask(apk); 
 			} 
 		};
-		doAnalysis(jobPool);
+		callAnalysis(jobPool);
 	}
 
 	public static void runUsageAnalysis() 
@@ -84,7 +86,7 @@ public class Main {
 		JobPool<UsageAnalysisTask> jobPool = new JobPool<UsageAnalysisTask>() {
 			protected UsageAnalysisTask newTask(ApkInstance apk) { return new UsageAnalysisTask(apk); } 
 		};
-		doAnalysis(jobPool);
+		runAnalysis(jobPool);
 	}
 
 	private static abstract class RunnableTask implements Runnable {
@@ -103,19 +105,36 @@ public class Main {
 
 	}
 
+	private static abstract class CallableTask implements Callable<IReport> {
+
+		public static JSONObject fullObject = new JSONObject();
+
+		protected ApkInstance apk;
+
+		CallableTask(ApkInstance apk) {
+			this.apk = apk;
+		}
+
+		public String getApkName() {
+			return apk.getName();
+		}
+
+	}
+
+	
 	
 	// --verify
-	private static class VerifyTask extends RunnableTask {
+	private static class VerifyTask extends CallableTask {
 
 		VerifyTask(ApkInstance apk) {
 			super(apk);
 		}
 
-		public void run() {
+		public IReport call() throws Exception {
+			IReport res;
 			try {
 				//LOGGER.info("Starting: " + apk.getName());
 				String app_name = apk.getName();
-				IReport res;
 				if (apk.successfullyOptimized()) {
 					try {
 						res = apk.analyzeFull();
@@ -138,10 +157,13 @@ public class Main {
 				SystemUtil.commitReport(apk.getName(), json);
 			} catch (IOException e) {
 				e.printStackTrace();
+				res = new FailReport(ResultType.IOEXCEPTION_FAILURE);
 			}
 			//Dump the output file in each intermediate step
 			SystemUtil.writeToFile();
+			return res;
 		}
+		
 	}
 
 
@@ -234,7 +256,7 @@ public class Main {
 
 
 
-	private static abstract class JobPool<T extends RunnableTask> {
+	private static abstract class JobPool<T> {
 		Set<T> pool;
 		JobPool() throws IOException {
 			FileInputStream is = new FileInputStream(acqrelDatabaseFile);		
@@ -263,18 +285,15 @@ public class Main {
 	}
 
 
-	public static void doAnalysis(JobPool<? extends RunnableTask> jobPool) 
+	public static void runAnalysis(JobPool<? extends RunnableTask> jobPool) 
 			throws ApkException, IOException, RetargetException, WalaException, CancelException, InterruptedException {
 		//Initialize thread pool
 		long keepAliveTime = 1;
 		TimeUnit unit = TimeUnit.SECONDS;
 		LinkedBlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<Runnable>(1000);
-
 		System.out.println("Thread pool size: " + numberOfThreads) ;
 		System.out.println("Input set size: " + theSet.size()) ;
-		
-		ThreadPoolExecutor tPoolExec = 
-				new ThreadPoolExecutor(numberOfThreads, numberOfThreads, keepAliveTime, unit, workQueue);
+		ThreadPoolExecutor tPoolExec = new ThreadPoolExecutor(numberOfThreads, numberOfThreads, keepAliveTime, unit, workQueue);
 		for (RunnableTask job: (Set<? extends RunnableTask>) jobPool.getPool()) {
 			try {
 				//tPoolExec.invokeAll(tasks, timeout, unit)
@@ -285,10 +304,46 @@ public class Main {
 			}
 		}
 		tPoolExec.shutdown();
-
 		tPoolExec.awaitTermination(20, TimeUnit.HOURS);
-
 	}
+
+
+	/**
+	 * Version of the runAnalysis but for Callable tasks.
+	 * This could return a list of reports - one for every application that is
+	 * analyzed.
+	 * @param jobPool
+	 * @throws ApkException
+	 * @throws IOException
+	 * @throws RetargetException
+	 * @throws WalaException
+	 * @throws CancelException
+	 * @throws InterruptedException
+	 */
+	public static void callAnalysis(JobPool<? extends CallableTask> jobPool) 
+			throws ApkException, IOException, RetargetException, WalaException, CancelException, InterruptedException {
+		//Initialize thread pool
+		long keepAliveTime = 1;
+		long timeout = 120;
+		TimeUnit unit = TimeUnit.SECONDS;
+		LinkedBlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<Runnable>(1000);
+		System.out.println("Callable analysis");
+		System.out.println("Thread pool size: " + numberOfThreads) ;
+		System.out.println("Input set size: " + theSet.size()) ;
+		ThreadPoolExecutor tPoolExec = new ThreadPoolExecutor(numberOfThreads, numberOfThreads, keepAliveTime, unit, workQueue);
+
+		Set<? extends CallableTask> tasks = jobPool.getPool();
+		
+		//we can get this result...
+		tPoolExec.invokeAll(tasks, timeout, unit);
+		
+		tPoolExec.shutdown();
+		tPoolExec.awaitTermination(20, TimeUnit.HOURS);
+		
+	}
+
+		
+	
 
 	/*
 	 * TODO: Parallelize this
