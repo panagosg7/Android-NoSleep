@@ -5,7 +5,7 @@ import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.TypeName;
 
-import edu.ucsd.energy.contexts.Context;
+import edu.ucsd.energy.component.Component;
 
 public abstract class AbstractRunnableInstance extends ObjectInstance {
 
@@ -30,7 +30,7 @@ public abstract class AbstractRunnableInstance extends ObjectInstance {
 	private TypeName callee;
 
 	//TODO: is this needed
-	private Context calledComponent;
+	private Component calledComponent;
 	
 	public String toString() {
 		return (((field!=null)?("Field: " + field.toString()):"") 
@@ -43,7 +43,7 @@ public abstract class AbstractRunnableInstance extends ObjectInstance {
 		this.callee = calledType;
 	}
 	
-	public void setCalledComponent(Context comp) {
+	public void setCalledComponent(Component comp) {
 		this.calledComponent = comp;
 	}
 	

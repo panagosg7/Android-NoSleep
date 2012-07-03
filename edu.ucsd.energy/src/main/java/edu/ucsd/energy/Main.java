@@ -60,7 +60,7 @@ public class Main {
 
 	private static ApkCollection collection;
 
-	private static Set<String> theSet = new LinkedHashSet<String>();
+	private static ArrayList<String> theSet = new ArrayList<String>();
 
 	public static void runWakeLockAnalysis() 
 			throws IOException, ApkException, RetargetException, WalaException, CancelException, InterruptedException {
@@ -121,8 +121,8 @@ public class Main {
 
 	}
 
-	
-	
+
+
 	// --verify
 	private static class VerifyTask extends CallableTask {
 
@@ -163,7 +163,7 @@ public class Main {
 			SystemUtil.writeToFile();
 			return res;
 		}
-		
+
 	}
 
 
@@ -209,7 +209,7 @@ public class Main {
 		}
 	}
 
-	
+
 	//--wakelock-info
 	private static class WakeLockCreationTask extends RunnableTask {
 
@@ -313,37 +313,30 @@ public class Main {
 	 * This could return a list of reports - one for every application that is
 	 * analyzed.
 	 * @param jobPool
-	 * @throws ApkException
-	 * @throws IOException
-	 * @throws RetargetException
-	 * @throws WalaException
-	 * @throws CancelException
-	 * @throws InterruptedException
 	 */
 	public static void callAnalysis(JobPool<? extends CallableTask> jobPool) 
 			throws ApkException, IOException, RetargetException, WalaException, CancelException, InterruptedException {
-		//Initialize thread pool
-		long keepAliveTime = 1;
-		long timeout = 120;
-		TimeUnit unit = TimeUnit.SECONDS;
-		LinkedBlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<Runnable>(1000);
+		
 		System.out.println("Callable analysis");
 		System.out.println("Thread pool size: " + numberOfThreads) ;
-		System.out.println("Input set size: " + theSet.size()) ;
-		ThreadPoolExecutor tPoolExec = new ThreadPoolExecutor(numberOfThreads, numberOfThreads, keepAliveTime, unit, workQueue);
-
-		Set<? extends CallableTask> tasks = jobPool.getPool();
+		System.out.println("Input set size: " + theSet.size());
 		
+		//Initialize thread pool
+		long keepAliveTime = 1;
+		TimeUnit unit = TimeUnit.SECONDS;
+		LinkedBlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<Runnable>(1000);
+		
+		ThreadPoolExecutor tPoolExec = new ThreadPoolExecutor(numberOfThreads, numberOfThreads, keepAliveTime, unit, workQueue);
+		Set<? extends CallableTask> tasks = jobPool.getPool();
 		//we can get this result...
-		tPoolExec.invokeAll(tasks, timeout, unit);
+		tPoolExec.invokeAll(tasks);
 		
 		tPoolExec.shutdown();
 		tPoolExec.awaitTermination(20, TimeUnit.HOURS);
-		
+
 	}
 
-		
-	
+
 
 	/*
 	 * TODO: Parallelize this
@@ -685,6 +678,7 @@ public class Main {
 		}
 	}
 
+
 	//This is a temporary method - to be deprecated
 	private static void createJSON(String input) {
 		try {
@@ -738,6 +732,7 @@ public class Main {
 		options.addOption(new Option("unit", false, "run the unit tests"));
 		options.addOption(new Option("i", "input", true, "specify the input json file"));
 		options.addOption(new Option("t", "threads", true, "run the analysis on t threads (works for pattern analysis only)"));
+		options.addOption(new Option("skip", true, "skip the first N application that are in line for analysis"));
 		options.addOption(new Option("s", "small-set", false, "run the analysis on a small set"));
 		options.addOption(new Option("f", "run-on-failed", false, "run the analysis on the previously failing (needs -i)"));
 
@@ -773,17 +768,18 @@ public class Main {
 			//Define the set of apps to run the analysis on
 			if (line.hasOption("small-set")) {
 				/* The applications you specify here need to be in apk_collection !!! */
-//				theSet.add("NetCounter");					//verified
-//				theSet.add("3D_Level");						//verified
-//				theSet.add("SpeakWrite");
-//				theSet.add("iZen_Lite");					//Correctly NOT verified
-//				theSet.add("Audalyzer");					//verified - but missing unresolved stuff
-//				theSet.add("TiltMazes");					//verified
-//				theSet.add("SMS_Control_Center");
-//				theSet.add("Gmote");
-//				theSet.add("apMemo_Lite");
-//				theSet.add("GO_SMS");
-				theSet.add("Unit_Correct_02");
+				//				theSet.add("NetCounter");					//verified
+				//				theSet.add("3D_Level");						//verified
+				//				theSet.add("SpeakWrite");
+				//				theSet.add("iZen_Lite");					//Correctly NOT verified
+				//				theSet.add("Audalyzer");					//verified - but missing unresolved stuff
+				//				theSet.add("TiltMazes");					//verified
+				//				theSet.add("SMS_Control_Center");
+				//				theSet.add("Gmote");
+				//				theSet.add("apMemo_Lite");
+				//				theSet.add("GO_SMS");
+				//				theSet.add("Unit_Correct_02");
+				theSet.add("Twitter_Simpsons_Quote");
 			}
 			else if (line.hasOption("unit")) {
 				theSet.add("Unit_01");
@@ -803,12 +799,22 @@ public class Main {
 			else {
 				FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 				JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
-				theSet = acqrel_status.keySet();
+				theSet.addAll((Set<String>) acqrel_status.keySet());
 			}
-
+			
+			if (line.hasOption("skip")) {
+				Integer integer = Integer.parseInt(line.getOptionValue("skip"));
+				if (integer != null) {
+					for(int i = 0; i < integer.intValue(); i ++) {
+						String removed = theSet.remove(0);
+						System.out.println("Skipping application: " + removed);
+					}
+				}
+			}
+			
 			//TODO: Refine this - put it in a method 
 			if (line.hasOption("run-on-failed")) {
-				theSet = new HashSet<String>();
+				theSet = new ArrayList<String>();
 				FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 				JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 				int i = 1;
@@ -867,6 +873,7 @@ public class Main {
 			e.printStackTrace();
 		}
 	}
+
 
 
 }

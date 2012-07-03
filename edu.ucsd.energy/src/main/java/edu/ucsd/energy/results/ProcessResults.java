@@ -13,6 +13,7 @@ import com.ibm.wala.util.collections.HashSetMultiMap;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.component.SuperComponent;
 import edu.ucsd.energy.contexts.Context;
+import edu.ucsd.energy.contexts.GeneralContext;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.managers.ComponentManager;
@@ -21,6 +22,9 @@ import edu.ucsd.energy.util.E;
 
 public class ProcessResults {
 
+	private static final int DEBUG = 1;
+
+	
 	public static class LockUsage extends HashMap<WakeLockInstance, SingleLockState> {
 
 		private static final long serialVersionUID = -6164699487290522725L;
@@ -28,7 +32,6 @@ public class ProcessResults {
 		public LockUsage() {
 			super();
 		}
-		
 		
 		Set<Context> relevant;
 		
@@ -103,18 +106,28 @@ public class ProcessResults {
 		
 		UNRESOLVED_INTERESTING_CALLBACKS(1),
 		
+		UNRESOLVED_ASYNC_CALLS(2),
+		
 		//Activity
 		ACTIVITY_ONPAUSE(2),
 		ACTIVITY_ONSTOP(3),
 		//Service
 		SERVICE_ONSTART(2),
 		SERVICE_ONDESTORY(3),
-
+		SERVICE_ONUNBIND(2),
+		INTENTSERVICE_ONHANDLEINTENT(2),
+		//Runnable
+		RUNNABLE_RUN(2),
+		//BoradcaseReceiver
+		BROADCAST_RECEIVER_ONRECEIVE(2),		
+		//Application
+		APPLICATION_TERMINATE(2),
+		
 		//Analysis results
 		OPTIMIZATION_FAILURE(2),
 		ANALYSIS_FAILURE(2),
 		UNIMPLEMENTED_FAILURE(2), 
-		INTENTSERVICE_ONHANDLEINTENT(2), 
+		 
 		IOEXCEPTION_FAILURE(2);
 		
 		int level;		//the level of seriousness of the condition
@@ -127,6 +140,9 @@ public class ProcessResults {
 			return level;			
 		}
 	}
+
+
+
 
 
 	/**
@@ -145,17 +161,26 @@ public class ProcessResults {
 		//LockUsageReport usageReport = new LockUsageReport();
 		ViolationReport report = new ViolationReport();
 		
-		
 		//Check that there are no unresolved Intent calls 
 		//performed at high energy state
-		HashSetMultiMap<MethodReference, SSAInstruction> importantUnresolvedIntents =
-				componentManager.getImportantUnresolvedIntents();
-		for (MethodReference mr : importantUnresolvedIntents.keySet()) {
-			Set<SSAInstruction> is = importantUnresolvedIntents.get(mr);
+		
+		HashSetMultiMap<MethodReference, SSAInstruction> criticalUnresolvedAsyncCalls = 
+				componentManager.getCriticalUnresolvedAsyncCalls();
+		
+		if (criticalUnresolvedAsyncCalls.size() > 0) {
+			report.insertViolation(GeneralContext.singleton(componentManager.getGlobalManager()),
+					new Violation(ResultType.UNRESOLVED_ASYNC_CALLS));
+		}
+		
+		for (MethodReference mr : criticalUnresolvedAsyncCalls.keySet()) {
+			Set<SSAInstruction> is = criticalUnresolvedAsyncCalls.get(mr);
 			E.red();
-			System.out.println("Unresolved intent call at high energy state."); 
-			System.out.println("Method: " + mr.getSignature());
-			System.out.println(is);
+			System.out.println("Unresolved Intent/Runnable(s) called at high energy state: "); 
+			System.out.println("  by method: " + mr.getSignature());
+			System.out.println("  through instruction(s): ");
+			for (SSAInstruction i : is) {
+				System.out.println("  " + i.toString());
+			}
 			System.out.println();
 			E.resetColor();
 		}
@@ -163,30 +188,46 @@ public class ProcessResults {
 		for (SuperComponent superComponent : componentManager.getSuperComponents()) {
 			
 			if (!superComponent.callsInteresting()) {
-				System.out.println(superComponent.toString() + " is uninteresting - moving on...");
+				E.grey();
+				System.out.println("Skipping uninteresting: "+ superComponent.toString());
+				E.resetColor();
 				continue;
 			}
+			
+			System.out.println("Cheking: "+ superComponent.toString());
 			
 			//Each context should belong to exactly one SuperComponent
 			for (Context context : superComponent.getContexts()) {
 				
 				//Focus just on Components (Activities, Services, BcastRcv...)
 				if (!(context instanceof Component)) continue;
+				Component component = (Component) context;
+				
 				//Do not analyze abstract classes (they will have to be 
 				//extended in order to be used)
-				if (context.isAbstract()) {
-					E.grey();
-					System.out.println(context.toString() + " is abstract - moving on...");
-					E.resetColor();
+				if (component.isAbstract()) {
+					if (DEBUG > 0) {
+						E.grey();
+						System.out.println(" - Skipping abstract: " + component.toString() );
+						E.resetColor();
+					}
 					continue;
 				}
-				System.out.println(context.toString() + " - processing ...");
-				Component component = (Component) context;
-				report.mergeReport(component.assembleReport());		
+				Set<Violation> assembleReport = component.assembleReport();
+				report.insertViolations(component, assembleReport);
+				if (DEBUG > 0) {
+					if (assembleReport.size() > 0) {
+						E.yellow();
+					}
+					System.out.println(" - Checking violatios for: " + component.toString());
+					E.resetColor();
+				}
+				
+						
 			}
 		}
 		
-    report.dump();  
+    report.dump();
 		
 		return report;
 	}

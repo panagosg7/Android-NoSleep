@@ -1,6 +1,7 @@
 package edu.ucsd.energy.contexts;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 
 import com.ibm.wala.classLoader.IClass;
@@ -10,16 +11,12 @@ import com.ibm.wala.util.collections.Pair;
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.managers.GlobalManager;
-import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.results.ContextSummary;
-import edu.ucsd.energy.results.Violation;
-import edu.ucsd.energy.results.ViolationReport;
-import edu.ucsd.energy.results.ProcessResults.LockUsage;
 import edu.ucsd.energy.results.ProcessResults.ResultType;
+import edu.ucsd.energy.results.Violation;
 
 public class IntentService extends Component {
 	
-	private static final int DEBUG = 0;
 	static Selector elements[] = {
 		Interesting.ServiceOnCreate, 
 		Interesting.ServiceOnHandleIntent,
@@ -62,26 +59,10 @@ public class IntentService extends Component {
 	}
 
 	
-	public ViolationReport gatherViolations(ContextSummary summary) {
-		Set<LockUsage> onHandleIntentStates = summary.getCallBackState(Interesting.ServiceOnHandleIntent);
-		
-		ViolationReport report = new ViolationReport();
-
-		for (WakeLockInstance wli : summary.lockInstances()) {
-			if (DEBUG > 0) {
-				System.out.println("Checking policies for lock: " + wli.toShortString());
-				System.out.println("onDestroyStates: " + onHandleIntentStates.size());
-			}
-			for (LockUsage st : onHandleIntentStates) {
-				if (DEBUG > 0) {
-					System.out.println("Examining: " + st.toString());
-				}
-				if (relevant(st) && st.locking(wli)) {
-					report.insertViolation(this, new Violation(ResultType.INTENTSERVICE_ONHANDLEINTENT));
-				}	
-			}		}
-		
-		return report;
+	public Set<Violation> gatherViolations(ContextSummary summary) {
+		Set<Violation> violations = new HashSet<Violation>();
+		violations.addAll(super.gatherviolations(summary, Interesting.ServiceOnHandleIntent, ResultType.INTENTSERVICE_ONHANDLEINTENT));
+		return violations;
 	}
 
 	

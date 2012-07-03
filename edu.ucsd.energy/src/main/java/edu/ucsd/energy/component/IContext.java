@@ -25,5 +25,6 @@ public interface IContext {
 	public String toFileName();
 
 	public boolean callsInteresting();
+
 	
 }

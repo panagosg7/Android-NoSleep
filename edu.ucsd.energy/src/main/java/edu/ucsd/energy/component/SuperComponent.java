@@ -13,6 +13,7 @@ import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
+import com.ibm.wala.util.collections.HashSetMultiMap;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.graph.INodeWithNumber;
 
@@ -28,6 +29,7 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 
 	private static final int DEBUG = 0;
 
+	//The contexts that constitute this SuperComponent
 	Set<Context> sComponent;
 
 	Set<CallBack> sCallBack;
@@ -48,16 +50,22 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 		return sCallBack;
 	}
 
-	private class SeedMap extends HashMap<SSAInstruction, Context> {
+	private class SeedMap extends HashMap<SSAInstruction, Component> {
 
 		private static final long serialVersionUID = 6969397892661845448L;
 
 		public void registerSeeds(Context dest) {
-			Map<Context, Set<SSAInstruction>> seeds = dest.getSeeds();
-			if (seeds != null) {
-				for (Entry<Context, Set<SSAInstruction>> e : seeds.entrySet()) {
-					for (SSAInstruction i : e.getValue()) {
-						put(i, dest);
+			//This will work only for components, so ...
+			if (dest instanceof Component) {
+				Component component = (Component) dest;
+				HashSetMultiMap<Context, SSAInstruction> seeds = component.getSeeds();
+				if (seeds != null) {
+					Set<Context> ctxs = seeds.keySet();
+					for (Context c : ctxs) {
+						Set<SSAInstruction> insts = seeds.get(c);
+						for (SSAInstruction i : insts) {
+							put(i, component);
+						}
 					}
 				}
 			}
@@ -68,7 +76,7 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 			if (!entrySet().isEmpty()) {
 				sb.append("SEEDS:\n");
 			}
-			for (Map.Entry<SSAInstruction, Context> e : entrySet()) {
+			for (Entry<SSAInstruction, Component> e : entrySet()) {
 				if (e.getKey() instanceof SSAInvokeInstruction) {
 					SSAInvokeInstruction inv = (SSAInvokeInstruction) e.getKey();
 					sb.append(inv.getDeclaredTarget().getSelector().toString() 

@@ -27,7 +27,6 @@ import com.ibm.wala.util.collections.CollectionFilter;
 import com.ibm.wala.util.collections.Filter;
 import com.ibm.wala.util.collections.HashSetMultiMap;
 import com.ibm.wala.util.collections.Iterator2Collection;
-import com.ibm.wala.util.collections.Iterator2Set;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.graph.GraphReachability;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
@@ -167,8 +166,6 @@ public class ComponentManager {
 				for (IClass anc : classAncestors) {
 					String ancName = anc.getName().toString();
 					
-					System.out.println("Hierarchy: " + ancName);
-					
 					if (ancName.equals("Landroid/app/Activity")) {
 						context = new Activity(global, c);
 						break;
@@ -218,7 +215,6 @@ public class ComponentManager {
 						break;
 					}
 				}
-				System.out.println("---");
 			}
 
 			if (context == null) {
@@ -227,44 +223,34 @@ public class ComponentManager {
 				//this moment is Runnable, which should be tested on first. 
 				if (implementsInterface(c, "Ljava/lang/Runnable")) {
 					context = new RunnableThread(global, c);
-					break;
 				}
 				else if (implementsInterface(c, "Ljava/util/concurrent/Callable")) {
 					context = new Callable(global, c);
-					break;
 				}
 				else if (implementsInterface(c,"ClickListener")) {
 					context = new ClickListener(global, c);
-					break;
 				}
 				else if (implementsInterface(c, "Landroid/content/SharedPreferences$OnSharedPreferenceChangeListener")
 						|| implementsInterface(c, "Landroid/preference/Preference$OnPreferenceChangeListener")) {
 					context = new OnSharedPreferenceChangeListener(global, c);
-					break;
 				}
 				else if (implementsInterface(c, "Landroid/location/LocationListener")) {
 					context = new LocationListener(global, c);
-					break;
 				}
 				else if (implementsInterface(c, "Landroid/widget/")) {
 					context = new Widget(global, c);
-					break;
 				}
 				else if (implementsInterface(c, "Landroid/hardware/SensorEventListener")) {
 					context = new SensorEventListener(global, c);
-					break;
 				}
 				else if (implementsInterface(c, "Landroid/content/ServiceConnection")) {
 					context = new ServiceConnection(global, c);
-					break;
 				}
 				else if (implementsInterface(c, "Landroid/content/DialogInterface")) {
 					context = new DialogInterface(global, c);
-					break;
 				}
 				else if (implementsInterface(c, "Landroid/media/MediaPlayer$OnCompletionListener")) {
 					context = new OnCompletionListener(global, c);
-					break;
 				}
 			}
 
@@ -454,10 +440,15 @@ public class ComponentManager {
 			componentSet = getSuperComponents();
 		}
 
-		//Populate unresolved Intent on high state map.
+		//************************************************************************************
+		//Sanity check:
+		//Populate unresolved Intent and Runnable calls that are made while a resource is held
 		mUnresIntents = new HashSetMultiMap<MethodReference, SSAInstruction>();
 		Collection<Pair<MethodReference, SSAInvokeInstruction>> unresolvedInstructions = 
-				global.getIntentManager().getUnresolvedCallSites();
+				new HashSet<Pair<MethodReference,SSAInvokeInstruction>>(); 
+		
+		unresolvedInstructions.addAll(global.getIntentManager().getUnresolvedCallSites());
+		unresolvedInstructions.addAll(global.getRunnableManager().getUnresolvedCallSites());
 
 		//Warning: Be careful to use the correct set of contexts (super or regular)	
 		for (AbstractContext c : componentSet) {
@@ -466,6 +457,7 @@ public class ComponentManager {
 				mUnresIntents.put(p.fst, p.snd);
 			}
 		}
+		//************************************************************************************
 
 	}
 
@@ -498,7 +490,9 @@ public class ComponentManager {
 		}
 		
 		if (!component.callsInteresting()) {
-			System.out.println(component.toString() + " does not deal with resource management. Moving on ...");
+			if (DEBUG > 0) {
+				System.out.println(component.toString() + " does not deal with resource management. Moving on ...");
+			}
 			return;
 		}
 		
@@ -515,13 +509,13 @@ public class ComponentManager {
 
 	private HashSetMultiMap<MethodReference, SSAInstruction> mUnresIntents;
 
-	public HashSetMultiMap<MethodReference, SSAInstruction> getImportantUnresolvedIntents() {
+	public HashSetMultiMap<MethodReference, SSAInstruction> getCriticalUnresolvedAsyncCalls() {
 		if (mUnresIntents == null) {
 			solveComponents();
 		}
 		return mUnresIntents;
-
 	}
+	
 
 	public ViolationReport getAnalysisResults() {
 		return new ProcessResults(this).processExitStates();
@@ -530,6 +524,10 @@ public class ComponentManager {
 	//SupperComponents need to have been resolved first
 	public List<SuperComponent> getSuperComponents() {
 		return superComponents;
+	}
+	
+	public GlobalManager getGlobalManager() {
+		return global;
 	}
 
 }

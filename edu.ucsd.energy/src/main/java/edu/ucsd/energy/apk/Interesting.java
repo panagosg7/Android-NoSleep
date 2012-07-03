@@ -59,6 +59,10 @@ public class Interesting {
 	
 	public static Set<Selector> broadcastReceiverCallbackMethods = new HashSet<Selector>();
 	public static Set<Selector> broadcastReceiverEntryMethods = new HashSet<Selector>();
+	public static Set<Selector> broadcastReceiverExitMethods = new HashSet<Selector>();
+	
+	public static Set<Selector> applicationEntryMethods = new HashSet<Selector>();
+	public static Set<Selector> applicationExitMethods = new HashSet<Selector>();
 	
 	public static Map<Selector, Pair<Integer, Set<Selector>>> mRunnableMethods = new HashMap<Selector, Pair<Integer, Set<Selector>>>();
 
@@ -104,6 +108,10 @@ public class Interesting {
 	
 	public static final Selector BroadcastReceiverOnReceive = 
 			Selector.make("onReceive(Landroid/content/Context;Landroid/content/Intent;)V");
+	
+	//Application Selectors
+	public static final Selector ApplicationOnCreate = Selector.make("onCreate()V");
+	public static final Selector ApplicationOnTerminate = Selector.make("onTerminate()V");
 	
 	
 	//Intent Calls
@@ -226,8 +234,12 @@ public class Interesting {
 		
 	//BroadcastReceivers
 		broadcastReceiverEntryMethods.add(BroadcastReceiverOnReceive);
+		broadcastReceiverExitMethods.add(BroadcastReceiverOnReceive);
 		broadcastReceiverCallbackMethods.add(BroadcastReceiverOnReceive);
 		
+	//Application
+		applicationEntryMethods.add(ApplicationOnCreate);
+		applicationExitMethods.add(ApplicationOnTerminate);
 		
 		/*
 		 * Needed a selector for the Intents because the class appearing in the signature of

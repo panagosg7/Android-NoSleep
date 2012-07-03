@@ -19,13 +19,6 @@ public class CompoundLockState {
 	/** This is the main content of the compound lock state */
 	private Map<WakeLockInstance, SingleLockState> map = null;	
 	
-	/**
-	 * Constructors
-	 */
-	public CompoundLockState(Map<WakeLockInstance, SingleLockState> m) {	
-		this.map = m;
-	}
-	
 	public CompoundLockState() {
 		this.map = new HashMap<WakeLockInstance, SingleLockState>();
 	}

@@ -17,11 +17,12 @@ import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.component.AbstractContext;
 import edu.ucsd.energy.component.CallBack;
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.contexts.Context;
 
 public class SuperContextCFG extends AbstractContextCFG {
 
-	private static final int DEBUG = 2;
+	private static final int DEBUG = 0;
 
 	//Keeps all the edges that connect different contexts
 	//Helps distinguish from function calls
@@ -72,7 +73,7 @@ public class SuperContextCFG extends AbstractContextCFG {
 		//Pairs of edges within the same context
 		Set<Pair<CGNode, CGNode>> packedEdges,
 		//Edges between different contexts
-		Map<SSAInstruction, Context> seeds) {
+		Map<SSAInstruction, Component> seeds) {
 		
 		  super(component.getContextCallGraph());
 		  this.absCtx = component;
@@ -92,12 +93,12 @@ public class SuperContextCFG extends AbstractContextCFG {
 	 * This method adds edges that refer to Intent, Thread and Handler posts etc.
 	 * @param map
 	 */
-	private void addCallToEntryAndReturnEdges(Map<SSAInstruction, Context> map) {
+	private void addCallToEntryAndReturnEdges(Map<SSAInstruction, Component> map) {
 		Iterator<BasicBlockInContext<IExplodedBasicBlock>> iterator = iterator();
 		while(iterator.hasNext()) {
 			BasicBlockInContext<IExplodedBasicBlock> caller = iterator.next();
 			SSAInstruction instr = caller.getDelegate().getInstruction();
-			Context targetComp = map.get(instr);
+			Component targetComp = map.get(instr);
 			if (targetComp != null) {
 				if (DEBUG > 0) {
 					System.out.println("Adding ASYNC: " + caller.toString() + " to " + 

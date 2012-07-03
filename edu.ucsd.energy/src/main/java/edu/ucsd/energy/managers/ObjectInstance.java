@@ -54,6 +54,14 @@ public abstract class ObjectInstance {
 		field = fr;
 	}	
 
+	public IMethod getMethod() {
+		return method;
+	}
+	
+	public int getParam() {
+		return param;
+	}
+	
 	abstract public String toString();
 	
 }

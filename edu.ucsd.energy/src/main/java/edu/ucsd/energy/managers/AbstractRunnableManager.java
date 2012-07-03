@@ -188,7 +188,6 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 
 	protected void sanityCheck() {
 
-		
 		for (CGNode n : bottomUpList) {
 			node = n;
 			ir = n.getIR();
@@ -204,11 +203,9 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 						if ((v != null) && (v.getCalledType() == null)) {
 							unresolvedCallSites.add(key);
 							//we missed this interesting call
-							E.yellow();
-							System.out.println(getTag() + " in method" + method + " was not resolved successfully.");
-							System.out.println("  target instruction: " +	inv.toString());
-							System.out.println();
-							E.resetColor();					
+							E.flog(getTag() + " in method" + method + " was not resolved successfully.");
+							E.flog("  target instruction: " +	inv.toString());
+							E.flog("");
 						}
 					}
 				}
@@ -216,17 +213,13 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 		}
 		int size = mInstruction2Instance.size();
 		if (unresolvedCallSites.size() == 0) {
-			E.green();			
-			System.out.println("All " + getTag() + " calls (" + size + 
-					") were resolved successfully.");
-			E.resetColor();
+			E.green();
 		}
 		else {
-			E.yellow();			
-			System.out.println(unresolvedCallSites.size() + " out of " + size + " " + getTag() + 
-					" call sites were not resolved.");
-			E.resetColor();
-		}	
+			E.yellow();
+		}
+		System.out.println((size - unresolvedCallSites.size()) + " / " + size + " " + getTag() +" call sites were resolved successfully.");
+		E.resetColor();
 	}
 
 	public Collection<Pair<MethodReference, SSAInvokeInstruction>> getUnresolvedCallSites() {

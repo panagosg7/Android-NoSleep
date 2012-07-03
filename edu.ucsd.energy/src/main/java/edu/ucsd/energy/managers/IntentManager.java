@@ -129,10 +129,8 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 			setCalledType(inv, 4, ii);
 		}
 		else {
-			E.yellow();
-			System.out.println("Intent selector not handled: " + selector);
-			System.out.println(inv.toString());
-			E.resetColor();
+			E.flog("Intent selector not handled: " + selector);
+			E.flog(inv.toString());
 		}
 		
 	}
@@ -161,27 +159,18 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 		
 		if (methSel.equals(Selector.make("setComponent(Landroid/content/ComponentName;)Landroid/content/Intent"))) {
 			//TODO: this will not be so easy due to resolving ComponentName
-			E.yellow();
-			System.out.println("Setting Component: " + method);
-			System.out.println("  " + inv.toString());
-			E.resetColor();
+			E.flog("Setting Component: " + method);
+			E.flog("  " + inv.toString());
 		}
 		if (methSel.toString().contains("setClassName")) {
 			//TODO
-			E.yellow();
-			System.out.println("Could not handle special Intent call to: " + methSel.toString());
-			System.out.println("  in method: " + method);
-			E.resetColor();
+			E.flog("Could not handle special Intent call to: " + methSel.toString());
+			E.flog("  in method: " + method);
 		}
 
-		/*
-		 * public Intent setClass (Context packageContext, Class<?> cls)
-		 */
 		if (methSel.toString().contains("setClass")) {
-
 			//the Intent is the 0th parameter
 			IntentInstance ii = traceInstanceNoCreate(inv.getUse(0));
-			
 			if (ii != null) {
 				if (DEBUG > 0) {
 					System.out.println("Meth: " + methSel.toString());
@@ -190,35 +179,29 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 				setCalledType(inv, 2, ii);	
 			}
 			else {
-				//XXX: warm for something here
-				if (DEBUG > 0) {
-					E.yellow();
-					System.out.println("Could not resolve: " + method);
-					System.out.println("  calling: " + inv.toString());
-					E.resetColor();
-				}
+				//XXX: throw a better warning
+				E.flog("Could not resolve: " + method);
+				E.flog("  calling: " + inv.toString());
 			}
-			
 		}
-		
 		
 		//Explicit stop of a service
 		if (methSel.equals(Selector.make("stopService(Landroid/content/Intent;)Z"))) {
-		//if (methSel.toString().contains("stopService")) {
 			
 			IntentInstance ii = traceInstanceNoCreate(inv.getUse(0));
 			if (ii != null) {
-				E.green();
-				System.out.println("Meth: " + methSel.toString());
-				System.out.println("Stopping Component: " + inv.toString());
-				System.out.println(ii.toString());
+				if (DEBUG > 0) {
+					E.green();
+					System.out.println("Meth: " + methSel.toString());
+					System.out.println("Stopping Component: " + inv.toString());
+					System.out.println(ii.toString());
+					E.resetColor();
+				}
 			}
 			else {
-				E.red();
-				System.out.println("Meth: " + methSel.toString());
-				System.out.println("Stopping An Unresolved Intent Component: " + inv.toString());
+				E.flog("Stopping An Unresolved Intent Component: " + inv.toString());
 			}
-			E.resetColor();
+
 		}
 		
 	}

@@ -12,6 +12,7 @@ import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
 
 import edu.ucsd.energy.apk.Interesting;
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ManagerReport;
@@ -71,14 +72,16 @@ public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 			ri.setCalledType(concreteType);
 			Context target = cm.getComponent(concreteType);
 			if (isInterestingType(typeRef)) {
-				if (target != null) {
+				//This really should be a component
+				if ((target != null) && (target instanceof Component)) {
+					Component component = (Component) target;
 					if (DEBUG > 0) {
 						System.out.println("Associated with: " + target.toString());
 					}
-					ri.setCalledComponent(target);
+					ri.setCalledComponent(component);
 				}
 				else {
-					//If we cannot find the specific context that is called here, 
+					//If we cannot find the specific component that is called here, 
 					//we should not really have the Runnable Instance in our maps.
 					forgetInstance(ri);
 					if (DEBUG > 0) {

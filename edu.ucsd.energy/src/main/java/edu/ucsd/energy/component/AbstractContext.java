@@ -66,6 +66,10 @@ public abstract class AbstractContext extends NodeWithNumber implements IContext
 	
 	private Set<MethodReference> sMethRef;
 	
+	/**
+	 * Get the method references of this context
+	 * @return
+	 */
 	public Set<MethodReference> getMethodReferences() {
 		if(sMethRef == null) {
 			sMethRef = new HashSet<MethodReference>();
@@ -212,17 +216,16 @@ public abstract class AbstractContext extends NodeWithNumber implements IContext
 					if (!state.isEmpty()) {
 						if (state.simplify().acquired()) {
 							unresolvedHighState.add(p);
-							E.log(1, this.toString());
-							E.log(1, "ADDING:" + p.toString());
+							E.flog("UNRESOLVED ASYNC CALL: " + this.toString() + " calls " + p.snd.toString());
 						}
 						else {
-							E.log(1, this.toString());
-							E.log(1, "NOT ADDING:" + p.toString());
+							E.log(2, this.toString());
+							E.log(2, "NOT ADDING:" + p.toString());
 						}
 					}
 					else {
-						E.log(1, this.toString());
-						E.log(1, "NOT ADDING:" + p.toString());
+						E.log(2, this.toString());
+						E.log(2, "NOT ADDING:" + p.toString());
 					}
 				}
 			}

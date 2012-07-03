@@ -8,6 +8,7 @@ import net.sf.json.JSONObject;
 
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.types.FieldReference;
+import com.ibm.wala.util.debug.Assertions;
 
 import edu.ucsd.energy.managers.WakeLockManager.RefCount;
 
@@ -23,23 +24,23 @@ public class WakeLockInstance extends ObjectInstance {
 		SCREEN_BRIGHT_WAKE_LOCK (0x0000000a),
 		SCREEN_DIM_WAKE_LOCK 	(0x00000006),
 		UNKNOWN					(0xFFFFFFFF);
-				
+
 		private int code;
-	    
+
 		LockType(int value) {
-	        this.code = value;
-	    }
-		
-	    public int getCode() {
-	        return code;
-	    }
+			this.code = value;
+		}
+
+		public int getCode() {
+			return code;
+		}
 	}
-	
+
 	public class WakeLockInfo {
-		
+
 		private Collection<LockType> types;
 		private RefCount referenceCounted;		
-				
+
 		WakeLockInfo() {
 			this.types = new HashSet<LockType>();
 			this.referenceCounted = RefCount.UNSET;
@@ -60,15 +61,15 @@ public class WakeLockInstance extends ObjectInstance {
 		public void setReferenceCounted(RefCount rc) {
 			referenceCounted = rc;
 		}
-		
+
 		public String toString() {
 			return ("Type:" + ((types==null)?"NULL":types.toString()) + " RefCounted:" + referenceCounted);
 		}
-		
+
 	}
-	
+
 	private WakeLockInfo info;
-	
+
 	public WakeLockInstance(CreationPoint pp) {
 		super(pp);
 		this.info = new WakeLockInfo();
@@ -86,17 +87,48 @@ public class WakeLockInstance extends ObjectInstance {
 	}
 
 	public int hashCode() {
-		return creationPP.hashCode();
-	} 
-	
-	public boolean equals(Object o) {
-		if (o instanceof WakeLockInstance){
-			WakeLockInstance wli = (WakeLockInstance) o;
-			return creationPP.equals(wli.getPP());
+		if (creationPP != null) {
+			return creationPP.hashCode();
 		}
-		return false;				
+		else if (field != null) {
+			return field.hashCode();
+		}
+		else if (method != null) {
+			return method.hashCode() + param;
+		}
+		Assertions.UNREACHABLE();
+		return -1;
+	} 
+
+	public boolean equals(Object o) {
+		if (o instanceof WakeLockInstance) {
+			WakeLockInstance wli = (WakeLockInstance) o;
+			if (creationPP != null) {
+				CreationPoint otherPP = wli.getPP();
+				if (otherPP != null) {
+					return creationPP.equals(otherPP);
+				}
+				return false;
+			}
+			else if (field != null) {
+				FieldReference otherField = wli.getField();
+				if (otherField != null) {
+					return field.equals(otherField);
+				}
+				return false;
+			}
+			else if (method != null) {
+				IMethod otherMethod = wli.getMethod();
+				if (otherMethod != null) {
+					return (method.equals(otherMethod) && (param == wli.getParam()));
+				}
+			}
+
+		}
+		return false;
 	}
-	
+
+
 	public CreationPoint getPP() {
 		return creationPP;
 	}
@@ -104,13 +136,13 @@ public class WakeLockInstance extends ObjectInstance {
 	public FieldReference getField() {
 		return field;
 	}
-	
+
 	public String toString() {
 		return (((field!=null)?field.toString():"") 
 				+ ((creationPP!=null)?("\nCreated: " + creationPP.toString()):"")
 				+ ((method!=null)?("\nTypParam: " + method.getSelector().toString() + " - " + param):"")); 
 	}
-	
+
 	public String toShortString() {
 		if (field != null) {
 			return field.getName().toString();
@@ -118,9 +150,10 @@ public class WakeLockInstance extends ObjectInstance {
 		else if(creationPP != null) {
 			return creationPP.toString();
 		}
-		else {
-			return "NULL";
+		else if (method != null){
+			return "Formal parameter " + method.toString() + " :: " + param; 
 		}
+		return "NULL";
 	}
 
 	public WakeLockInfo getInfo() {
@@ -133,7 +166,7 @@ public class WakeLockInstance extends ObjectInstance {
 	public void setLockType(Collection<LockType> lockType) {
 		this.info.setLockType(lockType);			
 	}
-	
+
 	public JSONObject toJSON() {
 		JSONObject o = new JSONObject();
 		WakeLockInfo info = getInfo();				
@@ -156,5 +189,5 @@ public class WakeLockInstance extends ObjectInstance {
 	public void setField(FieldReference fr) {
 		field = fr;			
 	}
-	
+
 }

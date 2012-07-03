@@ -69,10 +69,9 @@ public class Wala {
 		gm.solveComponents();
 		
 		CompoundReport report = new CompoundReport();
-		report.register(gm.getIntentReport());
-		report.register(gm.getRunnableReport());
-		report.register(gm.getWakeLockReport());
-		
+//		report.register(gm.getIntentReport());
+//		report.register(gm.getRunnableReport());
+//		report.register(gm.getWakeLockReport());
 		report.register(gm.getAnalysisReport());
 
 		return report;

@@ -1,6 +1,7 @@
 package edu.ucsd.energy.contexts;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 
 import com.ibm.wala.classLoader.IClass;
@@ -10,16 +11,11 @@ import com.ibm.wala.util.collections.Pair;
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.managers.GlobalManager;
-import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.results.ContextSummary;
-import edu.ucsd.energy.results.ProcessResults.LockUsage;
 import edu.ucsd.energy.results.ProcessResults.ResultType;
 import edu.ucsd.energy.results.Violation;
-import edu.ucsd.energy.results.ViolationReport;
 
 public class Activity extends Component {
-
-	private static final int DEBUG = 0;
 	
 	static Selector elements[] = {
 		Interesting.ActivityConstructor,
@@ -69,47 +65,11 @@ public class Activity extends Component {
 	/**
 	 * Determine the policies for Activities:
 	 */
-	protected ViolationReport gatherViolations(ContextSummary summary) {
-
-		ViolationReport report = new ViolationReport();
-
-		//We are going to get multiple LockUsages for the various possible
-		//methods that can be overridden - we have to account for each one 
-		//separately.
-		Set<LockUsage> onStartStates = summary.getCallBackState(Interesting.ActivityOnStart);
-		Set<LockUsage> onPauseStates = summary.getCallBackState(Interesting.ActivityOnPause);
-		Set<LockUsage> onStopStates = summary.getCallBackState(Interesting.ActivityOnStop);
-
-		for (WakeLockInstance wli : summary.lockInstances()) {
-			if (DEBUG > 0) {
-				System.out.println("Checking policies for lock: " + wli.toShortString());
-				System.out.println("onPauseStates: " + onPauseStates.size());
-				System.out.println("onStopStates: " + onStopStates.size());
-				System.out.println("onStartStates: " + onStartStates.size());
-			}
-
-			//Usually this is the case when the interraction between app and the user
-			//stops. So any cleanup regarding locks should be done here.
-			for (LockUsage st : onPauseStates) {
-				if (DEBUG > 0) {
-					System.out.println("Examining: " + st.toString());
-				}
-				if (st.locking(wli)) {
-					report.insertViolation(this, new Violation(ResultType.ACTIVITY_ONPAUSE));
-				}	
-			}
-			
-			for (LockUsage st : onStopStates) {
-				if (DEBUG > 0) {
-					System.out.println("Examining: " + st.toString());
-				}
-				if (st.locking(wli)) {
-					report.insertViolation(this, new Violation(ResultType.ACTIVITY_ONSTOP));
-				}	
-			}
-		}
-		return report;
+	protected Set<Violation> gatherViolations(ContextSummary summary) {
+		Set<Violation> violations = new HashSet<Violation>();
+		violations.addAll(super.gatherviolations(summary, Interesting.ActivityOnPause, ResultType.ACTIVITY_ONPAUSE));
+		violations.addAll(super.gatherviolations(summary, Interesting.ActivityOnStop, ResultType.ACTIVITY_ONSTOP));
+		return violations;
 	}
-	
 
 }

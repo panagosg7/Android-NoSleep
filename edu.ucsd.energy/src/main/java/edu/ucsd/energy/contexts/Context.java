@@ -17,6 +17,7 @@ import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.Selector;
+import com.ibm.wala.util.collections.HashSetMultiMap;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
@@ -110,6 +111,7 @@ public abstract class Context extends AbstractContext {
 			Iterator<CGNode> iterator = cg.iterator();
 			while(iterator.hasNext()) {
 				CGNode next = iterator.next();
+				if (next.getMethod().isNative()) continue;
 				Iterator<CallSiteReference> it = next.getIR().iterateCallSites();
 				while(it.hasNext()) {
 					MethodReference target = it.next().getDeclaredTarget();
@@ -277,52 +279,25 @@ public abstract class Context extends AbstractContext {
 	 * this component using an intent/thread/handler
 	 ***************************************************/
 
-	Map<Context, Set<SSAInstruction>> sSeed;
+	HashSetMultiMap<Context, SSAInstruction> sSeed;
 
 	private SuperComponent containingSuperComponent;
 
 	public void addSeed(Context c, SSAInstruction instr) {
 		if (sSeed == null) {
-			sSeed = new HashMap<Context, Set<SSAInstruction>>();
+			sSeed = new HashSetMultiMap<Context, SSAInstruction>();
 		}
-		Set<SSAInstruction> cInstr = sSeed.get(c);
-		if (cInstr == null) {
-			cInstr = new HashSet<SSAInstruction>();
-		}
-		cInstr.add(instr);
-		sSeed.put(c, cInstr);
+		sSeed.put(c, instr);
 	}
 
 	/**
-	 * Get a mapping from the Components that call this one to the 
+	 * Get a mapping from the Contexts that call this one to the 
 	 * specific instructions in their code the call is made.
 	 * WARNING: this can be null!!
 	 * @return
 	 */
-	public Map<Context, Set<SSAInstruction>> getSeeds() {
+	public HashSetMultiMap<Context, SSAInstruction> getSeeds() {
 		return sSeed;
-	}
-
-	
-	/* Whoever really needs these will have to override it. */
-	
-	/**
-	 * The set of exit points might depend on the call method used 
-	 * for this component call
-	 */
-	public Set<Selector> getEntryPoints(Selector callSelector) {
-		return null;
-	}
-
-	
-	/**
-	 * The set of exit points might depend on the call method used 
-	 * for this component call
-	 * @param callSelector
-	 * @return
-	 */
-	public Set<Selector> getExitPoints(Selector callSelector) {
-		return null;
 	}
 
 

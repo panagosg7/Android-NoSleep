@@ -157,17 +157,13 @@ public class AppCallGraph implements CallGraph {
 	 * 
 	 * @param appJar
 	 * @return a call graph
-	 * @throws CancelException
-	 * @throws IllegalArgumentException
-	 * @throws IOException
 	 */
 	private CallGraph buildPrunedCallGraph(/*String appJar, File exclusionFile*/)
-			throws WalaException, IllegalArgumentException, CancelException,
-			IOException {
+			throws WalaException, IllegalArgumentException, CancelException, IOException {
 
 		// Get application scope
-		
 		scope = cha.getScope();
+
 		//AnalysisScopeReader.makeJavaBinaryAnalysisScope(appJar,
 		//	exclusionFile != null ? exclusionFile : new File(CallGraphTestUtil.REGRESSION_EXCLUSIONS));
 
@@ -179,56 +175,18 @@ public class AppCallGraph implements CallGraph {
 
 		E.log(0, "#Nodes: " + entrypoints.size());
 
-		/* Build the call graph */
+		// Build the call graph
 		CallGraphBuilder builder = Util.makeZeroCFABuilder(options, cache, cha, scope);
 		
 		ExplicitCallGraph cg = (ExplicitCallGraph) builder.makeCallGraph(options, null);
-		
-		//PTA
-		/*
-		try {
-			HeapModel heapModel = builder.getPointerAnalysis().getHeapModel();
-			MemoryAccessMap fam = new SimpleMemoryAccessMap(cg, heapModel, false);
-			StateMachineFactory<IFlowLabel> stateMachineFactory = new ContextSensitiveStateMachine.Factory();
-			DemandRefinementPointsTo pt  = DemandRefinementPointsTo.makeWithDefaultFlowGraph(
-					cg, heapModel, fam, cha, options, stateMachineFactory );
-			
-			Iterable<PointerKey> pointerKeys = builder.getPointerAnalysis().getPointerKeys();		
-			for(Iterator<PointerKey> it = pointerKeys.iterator(); it.hasNext(); ) {
-				PointerKey key = it.next();
-				if (key instanceof LocalPointerKey) {
-					LocalPointerKey akey = (LocalPointerKey) key;
-					if(akey.getNode().getMethod().getDeclaringClass().getName().toString().contains("WakefulService")) {
-						Collection<InstanceKey> pointsTo = pt.getPointsTo(key);
-						System.out.println(akey.toString() + " :: " + pointsTo);
-					};
-				}
-				if (key instanceof InstanceFieldKey) {
-					InstanceFieldKey ikey = (InstanceFieldKey) key;
-					TypeName name = ikey.getInstanceKey().getConcreteType().getName();
-					if(name.toString().contains("WakeLock")) { 
-						Collection<InstanceKey> pointsTo = pt. getPointsTo(key);
-						System.out.println(ikey.toString() + " :: " + pointsTo);
-					};
-				}
-			}
-		} catch(Exception e) {
-			e.printStackTrace();
-		}
-		*/
-		//END OF PTA
-		
-		/* Add wakelock methods and their callsites to the call graph */
-		insertTargetMethodsToCG(cg);
 
-		/*if (Opts.KEEP_ONLY_WAKELOCK_SPECIFIC_NODES) {
-			CallGraph pcg = pruneLockIrrelevantNodes(cg);
-			return pcg;
-		}*/
+		//Add wakelock methods and their call-sites to the call graph
+		insertTargetMethodsToCG(cg);
 
 		if (!Opts.KEEP_PRIMORDIAL) {
 			return prunePrimordialNodes(cg);
 		}
+		
 		return cg;
 	}
 

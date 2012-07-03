@@ -1,5 +1,6 @@
 package edu.ucsd.energy.contexts;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import com.ibm.wala.classLoader.IClass;
@@ -9,7 +10,8 @@ import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.results.ContextSummary;
-import edu.ucsd.energy.results.ViolationReport;
+import edu.ucsd.energy.results.ProcessResults.ResultType;
+import edu.ucsd.energy.results.Violation;
 
 public class BroadcastReceiver extends Component {
 
@@ -22,10 +24,21 @@ public class BroadcastReceiver extends Component {
 	}
 
 	
-	public ViolationReport gatherViolations(ContextSummary summary) {
-		ViolationReport policyReport = new ViolationReport();
-		//Not sure if there should be a policy here
-		return policyReport;
+	public Set<Violation> gatherViolations(ContextSummary summary) {
+		Set<Violation> violations = new HashSet<Violation>();
+		violations.addAll(super.gatherviolations(summary, Interesting.BroadcastReceiverOnReceive, ResultType.BROADCAST_RECEIVER_ONRECEIVE));
+		return violations;
+
+	}
+
+	@Override
+	public Set<Selector> getEntryPoints(Selector callSelector) {
+		return Interesting.broadcastReceiverEntryMethods;
+	}
+
+	@Override
+	public Set<Selector> getExitPoints(Selector callSelector) {
+		return Interesting.broadcastReceiverExitMethods;
 	}
 
 	

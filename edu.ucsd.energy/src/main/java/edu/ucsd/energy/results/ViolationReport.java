@@ -1,5 +1,6 @@
 package edu.ucsd.energy.results;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import net.sf.json.JSONArray;
@@ -12,14 +13,16 @@ import edu.ucsd.energy.util.E;
 
 public class ViolationReport implements IReport {
 	
-	private HashSetMultiMap<Context, Violation> violations; 
+	private HashSetMultiMap<Context, Violation> violations;
+	
+	private boolean hasViolations = false; 
 	
 	public ViolationReport() {
 		violations = new HashSetMultiMap<Context, Violation>();
 	}
 
 	public boolean hasViolations() {
-		return (!violations.isEmpty());
+		return hasViolations;
 	}
 
 	public HashSetMultiMap<Context, Violation> getViolations() {
@@ -35,28 +38,34 @@ public class ViolationReport implements IReport {
 		}
 	}
 	
-	public void insertViolations(Context c, Set<Violation> violation) {
-		violations.putAll(c, violation);
+	public void insertViolations(Context c, Set<Violation> vs) {
+		violations.putAll(c, vs);
+		hasViolations = (vs.isEmpty())?hasViolations:true;
+	}
+
+	public void insertViolation(Context c, Violation v) {
+		violations.put(c, v);
+		hasViolations = true;		//we definitely have a violation here
 	}
 	
-	public void insertViolation(Context c, Violation violation) {
-		violations.put(c, violation);
-	}
 	
 	public JSONObject toJSON() {
 		JSONObject obj = new JSONObject();
-		for (Context r : violations.keySet()) {
-			Set<Violation> set = violations.get(r);
+		for (Context ctx : violations.keySet()) {
+			Set<Violation> set = violations.get(ctx);
 			JSONArray arr = new JSONArray();
 			for (Violation v : set) {
 				arr.add(v.toJSON());
 			}
-			obj.put(r.toString(), arr);
+			if (!arr.isEmpty()) {
+				obj.put(ctx.toString(), arr);
+			}
 		}
 		return obj;
 	}
 	
 	public void dump() {
+		System.out.println();
 		if (!hasViolations()) {
 			E.boldGreen();
 			System.out.println("NO VIOLATIONS");
@@ -65,7 +74,7 @@ public class ViolationReport implements IReport {
 		}
 		else {
 			E.boldRed();
-			System.out.println("VIOLATES POLICIES:");
+			System.out.println("POLICY VIOLATIONS:");
       E.resetColor();
 		}
 		for (Context r : violations.keySet()) {
@@ -86,7 +95,7 @@ public class ViolationReport implements IReport {
 	}
 
 	public String getTag() {
-		return "BugReport";
+		return "Violation ";
 	}
 
 	public String toShortDescription() {

@@ -1,6 +1,7 @@
 package edu.ucsd.energy.contexts;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 
 import com.ibm.wala.classLoader.IClass;
@@ -10,17 +11,12 @@ import com.ibm.wala.util.collections.Pair;
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.managers.GlobalManager;
-import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.results.ContextSummary;
-import edu.ucsd.energy.results.ProcessResults.LockUsage;
 import edu.ucsd.energy.results.ProcessResults.ResultType;
 import edu.ucsd.energy.results.Violation;
-import edu.ucsd.energy.results.ViolationReport;
 
 public class Service extends Component {
 
-	private static final int DEBUG = 1;
-	
 	
 	static Selector elements[] = {
 		Interesting.ServiceOnCreate, 
@@ -87,39 +83,20 @@ public class Service extends Component {
 	}
 	
 	
-	public ViolationReport gatherViolations(ContextSummary summary) {
-		Set<LockUsage> onStartStates = summary.getCallBackState(Interesting.ServiceOnStart);
-		Set<LockUsage> onStartCommandStates = summary.getCallBackState(Interesting.ServiceOnStartCommand);
+	public Set<Violation> gatherViolations(ContextSummary summary) {
+		Set<Violation> violations = new HashSet<Violation>();
 		
-		ViolationReport report = new ViolationReport();
-		if (DEBUG > 0) {
-			System.out.println("Gathering violations for: " + this.toString());
+		//XXX: This is not completely sound...
+		//What should be done is check all the possible call-sites of this service and 
+		//check if it is started or bound. But this is definitely a good indicator.
+		if (isCallBack(Interesting.ServiceOnStartCommand) || isCallBack(Interesting.ServiceOnStartCommand)) {
+			violations.addAll(super.gatherviolations(summary, Interesting.ServiceOnStartCommand, ResultType.SERVICE_ONSTART));	
 		}
-		
-		for (WakeLockInstance wli : summary.lockInstances()) {
-			if (DEBUG > 0) {
-				
-				System.out.println("Checking policies for lock: " + wli.toShortString());
-				System.out.println("onStartStates: " + onStartStates.size());
-				System.out.println("onDestroyStates: " + onStartCommandStates.size());
-			}
-
-			for (LockUsage st : onStartStates) {
-				if (DEBUG > 0) {
-					System.out.println("Examining: " + st.toString());
-					System.out.println("Relevant ctxs: " + st.getRelevantCtxs());
-				}
-				if (relevant(st) && st.locking(wli)) {
-					report.insertViolation(this, new Violation(ResultType.SERVICE_ONSTART));
-				}	
-			}
-			
+		if (isCallBack(Interesting.ServiceOnBind)) {
+			violations.addAll(super.gatherviolations(summary, Interesting.ServiceOnUnbind, ResultType.SERVICE_ONUNBIND));
 		}
-		
-		return report;
+		return violations;
 	}
-
-
 
 }
 
