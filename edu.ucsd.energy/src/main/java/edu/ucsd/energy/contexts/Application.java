@@ -5,6 +5,7 @@ import java.util.Set;
 
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.types.Selector;
+import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
@@ -31,6 +32,9 @@ public class Application extends Component {
 
 	public Application(GlobalManager gm, IClass c) {
 	    super(gm, c);
+	    sTypicalCallback.add(Interesting.ApplicationOnCreate);
+	    sTypicalCallback.add(Interesting.ApplicationOnTerminate);
+	    callbackEdges.add(Pair.make(Interesting.ApplicationOnCreate, Interesting.ApplicationOnTerminate));
 	}
 	
 	  public String toString() {	    

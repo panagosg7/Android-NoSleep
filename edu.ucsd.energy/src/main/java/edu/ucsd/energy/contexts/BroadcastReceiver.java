@@ -21,6 +21,7 @@ public class BroadcastReceiver extends Component {
 
 	public BroadcastReceiver(GlobalManager gm, IClass c) {
 		super(gm, c);
+		sTypicalCallback.addAll(Interesting.broadcastReceiverCallbackMethods);
 	}
 
 	

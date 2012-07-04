@@ -6,6 +6,7 @@ import java.util.Set;
 
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
+import com.ibm.wala.ssa.DefUse;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSALoadMetadataInstruction;
@@ -15,6 +16,7 @@ import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.Selector;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.Pair;
+import com.ibm.wala.util.intset.MutableSparseIntSet;
 
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.results.IReport;
@@ -56,7 +58,7 @@ import edu.ucsd.energy.util.E;
 public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 
 	private static int DEBUG = 0;	
-	
+
 	/**
 	 * Using the Selector for the comparison because the class might 
 	 * not be the default android one
@@ -65,7 +67,7 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 	Pair<Integer, Set<Selector>> getTargetMethods(MethodReference declaredTarget) {
 		return Interesting.mIntentMethods.get(declaredTarget.getSelector());
 	}
-	
+
 	public IntentManager(GlobalManager cm) {
 		super(cm);
 	}
@@ -75,15 +77,15 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 		if(DEBUG > 0) {
 			dumpInfo();
 		}
-		
+
 	}
-	
-	
+
+
 	protected IntentInstance visitNewInstance(SSAInstruction instr) {
 		IntentInstance ii = super.visitNewInstance(instr);
 		//Get all uses just to check...
 		int def = instr.getDef();
-		
+
 		for (Iterator<SSAInstruction> uses = du.getUses(def); uses.hasNext(); ) {
 			SSAInstruction use = uses.next();
 			if (use instanceof SSAInvokeInstruction) {
@@ -96,22 +98,22 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 		}
 		return ii;
 	}
-	
-	
+
+
 	/**
 	 * Try to figure out what kind of class is associated with this Intent. 
 	 */
 	private void visitIntentInit(SSAInvokeInstruction inv, IntentInstance ii) {
 		MethodReference declaredTarget = inv.getDeclaredTarget();
 		Selector selector = declaredTarget.getSelector();
-		
+
 		if (selector.equals(Selector.make("<init>(Landroid/content/Context;Ljava/lang/Class;)V"))) {
 			//Create an intent for a specific component.
 			//The second argument specifies the called component class
 			setCalledType(inv, 2, ii);
 		}
 		else if (	selector.equals(Selector.make("<init>(Ljava/lang/String;Landroid/net/Uri;)V")) ||
-							selector.equals(Selector.make("<init>(Ljava/lang/String;)V"))) {
+				selector.equals(Selector.make("<init>(Ljava/lang/String;)V"))) {
 			//Create an intent with a given action (and data Uri)
 			int use = inv.getUse(1);
 			if (ir.getSymbolTable().isConstant(use)) {
@@ -124,15 +126,15 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 		}
 		else if (	selector.equals(Selector.make("<init>(Ljava/lang/String;" +
 				"Landroid/net/Uri;Landroid/content/Context;Ljava/lang/Class;)V"))) {
-		//Create an intent for a specific component with a specified action and data.
-		//The fourth argument specifies the called component class
+			//Create an intent for a specific component with a specified action and data.
+			//The fourth argument specifies the called component class
 			setCalledType(inv, 4, ii);
 		}
 		else {
 			E.flog("Intent selector not handled: " + selector);
 			E.flog(inv.toString());
 		}
-		
+
 	}
 
 	private void setCalledType(SSAInvokeInstruction inv, int i, IntentInstance ii) {
@@ -156,7 +158,7 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 	@Override
 	protected void handleSpecialCalls(SSAInvokeInstruction inv) {
 		Selector methSel = inv.getDeclaredTarget().getSelector();
-		
+
 		if (methSel.equals(Selector.make("setComponent(Landroid/content/ComponentName;)Landroid/content/Intent"))) {
 			//TODO: this will not be so easy due to resolving ComponentName
 			E.flog("Setting Component: " + method);
@@ -164,6 +166,8 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 		}
 		if (methSel.toString().contains("setClassName")) {
 			//TODO
+
+
 			E.flog("Could not handle special Intent call to: " + methSel.toString());
 			E.flog("  in method: " + method);
 		}
@@ -184,10 +188,10 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 				E.flog("  calling: " + inv.toString());
 			}
 		}
-		
+
 		//Explicit stop of a service
 		if (methSel.equals(Selector.make("stopService(Landroid/content/Intent;)Z"))) {
-			
+
 			IntentInstance ii = traceInstanceNoCreate(inv.getUse(0));
 			if (ii != null) {
 				if (DEBUG > 0) {
@@ -201,12 +205,42 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 			else {
 				E.flog("Stopping An Unresolved Intent Component: " + inv.toString());
 			}
-
 		}
-		
 	}
 
-	
+
+	protected IntentInstance traceInstance(int var, MutableSparseIntSet set, boolean create) {
+		if (du == null) {
+			du = new DefUse(ir);
+		}
+		SSAInstruction def = null;
+		try {
+			def = du.getDef(var);
+		}
+		catch (ArrayIndexOutOfBoundsException e) { }	//TODO: fix this	
+
+		IntentInstance ii = super.traceInstance(var, set, create);
+		if (ii == null) {
+			if (def instanceof SSAInvokeInstruction) {
+				//If not, descend deeper
+				MethodReference methRef = ((SSAInvokeInstruction) def).getDeclaredTarget();
+				//Search for the *this* value of a putExtra method. PutExtra methods
+				//should not be treated as Intent creation methods, just as 
+				//reflector of the Intent passed as *this*.
+				//This could get a bit more precise, but there are too many cases
+				if (methRef.getName().toString().contains("putExtra")) {
+					//System.out.println("AAAA: " + method);
+					//System.out.println("AAAA: " + def);
+					int use = def.getUse(0);
+					ii = traceInstance(use, set, create);
+					//System.out.println("AAAA: using: " + ii);
+				}
+			}
+		}
+		return ii;
+	}
+
+
 	@Override
 	public IntentInstance newInstance(CreationPoint pp) {
 		return new IntentInstance(pp);
@@ -222,7 +256,7 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 		return new IntentInstance(m,v);
 	}
 
-	
+
 	@Override
 	boolean isNewInstruction(SSAInstruction instr) {
 		if (instr instanceof SSANewInstruction) {
@@ -240,7 +274,7 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 					}
 				}
 			}
-			*/
+			 */
 			return newi.getConcreteType().toString().
 					equals("<Application,Landroid/content/Intent>");
 		}
@@ -266,6 +300,6 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 		interestingTypes.add(gm.getClassHierarchy().lookupClass(Interesting.IntentTypeRef));		
 	}
 
-	
+
 }
 

@@ -12,7 +12,6 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
-import com.ibm.wala.types.Selector;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
@@ -21,7 +20,6 @@ import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 
 import edu.ucsd.energy.analysis.Opts;
-import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.util.E;
@@ -42,10 +40,7 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 		unresolvedCallSites = new HashSet<Pair<MethodReference,SSAInvokeInstruction>>();
 	}
 
-	@Override
-	Pair<Integer, Set<Selector>> getTargetMethods(MethodReference declaredTarget) {
-		return Interesting.mRunnableMethods.get(declaredTarget.getSelector());
-	}
+
 
 
 	public void computeConstraintGraph() {
@@ -199,8 +194,15 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 					if (getTargetMethods(inv.getDeclaredTarget()) != null) {
 						Pair<MethodReference, SSAInvokeInstruction> key = Pair.make(method.getReference(), inv);
 						V v = mInstruction2Instance.get(key);
-						//TODO: check for resolved component -- stronger
-						if ((v != null) && (v.getCalledType() == null)) {
+						//XXX: the stronger case here is needed !
+						if (v != null) {
+							TypeName calledType = v.getCalledType();
+							if (calledType != null) {
+								Context calledContext = cm.getComponent(calledType);
+								if (calledContext != null) {
+									continue;
+								}
+							}
 							unresolvedCallSites.add(key);
 							//we missed this interesting call
 							E.flog(getTag() + " in method" + method + " was not resolved successfully.");

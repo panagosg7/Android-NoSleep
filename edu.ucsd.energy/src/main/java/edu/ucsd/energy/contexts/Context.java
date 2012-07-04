@@ -192,7 +192,7 @@ public abstract class Context extends AbstractContext {
 		//checked for predecessors
 		Queue<SensibleCGNode> worklist = new LinkedList<SensibleCGNode>();
 		Set<SensibleCGNode> visited = new HashSet<SensibleCGNode>();
-		Set<CallBack> returnSet = new HashSet<CallBack>();		
+		Set<CallBack> returnSet = new HashSet<CallBack>();
 
 		SensibleCGNode initNode = getLifecycleGraph().find(selector);
 

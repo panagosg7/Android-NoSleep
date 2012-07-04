@@ -62,22 +62,29 @@ abstract public class Component extends Context {
 	
 	
 	public Set<Violation> gatherviolations(ContextSummary summary, Selector sel, ResultType res) {
-		
 		Set<LockUsage> stateForSelector = summary.getCallBackState(sel);
-
+		if (DEBUG > 0) {
+			System.out.println("States for :" + sel.toString());
+			System.out.println("  " + stateForSelector);
+		}
 		Set<Violation> violations = new HashSet<Violation>();
-
 		for (WakeLockInstance wli : summary.lockInstances()) {
 			if (DEBUG > 0) {
 				System.out.println("Checking policies for lock: " + wli.toShortString());
 			}
 
 			for (LockUsage st : stateForSelector) {
+				
+				boolean relevant = relevant(st);
+				
 				if (DEBUG > 0) {
-					System.out.println("Examining: " + st.toString());
-					System.out.println("Relevant ctxs: " + st.getRelevantCtxs());
+					if (!relevant) {
+						System.out.println("IRRELEVANT Examining: " + st.toString());
+						System.out.println("Relevant ctxs: " + st.getRelevantCtxs());
+					}
 				}
-				if (relevant(st) && st.locking(wli)) {
+				
+				if (relevant && st.locking(wli)) {
 					if (DEBUG > 0) {
 						System.out.println("Adding violation: " + wli.toShortString());
 						System.out.println();
@@ -92,3 +99,4 @@ abstract public class Component extends Context {
 	}
 
 }
+

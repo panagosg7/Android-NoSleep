@@ -1,6 +1,7 @@
 package edu.ucsd.energy.managers;
 
 import java.util.HashSet;
+import java.util.Set;
 
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
@@ -8,8 +9,11 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.types.FieldReference;
+import com.ibm.wala.types.MethodReference;
+import com.ibm.wala.types.Selector;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
+import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
@@ -50,6 +54,12 @@ public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 		}
 	}
 	
+	
+	@Override
+	Pair<Integer, Set<Selector>> getTargetMethods(MethodReference declaredTarget) {
+		return Interesting.mRunnableMethods.get(declaredTarget.getSelector());
+	}
+	
 	@Override
 	boolean isNewInstruction(SSAInstruction instr) {
 		if (instr instanceof SSANewInstruction) {
@@ -80,14 +90,7 @@ public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 					}
 					ri.setCalledComponent(component);
 				}
-				else {
-					//If we cannot find the specific component that is called here, 
-					//we should not really have the Runnable Instance in our maps.
-					forgetInstance(ri);
-					if (DEBUG > 0) {
-						System.out.println("Forgetting: " + ri.toString());
-					}
-				}
+				//We should not let go of this info for the sake of sanity check later on 
 			}
 		}
 		return ri;		

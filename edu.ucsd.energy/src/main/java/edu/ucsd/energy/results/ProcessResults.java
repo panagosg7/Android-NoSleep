@@ -194,7 +194,7 @@ public class ProcessResults {
 				continue;
 			}
 			
-			System.out.println("Cheking: "+ superComponent.toString());
+			System.out.println("Checking: "+ superComponent.toString());
 			
 			//Each context should belong to exactly one SuperComponent
 			for (Context context : superComponent.getContexts()) {
@@ -202,6 +202,11 @@ public class ProcessResults {
 				//Focus just on Components (Activities, Services, BcastRcv...)
 				if (!(context instanceof Component)) continue;
 				Component component = (Component) context;
+				
+				
+				if (DEBUG > 0) {
+					System.out.println(" - Checking violatios for: " + component.toString());
+				}
 				
 				//Do not analyze abstract classes (they will have to be 
 				//extended in order to be used)
@@ -215,20 +220,17 @@ public class ProcessResults {
 				}
 				Set<Violation> assembleReport = component.assembleReport();
 				report.insertViolations(component, assembleReport);
-				if (DEBUG > 0) {
+				//Do this if you want to get color on the violating methods 
+				if (DEBUG > 2) {
 					if (assembleReport.size() > 0) {
 						E.yellow();
 					}
 					System.out.println(" - Checking violatios for: " + component.toString());
 					E.resetColor();
 				}
-				
-						
 			}
 		}
-		
     report.dump();
-		
 		return report;
 	}
 

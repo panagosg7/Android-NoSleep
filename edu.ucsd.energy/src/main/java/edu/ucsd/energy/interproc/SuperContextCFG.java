@@ -14,6 +14,7 @@ import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.collections.HashSetMultiMap;
 import com.ibm.wala.util.collections.Pair;
+import com.ibm.wala.util.debug.Assertions;
 
 import edu.ucsd.energy.component.AbstractContext;
 import edu.ucsd.energy.component.CallBack;
@@ -101,6 +102,7 @@ public class SuperContextCFG extends AbstractContextCFG {
 			Component targetComp = map.get(instr);
 			if (targetComp != null) {
 				if (DEBUG > 0) {
+					System.out.println();
 					System.out.println("Adding ASYNC: " + caller.toString() + " to " + 
 							targetComp.toString());	
 				}
@@ -108,6 +110,11 @@ public class SuperContextCFG extends AbstractContextCFG {
 				if (!(instr instanceof SSAInvokeInstruction)) continue;
 				SSAInvokeInstruction inv = (SSAInvokeInstruction) instr;					
 				Selector callSelector = inv.getDeclaredTarget().getSelector();
+				
+				//Adding a sanity check: if we enter a component there must at least 
+				//one edge exiting it.
+				boolean enter = false;
+				boolean exit  = false;
 				
 				//Exit points might depend on the call method to the specific component
 				//Return edges must be added first to avoid having the entry method as
@@ -130,6 +137,7 @@ public class SuperContextCFG extends AbstractContextCFG {
 							//of the calling context
 							if (!isExceptionalEdge(caller, returnBB)) {
 								addEdge(src, returnBB);
+								exit = true;
 								mContextReturnEdge.put(src, returnBB);
 								mContextToExit.put(targetComp, src);
 								mContextReturn.put(src, targetComp);
@@ -137,14 +145,12 @@ public class SuperContextCFG extends AbstractContextCFG {
 									System.err.println("Adding to: " + targetComp.toString());
 									System.out.println("Adding ASYNC CTX RETURN: " + src.toShortString() +
 										" -> " + returnBB.toShortString());
-									
 								}
 							}
 						}
 					}
 				}
 				Set<Selector> entryPoints = targetComp.getEntryPoints(callSelector);
-				
 				for (Selector sel : entryPoints) {
 					CallBack callBack = targetComp.getCallBack(sel);
 					//Continue only if this callback is indeed overridden
@@ -155,6 +161,7 @@ public class SuperContextCFG extends AbstractContextCFG {
 						BasicBlockInContext<IExplodedBasicBlock> dest =
 								new BasicBlockInContext<IExplodedBasicBlock>(node, destIEBB);
 						addEdge(caller,dest);
+						enter = true;
 						if (DEBUG > 1) {
 							System.out.println("Adding ASYNC CTX CALL: " + caller.toShortString() + 
 								" -> " + dest.toShortString());
@@ -163,16 +170,19 @@ public class SuperContextCFG extends AbstractContextCFG {
 						mCallerToContext .put(caller,targetComp);
 					}
 				}
+				
+				//Sanity check: enter and exit should take the same values
+				Assertions.productionAssertion(!(enter ^ exit), caller.toString() + " calls " + 
+						targetComp.toString() +	" but does not return from it, or vise versa.");
 			}
 		}
 	}
 
+	
 	@Override
 	public boolean isContextExit(BasicBlockInContext<IExplodedBasicBlock> a) {
 		return mContextReturn.containsKey(a);
 	}
 
-
-	
 }
 

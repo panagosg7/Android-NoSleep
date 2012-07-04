@@ -209,22 +209,23 @@ public class Interesting {
 		ignoreIntentSelectors.add(Selector.make("submitIntent(Landroid/content/Intent;)V"));
 		
 		
-	//These are all the possible callbacks were a state from a service callee can be propagated
-		//We don't need to include onCreate in the entry methods, because 
 	//Started service
 		startedServiceEntryMethods.add(ServiceOnStart);
 		startedServiceEntryMethods.add(ServiceOnStartCommand);
+		startedServiceExitMethods.add(ServiceOnStart);
 		startedServiceExitMethods.add(ServiceOnStartCommand);
 		startedServiceExitMethods.add(ServiceOnDestroy);
-	//Intent service
-		intentServiceEntryMethods.add(ServiceOnHandleIntent);
-		intentServiceExitMethods.add(ServiceOnHandleIntent);
-		intentServiceExitMethods.add(ServiceOnDestroy);
+
 	//Bound service
 		boundServiceEntryMethods.add(ServiceOnBind);
 		boundServiceEntryMethods.add(ServiceOnRebind);
 		boundServiceExitMethods.add(ServiceOnUnbind);
 		boundServiceExitMethods.add(ServiceOnDestroy);
+		
+	//Intent service
+		intentServiceEntryMethods.add(ServiceOnHandleIntent);
+		intentServiceExitMethods.add(ServiceOnHandleIntent);
+		intentServiceExitMethods.add(ServiceOnDestroy);
 
 		
 	//Runnable
@@ -255,7 +256,7 @@ public class Interesting {
 		mIntentMethods.put(SendBroadcast, Pair.make(new Integer(1), broadcastReceiverEntryMethods));
 
 		
-
+		mRunnableMethods.put(Selector.make("start()V"), Pair.make(new Integer(0), runnableEntryMethods));
 		mRunnableMethods.put(Selector.make("start(Ljava/lang/Runnable;)V"), Pair.make(new Integer(1), runnableEntryMethods));
 		mRunnableMethods.put(Selector.make("start(Ljava/lang/Thread;)V"), Pair.make(new Integer(1), runnableEntryMethods));
 		mRunnableMethods.put(Selector.make("post(Ljava/lang/Runnable;)Z"), Pair.make(new Integer(1), runnableEntryMethods));

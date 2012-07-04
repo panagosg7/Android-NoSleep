@@ -29,8 +29,7 @@ public class LifecycleGraph extends SparseNumberedGraph<SensibleCGNode> {
 
 	//Set to 1 to dump auxillary life-cycle graphs	
 	//Set to more to get more detailed debug messages
-	private static final int DEBUG = 1;
-	
+	private static final int DEBUG = 0;
 
 	private HashMap<Selector, SensibleCGNode> dictionary;
 
@@ -99,6 +98,7 @@ public class LifecycleGraph extends SparseNumberedGraph<SensibleCGNode> {
 		dictionary = new HashMap<Selector, SensibleCGNode>();
 		
 		if (DEBUG > 1) {
+			System.out.println();
 			System.out.println("Creating lifecycle graph: " + context.toString());
 			System.out.println("Size typ callbacks: " + context.getTypicalCallbacks());
 		}
