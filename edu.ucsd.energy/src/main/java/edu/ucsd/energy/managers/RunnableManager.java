@@ -126,8 +126,24 @@ public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 
 	@Override
 	protected void handleSpecialCalls(SSAInvokeInstruction inv) {
-		// TODO Auto-generated method stub
-		
+		//Special case that kept coming up often
+		//Handle the case of:  t0.<init>(t1);
+		//t1 sets the type for t0
+		MethodReference declaredTarget = inv.getDeclaredTarget();
+		if (declaredTarget.getSelector().getName().toString().equals("<init>"/*(Ljava/lang/Runnable;)V*/)) {
+			if (inv.getNumberOfParameters() > 1) {
+				RunnableInstance t0 = traceInstance(inv.getUse(0));
+				RunnableInstance t1 = traceInstance(inv.getUse(1));
+				if (t0 != null && t1 != null) {
+					if (DEBUG > 1) {
+						System.out.println("Method: " + method);
+						System.out.println("handling special call to : " + declaredTarget);
+						System.out.println("t0.calledType <- " + t1.getCalledType());
+					}
+					t0.setCalledType(t1.getCalledType());
+				}
+			}
+		}
 	}
 
 	@Override

@@ -214,13 +214,13 @@ public class Interesting {
 		startedServiceEntryMethods.add(ServiceOnStartCommand);
 		startedServiceExitMethods.add(ServiceOnStart);
 		startedServiceExitMethods.add(ServiceOnStartCommand);
-		startedServiceExitMethods.add(ServiceOnDestroy);
+		//startedServiceExitMethods.add(ServiceOnDestroy);
 
 	//Bound service
 		boundServiceEntryMethods.add(ServiceOnBind);
 		boundServiceEntryMethods.add(ServiceOnRebind);
 		boundServiceExitMethods.add(ServiceOnUnbind);
-		boundServiceExitMethods.add(ServiceOnDestroy);
+		//boundServiceExitMethods.add(ServiceOnDestroy);
 		
 	//Intent service
 		intentServiceEntryMethods.add(ServiceOnHandleIntent);

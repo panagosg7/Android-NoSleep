@@ -27,9 +27,10 @@ import edu.ucsd.energy.viz.GraphDotUtil;
 
 public class LifecycleGraph extends SparseNumberedGraph<SensibleCGNode> {
 
-	//Set to 1 to dump auxillary life-cycle graphs	
+	//Set to 1 to dump auxiliary life-cycle graphs
+	
 	//Set to more to get more detailed debug messages
-	private static final int DEBUG = 0;
+	private static final int DEBUG = 1;
 
 	private HashMap<Selector, SensibleCGNode> dictionary;
 

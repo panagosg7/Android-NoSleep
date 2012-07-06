@@ -779,7 +779,8 @@ public class Main {
 				//				theSet.add("apMemo_Lite");
 				//				theSet.add("GO_SMS");
 				//				theSet.add("Unit_Correct_02");
-				theSet.add("Twitter_Simpsons_Quote");
+				//				theSet.add("Twitter_Simpsons_Quote");
+				theSet.add("Scanner_Buddy_FREE");
 			}
 			else if (line.hasOption("unit")) {
 				theSet.add("Unit_01");
