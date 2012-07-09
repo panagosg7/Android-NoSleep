@@ -1,13 +1,9 @@
 package edu.ucsd.energy;
 //Author: John C. McCullough
-import java.io.BufferedReader;
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -44,9 +40,11 @@ import com.ibm.wala.util.debug.UnimplementedError;
 import edu.ucsd.energy.ApkCollection.ApkApplication;
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.apk.ApkInstance;
+import edu.ucsd.energy.apk.ConfigurationException;
 import edu.ucsd.energy.results.FailReport;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ProcessResults.ResultType;
+import edu.ucsd.energy.results.ResultReporter;
 import edu.ucsd.energy.results.Violation;
 import edu.ucsd.energy.util.SystemUtil;
 
@@ -338,10 +336,10 @@ public class Main {
 
 
 
-	/*
-	 * TODO: Parallelize this
-	 */
-	public static void findInteresting(ApkCollection collection) {
+	public static void findInteresting() throws ConfigurationException {
+		if (collection == null) {
+			collection = new ApkCollection();
+		}
 		List<ApkApplication> apps = collection.listApplications();
 		for (ApkApplication app : apps) {
 			try {
@@ -392,22 +390,6 @@ public class Main {
 		for (Entry<ApkInstance, ArrayList<Violation>> e : result.entrySet()) {
 			System.out.println(apkResultToString(e.getKey(), e.getValue()));
 		}
-	}
-
-	private static Map<ResultType, Integer> makeHistogram(HashMap<ApkInstance, ArrayList<Violation>> result) {
-		Map<ResultType, Integer> histogram = new HashMap<ResultType, Integer>();
-		for (Entry<ApkInstance, ArrayList<Violation>> e : result.entrySet()) {
-			ArrayList<Violation> value = e.getValue();
-			for (Violation r : value) {
-				ResultType resultType = r.getResultType();
-				Integer integer = histogram.get(resultType);
-				if (integer == null) {
-					histogram.put(resultType, new Integer(0));
-				}
-				histogram.put(resultType, histogram.get(resultType) + 1);
-			}
-		}
-		return histogram;
 	}
 
 	private static class PhantomTracker {
@@ -559,8 +541,7 @@ public class Main {
 	 * Check to see how many apps have been successfully optimized
 	 * Output a json file containing them
 	 */
-	public static void collectOptimized() 
-			throws ApkException, IOException, RetargetException, WalaException, CancelException {
+	public static void collectOptimized() throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 		JSONObject obj = new JSONObject();		//The output object			
@@ -679,28 +660,6 @@ public class Main {
 	}
 
 
-	//This is a temporary method - to be deprecated
-	private static void createJSON(String input) {
-		try {
-			File file = new File(input);
-			FileInputStream stream = new  FileInputStream(file);
-			DataInputStream in = new DataInputStream(stream);
-			BufferedReader br = new BufferedReader(new InputStreamReader(in));
-			String strLine;
-			JSONObject obj = new JSONObject();			
-			while ((strLine = br.readLine()) != null)   {
-				obj.put(strLine.replace(" ", ""), "");
-			}
-			in.close();
-			SystemUtil.writeToFile(obj.toString());
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-
 	private static void setOutputFile(String optionValue) {
 		String extension = FilenameUtils.getExtension(optionValue);
 		String pureName = FilenameUtils.removeExtension(optionValue);
@@ -711,6 +670,15 @@ public class Main {
 		System.out.println("Using input: " + optionValue);
 		acqrelDatabaseFile = new File(optionValue);
 	}
+	
+	
+
+	private static void reportResults(String[] optionValues) {
+		ResultReporter resultReporter = new ResultReporter(optionValues[0]);
+		resultReporter.fullResults();		
+		
+	}
+
 
 
 	public static void main(String[] args) {
@@ -731,11 +699,12 @@ public class Main {
 		options.addOption(new Option("o", "output", true, "specify an output filename (date will be included)"));
 		options.addOption(new Option("unit", false, "run the unit tests"));
 		options.addOption(new Option("i", "input", true, "specify the input json file"));
+		options.addOption(new Option("rr", "report-results", true, "report the results that were found in json files in the given directory"));
 		options.addOption(new Option("t", "threads", true, "run the analysis on t threads (works for pattern analysis only)"));
 		options.addOption(new Option("skip", true, "skip the first N application that are in line for analysis"));
-		options.addOption(new Option("s", "small-set", false, "run the analysis on a small set"));
-		options.addOption(new Option("f", "run-on-failed", false, "run the analysis on the previously failing (needs -i)"));
-
+		options.addOption(new Option("small-set", false, "run the analysis on a small set"));
+		options.addOption(new Option("run-on-failed", false, "run the analysis on the previously failing (needs -i)"));
+		options.addOption(new Option("find-interesting", false, "find the interesting application in the collection"));
 		options.addOption(OptionBuilder.withLongOpt("create-json").hasArg()
 				.withDescription("create a JSONObject from a file with a list of apps").create());
 
@@ -768,18 +737,6 @@ public class Main {
 			//Define the set of apps to run the analysis on
 			if (line.hasOption("small-set")) {
 				/* The applications you specify here need to be in apk_collection !!! */
-				//				theSet.add("NetCounter");					//verified
-				//				theSet.add("3D_Level");						//verified
-				//				theSet.add("SpeakWrite");
-				//				theSet.add("iZen_Lite");					//Correctly NOT verified
-				//				theSet.add("Audalyzer");					//verified - but missing unresolved stuff
-				//				theSet.add("TiltMazes");					//verified
-				//				theSet.add("SMS_Control_Center");
-				//				theSet.add("Gmote");
-				//				theSet.add("apMemo_Lite");
-				//				theSet.add("GO_SMS");
-				//				theSet.add("Unit_Correct_02");
-				//				theSet.add("Twitter_Simpsons_Quote");
 				theSet.add("Scanner_Buddy_FREE");
 			}
 			else if (line.hasOption("unit")) {
@@ -854,13 +811,14 @@ public class Main {
 				runVerifyAnalysis();
 			} else if (line.hasOption("usage")) {
 				runUsageAnalysis();
+			} else if (line.hasOption("find-interesting")) {
+				findInteresting();
 			} else if (line.hasOption("unit")) {
 				runUsageAnalysis();
-			} else if (line.hasOption("create-json")) {
-				String input = line.getOptionValue("create-json");
-				createJSON(input);
 			} else if (line.hasOption("add-to-collection")) {
 				addToCollection(line.getOptionValues("add-to-collection"));
+			} else if (line.hasOption("report-results")) {
+				reportResults(line.getOptionValues("report-results"));				
 			} else if (line.hasOption("read-consumer")) {
 				readWorkConsumerResults();
 			} else {
@@ -870,12 +828,9 @@ public class Main {
 			}
 
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
-
-
 
 }
 
