@@ -770,6 +770,7 @@ public class Main {
 			if (line.hasOption("small-set")) {
 				/* The applications you specify here need to be in apk_collection !!! */
 				theSet.add("B+N_Nook");
+
 			}
 			else if (line.hasOption("unit")) {
 				theSet.add("Unit_01");
