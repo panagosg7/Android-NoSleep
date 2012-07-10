@@ -3,8 +3,8 @@ zoo_host=sysnet122.sysnet.ucsd.edu
 zoo_port=2181
 
 # Apk Processing
-collection_path = /home/pvekris/dev/apk_collection
-scratch_path = /home/pvekris/dev/apk_scratch
+collection_path = /home/pvekris/dev_dude/apk_collection
+scratch_path = /home/pvekris/dev_dude/apk_scratch
 android_sdk_base = /home/pvekris/dev/android-sdk_r12-linux_x86
 ded_path = /home/pvekris/dev/ded
 database_file = /home/pvekris/dev/apk_scratch/output/optimized.json

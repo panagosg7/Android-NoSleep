@@ -698,13 +698,13 @@ public class Main {
 		System.out.println("Using input: " + optionValue);
 		acqrelDatabaseFile = new File(optionValue);
 	}
-
-
+	
+	
 
 	private static void reportResults(String[] optionValues) {
 		ResultReporter resultReporter = new ResultReporter(optionValues[0]);
 		resultReporter.fullResults();		
-
+		
 	}
 
 
@@ -737,6 +737,7 @@ public class Main {
 		options.addOption(new Option("s", "small-set", false, "run the analysis on a small set"));
 		options.addOption(new Option("rf", "run-on-failed", false, "run the analysis on the previously failing (needs -i)"));
 		options.addOption(new Option("fi", "find-interesting", false, "find the interesting application in the collection"));
+
 		options.addOption(OptionBuilder.withLongOpt("create-json").hasArg()
 				.withDescription("create a JSONObject from a file with a list of apps").create());
 
@@ -770,7 +771,6 @@ public class Main {
 			if (line.hasOption("small-set")) {
 				/* The applications you specify here need to be in apk_collection !!! */
 				theSet.add("B+N_Nook");
-
 			}
 			else if (line.hasOption("unit")) {
 				theSet.add("Unit_01");
