@@ -67,6 +67,8 @@ public class ApkInstance {
 	public static File sDedPath = null;
 	public static File sAndroidSdkPath = null;
 	
+	public static File sSkipAppsFile = null;
+	
 	private Set<String> mPermissions;
 
 	private org.w3c.dom.Document mManifest;
@@ -93,6 +95,7 @@ public class ApkInstance {
 		sScratchPath = Util.getAndCheckConfigPath(prop, "scratch_path");
 		sDedPath = Util.getAndCheckConfigPath(prop, "ded_path");
 		sAndroidSdkPath = Util.getAndCheckConfigPath(prop, "android_sdk_base");
+		sSkipAppsFile = Util.getAndCheckConfigPath(prop, "skip_apps");
 	}
 	
 	
@@ -362,6 +365,10 @@ public class ApkInstance {
 	
 	public void requiresRetargeted() throws IOException, RetargetException {
 	    mPreferredTranslation.requiresRetargeted();
+	}
+	
+	public void checkRetargeted() throws IOException, RetargetException {
+		mPreferredTranslation.attemptedRetarget();		
 	}
 	
 	public void requiresOptimized() throws IOException, RetargetException {
@@ -673,4 +680,6 @@ public class ApkInstance {
 		if (mSmali == null) mSmali = new LameSmali(mPaths.smali);
 		return mSmali.traverse();
 	}
+
+	
 }

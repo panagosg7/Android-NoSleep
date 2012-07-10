@@ -20,11 +20,21 @@ public class Translation {
 	public boolean retargetSuccess() throws IOException {
 	    return mConverter.conversionSuccess();
 	}
+	
+	public boolean ranConverter() throws IOException {
+    return (mConverter.getLogTarget() != null);
+}
 
 	public void requiresRetargeted() throws IOException, RetargetException {
 	    if (!retargetSuccess()) mConverter.convert();
 	}
 
+	public void attemptedRetarget() throws IOException, RetargetException {
+		if (!ranConverter())
+			mConverter.convert();
+	}
+	
+	
 	public boolean optimizationSuccess() throws IOException {
 	    return mOptimize.success();
 	}
@@ -70,4 +80,6 @@ public class Translation {
 	    if (!mOptimize.attempted()) requiresOptimized();
 	    return mOptimize.success();
 	}
+
+
 }

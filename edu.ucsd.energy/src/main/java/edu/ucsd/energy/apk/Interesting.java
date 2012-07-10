@@ -137,6 +137,7 @@ public class Interesting {
 		
 		sInterestingMethods.addAll(mWakelockMethods.keySet());
 		
+		/*
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.app.AlarmManager.set(IJLandroid/app/PendingIntent;)V"));
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.app.AlarmManager.cancel(Landroid/app/PendingIntent;)V"));
 		
@@ -151,7 +152,7 @@ public class Interesting {
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.media.MediaPlayer.prepareAsync()V"));
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.media.MediaPlayer.release()V"));
 		sInterestingMethods.add(StringStuff.makeMethodReference("android.media.MediaPlayer.start()V"));
-		
+		*/
 		
 		//mIntentMethods.put(Selector.make("getBroadcast(Landroid/content/Context;ILandroid/content/Intent;I)Landroid/app/PendingIntent;"), new Integer(1));
 		//mIntentMethods.put(Selector.make("getActivity(Landroid/content/Context;ILandroid/content/Intent;I)Landroid/app/PendingIntent;"), new Integer(1));

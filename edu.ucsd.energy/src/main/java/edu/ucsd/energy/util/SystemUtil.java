@@ -41,7 +41,7 @@ public class SystemUtil {
 	static {
 		Properties prop = new Properties();
 		try {
-			prop.load(new FileInputStream("mcmutton.properties.default"));
+			prop.load(new FileInputStream("properties.default"));
 			File mScratchRoot = Util.getAndCheckConfigPath(prop, "scratch_path");
 			output = new File (mScratchRoot + File.separator + "output");
 			outputFile = new File (output.getPath() + File.separator + "output.out");	//default name

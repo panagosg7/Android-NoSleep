@@ -331,7 +331,12 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		try {
 			def = du.getDef(var);
 		}
-		catch (ArrayIndexOutOfBoundsException e) { }	//TODO: fix this	
+		catch (ArrayIndexOutOfBoundsException e) {
+			if (DEBUG > 0) {
+				System.err.println("returning null due to index out of bound ");	
+			}
+			return null;
+		}	
 		if (def instanceof SSAGetInstruction) {
 			SSAGetInstruction get = (SSAGetInstruction) def;
 			V vi = create?findOrCreateInstance(get.getDeclaredField()):
@@ -390,7 +395,6 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		//Finally check if var is a method parameter or local variable
 		//(def might be null here, so don't exit before checking this)
 		V vi = create ? findOrCreateInstance(method, var) : findInstance(method, var);
-
 
 		return vi;
 
@@ -477,11 +481,16 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 	 * @return null if the var is not a parameter to this method.
 	 */
 	private V findOrCreateInstance(IMethod method, int var) {
-
 		int paramIndex = method.isStatic()?var:(var-1);	//getParameterType checks for static methods anyway.
-
 		try {
-			TypeReference parameterType = method.getParameterType(paramIndex);
+			TypeReference parameterType = null;
+			try {
+				method.getParameterType(paramIndex);
+			} catch (ArrayIndexOutOfBoundsException e) {
+				System.err.println("findOrCreateInstance returning null cause of invalid var: ");
+				//e.printStackTrace();
+				return null;
+			}
 
 			if (!isInterestingType(parameterType)) {
 				return null;	//only interesting stuff

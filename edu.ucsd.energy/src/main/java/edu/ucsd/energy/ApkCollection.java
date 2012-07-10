@@ -40,7 +40,7 @@ public class ApkCollection {
 		try {
 			Properties prop = new Properties();
 	
-			File defaultProperties = new File ("mcmutton.properties.default");
+			File defaultProperties = new File ("properties.default");
 			File localProperties = new File("mcmutton.properties");
 			
 			File[] loadOrder = { defaultProperties, localProperties };
@@ -56,9 +56,8 @@ public class ApkCollection {
 					}
 				}
 			}
-				
 			
-			prop.load(new FileInputStream("mcmutton.properties.default"));
+			prop.load(new FileInputStream("properties.default"));
 	
 			loadPaths(prop);
 		} catch (IOException e) {

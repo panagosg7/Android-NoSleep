@@ -120,31 +120,33 @@ public class SuperContextCFG extends AbstractContextCFG {
 				//Return edges must be added first to avoid having the entry method as
 				//a successor of the invoke instruction
 				Set<Selector> exitPoints = targetComp.getExitPoints(callSelector);
-				//E.log(1, "To: " + targetComp.toString());
 				for (Selector exitSel : exitPoints) {
-					CallBack callBack = targetComp.getCallBack(exitSel);
+					Set<CallBack> callBacks = targetComp.getMostRecentCallBack(exitSel); 
+//					CallBack callBack = targetComp.getCallBack(exitSel);	//this missed some cases...
 					//Continue only if this callback is indeed overridden
-					if (callBack != null) {
-						CGNode node = callBack.getNode();
-						ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> srcCFG = getCFG(node);				     
-						IExplodedBasicBlock srcIEBB = srcCFG.exit();
-						BasicBlockInContext<IExplodedBasicBlock> src =
-								new BasicBlockInContext<IExplodedBasicBlock>(node, srcIEBB);
-						for (Iterator<BasicBlockInContext<IExplodedBasicBlock>> succIter = 
-								getSuccNodes(caller); succIter.hasNext();) {
-							BasicBlockInContext<IExplodedBasicBlock> returnBB = succIter.next();
-							//Eliminate edges from called context to the exception catch node 
-							//of the calling context
-							if (!isExceptionalEdge(caller, returnBB)) {
-								addEdge(src, returnBB);
-								exit = true;
-								mContextReturnEdge.put(src, returnBB);
-								mContextToExit.put(targetComp, src);
-								mContextReturn.put(src, targetComp);
-								if (DEBUG > 1) {
-									System.err.println("Adding to: " + targetComp.toString());
-									System.out.println("Adding ASYNC CTX RETURN: " + src.toShortString() +
-										" -> " + returnBB.toShortString());
+					for (CallBack callBack : callBacks) {
+						if (callBack != null) {
+							CGNode node = callBack.getNode();
+							ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> srcCFG = getCFG(node);				     
+							IExplodedBasicBlock srcIEBB = srcCFG.exit();
+							BasicBlockInContext<IExplodedBasicBlock> src =
+									new BasicBlockInContext<IExplodedBasicBlock>(node, srcIEBB);
+							for (Iterator<BasicBlockInContext<IExplodedBasicBlock>> succIter = 
+									getSuccNodes(caller); succIter.hasNext();) {
+								BasicBlockInContext<IExplodedBasicBlock> returnBB = succIter.next();
+								//Eliminate edges from called context to the exception catch node 
+								//of the calling context
+								if (!isExceptionalEdge(caller, returnBB)) {
+									addEdge(src, returnBB);
+									exit = true;
+									mContextReturnEdge.put(src, returnBB);
+									mContextToExit.put(targetComp, src);
+									mContextReturn.put(src, targetComp);
+									if (DEBUG > 1) {
+										System.err.println("Adding to: " + targetComp.toString());
+										System.out.println("Adding ASYNC CTX RETURN: " + src.toShortString() +
+											" -> " + returnBB.toShortString());
+									}
 								}
 							}
 						}
@@ -152,28 +154,34 @@ public class SuperContextCFG extends AbstractContextCFG {
 				}
 				Set<Selector> entryPoints = targetComp.getEntryPoints(callSelector);
 				for (Selector sel : entryPoints) {
-					CallBack callBack = targetComp.getCallBack(sel);
-					//Continue only if this callback is indeed overridden
-					if (callBack != null) {
-						CGNode node = callBack.getNode();
-						ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> destCFG = getCFG(node);				     
-						IExplodedBasicBlock destIEBB = destCFG.entry();				     
-						BasicBlockInContext<IExplodedBasicBlock> dest =
-								new BasicBlockInContext<IExplodedBasicBlock>(node, destIEBB);
-						addEdge(caller,dest);
-						enter = true;
-						if (DEBUG > 1) {
-							System.out.println("Adding ASYNC CTX CALL: " + caller.toShortString() + 
-								" -> " + dest.toShortString());
+					Set<CallBack> callBacks = targetComp.getMostRecentCallBack(sel); //getNextCallBack(sel, false);
+//					CallBack callBack = targetComp.getCallBack(sel);	//this missed some cases...
+					for (CallBack callBack : callBacks) {
+						if (callBack != null) {
+							CGNode node = callBack.getNode();
+							ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> destCFG = getCFG(node);				     
+							IExplodedBasicBlock destIEBB = destCFG.entry();				     
+							BasicBlockInContext<IExplodedBasicBlock> dest =
+									new BasicBlockInContext<IExplodedBasicBlock>(node, destIEBB);
+							addEdge(caller,dest);
+							enter = true;
+							if (DEBUG > 1) {
+								System.out.println("Adding ASYNC CTX CALL: " + caller.toShortString() + 
+									" -> " + dest.toShortString());
+							}
+							mContextCall.put(caller,dest);
+							mCallerToContext .put(caller,targetComp);
 						}
-						mContextCall.put(caller,dest);
-						mCallerToContext .put(caller,targetComp);
 					}
 				}
 				
 				//Sanity check: enter and exit should take the same values
-				Assertions.productionAssertion(!(enter ^ exit), caller.toString() + " calls " + 
-						targetComp.toString() +	" but does not return from it, or vise versa.");
+				if (enter ^ exit) {
+					Assertions.productionAssertion(enter, caller.toString() + " calls " + 
+							targetComp.toString() +	" but does not enter");
+					Assertions.productionAssertion(exit, caller.toString() + " calls " + 
+							targetComp.toString() +	" but does not return from it");
+				}
 			}
 		}
 	}

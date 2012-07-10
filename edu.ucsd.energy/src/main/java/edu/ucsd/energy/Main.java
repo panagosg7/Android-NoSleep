@@ -1,13 +1,11 @@
 package edu.ucsd.energy;
 //Author: John C. McCullough
 import java.io.BufferedReader;
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -34,6 +32,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.PosixParser;
+import org.apache.commons.cli.UnrecognizedOptionException;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 
@@ -44,9 +43,11 @@ import com.ibm.wala.util.debug.UnimplementedError;
 import edu.ucsd.energy.ApkCollection.ApkApplication;
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.apk.ApkInstance;
+import edu.ucsd.energy.apk.ConfigurationException;
 import edu.ucsd.energy.results.FailReport;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ProcessResults.ResultType;
+import edu.ucsd.energy.results.ResultReporter;
 import edu.ucsd.energy.results.Violation;
 import edu.ucsd.energy.util.SystemUtil;
 
@@ -316,21 +317,21 @@ public class Main {
 	 */
 	public static void callAnalysis(JobPool<? extends CallableTask> jobPool) 
 			throws ApkException, IOException, RetargetException, WalaException, CancelException, InterruptedException {
-		
-		System.out.println("Callable analysis");
-		System.out.println("Thread pool size: " + numberOfThreads) ;
-		System.out.println("Input set size: " + theSet.size());
-		
+		System.out.println("==========================================");
+		System.out.println("Thread pool size          :  " + numberOfThreads) ;
+		System.out.println("Number of apps to analyze :  " + theSet.size());
+		System.out.println("==========================================");
+
 		//Initialize thread pool
 		long keepAliveTime = 1;
 		TimeUnit unit = TimeUnit.SECONDS;
 		LinkedBlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<Runnable>(1000);
-		
+
 		ThreadPoolExecutor tPoolExec = new ThreadPoolExecutor(numberOfThreads, numberOfThreads, keepAliveTime, unit, workQueue);
 		Set<? extends CallableTask> tasks = jobPool.getPool();
 		//we can get this result...
 		tPoolExec.invokeAll(tasks);
-		
+
 		tPoolExec.shutdown();
 		tPoolExec.awaitTermination(20, TimeUnit.HOURS);
 
@@ -338,24 +339,30 @@ public class Main {
 
 
 
-	/*
-	 * TODO: Parallelize this
+	/**
+	 * Scans the collection of apks and checks whether each app is interesting 
+	 * based on the calls we have declared as interesting (Interesting.java:mInterestingMethods)
+	 * @throws ConfigurationException
 	 */
-	public static void findInteresting(ApkCollection collection) {
+	public static void findInteresting() throws ConfigurationException {
+		if (collection == null) {
+			collection = new ApkCollection();
+		}
 		List<ApkApplication> apps = collection.listApplications();
+		int counter = 0;
+		JSONObject obj = new JSONObject();		//The output object
 		for (ApkApplication app : apps) {
 			try {
 				ApkInstance apkInstance = app.getPreferred();
-				apkInstance.requiresRetargeted();
-				if (apkInstance.hasWakelockCalls()) {
-					//determined = true;
-					System.out.println("++++++" + apkInstance.getName() + " - " + apkInstance.getVersion());
-					SystemUtil.writeToFile(apkInstance.getName() + "\n");
+				//apkInstance.requiresRetargeted();		//if we need to run retarget every time
+				//might be a bit better to use checkRetargeted() cause smali might 
+				//actually succeed when ded fails
+				apkInstance.checkRetargeted();
+				boolean hasWakelockCalls = apkInstance.hasWakelockCalls();
+				System.out.println(String.format("%d. [%5b] %-50s - %s", (counter++), hasWakelockCalls, apkInstance.getName(), apkInstance.getVersion()));
+				if (hasWakelockCalls) {
+					obj.put(app.getName(), "");
 				}
-				else {
-					System.out.println("------" + apkInstance.getName() + " - " + apkInstance.getVersion());
-				}
-
 			} catch (IOException e) {
 				e.printStackTrace();
 			} catch (RetargetException e) {
@@ -364,6 +371,8 @@ public class Main {
 				e.printStackTrace();
 			}
 		}
+		System.out.println("Interesting: " + obj.size() + " / " + counter);
+		SystemUtil.writeToFile(obj.toString());
 	}
 
 	public static String apkResultToString(ApkInstance apk, ArrayList<Violation> result) {
@@ -392,22 +401,6 @@ public class Main {
 		for (Entry<ApkInstance, ArrayList<Violation>> e : result.entrySet()) {
 			System.out.println(apkResultToString(e.getKey(), e.getValue()));
 		}
-	}
-
-	private static Map<ResultType, Integer> makeHistogram(HashMap<ApkInstance, ArrayList<Violation>> result) {
-		Map<ResultType, Integer> histogram = new HashMap<ResultType, Integer>();
-		for (Entry<ApkInstance, ArrayList<Violation>> e : result.entrySet()) {
-			ArrayList<Violation> value = e.getValue();
-			for (Violation r : value) {
-				ResultType resultType = r.getResultType();
-				Integer integer = histogram.get(resultType);
-				if (integer == null) {
-					histogram.put(resultType, new Integer(0));
-				}
-				histogram.put(resultType, histogram.get(resultType) + 1);
-			}
-		}
-		return histogram;
 	}
 
 	private static class PhantomTracker {
@@ -559,8 +552,7 @@ public class Main {
 	 * Check to see how many apps have been successfully optimized
 	 * Output a json file containing them
 	 */
-	public static void collectOptimized() 
-			throws ApkException, IOException, RetargetException, WalaException, CancelException {
+	public static void collectOptimized() throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 		JSONObject obj = new JSONObject();		//The output object			
@@ -679,28 +671,6 @@ public class Main {
 	}
 
 
-	//This is a temporary method - to be deprecated
-	private static void createJSON(String input) {
-		try {
-			File file = new File(input);
-			FileInputStream stream = new  FileInputStream(file);
-			DataInputStream in = new DataInputStream(stream);
-			BufferedReader br = new BufferedReader(new InputStreamReader(in));
-			String strLine;
-			JSONObject obj = new JSONObject();			
-			while ((strLine = br.readLine()) != null)   {
-				obj.put(strLine.replace(" ", ""), "");
-			}
-			in.close();
-			SystemUtil.writeToFile(obj.toString());
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-
 	private static void setOutputFile(String optionValue) {
 		String extension = FilenameUtils.getExtension(optionValue);
 		String pureName = FilenameUtils.removeExtension(optionValue);
@@ -711,6 +681,15 @@ public class Main {
 		System.out.println("Using input: " + optionValue);
 		acqrelDatabaseFile = new File(optionValue);
 	}
+
+
+
+	private static void reportResults(String[] optionValues) {
+		ResultReporter resultReporter = new ResultReporter(optionValues[0]);
+		resultReporter.fullResults();		
+
+	}
+
 
 
 	public static void main(String[] args) {
@@ -731,11 +710,16 @@ public class Main {
 		options.addOption(new Option("o", "output", true, "specify an output filename (date will be included)"));
 		options.addOption(new Option("unit", false, "run the unit tests"));
 		options.addOption(new Option("i", "input", true, "specify the input json file"));
+		options.addOption(new Option("rr", "report-results", true, "report the results that were found in json files in the given directory"));
 		options.addOption(new Option("t", "threads", true, "run the analysis on t threads (works for pattern analysis only)"));
-		options.addOption(new Option("skip", true, "skip the first N application that are in line for analysis"));
+		options.addOption(new Option("skipN", true, "skip the first N application that are in line for analysis"));
+		
+		//Some applications may cause our analysis to hang - avoid them by writing them down in 
+		//the properties file as "skip_apps = /home/pvekris/dev/apk_scratch/output/too_big.txt"
+		options.addOption(new Option("sb", "skip-big", false, "skip the applications that are known to make the analysis hang"));
 		options.addOption(new Option("s", "small-set", false, "run the analysis on a small set"));
-		options.addOption(new Option("f", "run-on-failed", false, "run the analysis on the previously failing (needs -i)"));
-
+		options.addOption(new Option("rf", "run-on-failed", false, "run the analysis on the previously failing (needs -i)"));
+		options.addOption(new Option("fi", "find-interesting", false, "find the interesting application in the collection"));
 		options.addOption(OptionBuilder.withLongOpt("create-json").hasArg()
 				.withDescription("create a JSONObject from a file with a list of apps").create());
 
@@ -768,19 +752,7 @@ public class Main {
 			//Define the set of apps to run the analysis on
 			if (line.hasOption("small-set")) {
 				/* The applications you specify here need to be in apk_collection !!! */
-				//				theSet.add("NetCounter");					//verified
-				//				theSet.add("3D_Level");						//verified
-				//				theSet.add("SpeakWrite");
-				//				theSet.add("iZen_Lite");					//Correctly NOT verified
-				//				theSet.add("Audalyzer");					//verified - but missing unresolved stuff
-				//				theSet.add("TiltMazes");					//verified
-				//				theSet.add("SMS_Control_Center");
-				//				theSet.add("Gmote");
-				//				theSet.add("apMemo_Lite");
-				//				theSet.add("GO_SMS");
-				//				theSet.add("Unit_Correct_02");
-				//				theSet.add("Twitter_Simpsons_Quote");
-				theSet.add("Scanner_Buddy_FREE");
+				theSet.add("B+N_Nook");
 			}
 			else if (line.hasOption("unit")) {
 				theSet.add("Unit_01");
@@ -802,8 +774,8 @@ public class Main {
 				JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
 				theSet.addAll((Set<String>) acqrel_status.keySet());
 			}
-			
-			if (line.hasOption("skip")) {
+
+			if (line.hasOption("skipN")) {
 				Integer integer = Integer.parseInt(line.getOptionValue("skip"));
 				if (integer != null) {
 					for(int i = 0; i < integer.intValue(); i ++) {
@@ -812,7 +784,21 @@ public class Main {
 					}
 				}
 			}
-			
+
+			if (line.hasOption("skip-big")) {
+				FileReader fileReader = new FileReader(ApkInstance.sSkipAppsFile);
+				BufferedReader bufferedReader = new BufferedReader(fileReader);
+				String app;
+				System.out.println();
+				while ((app = bufferedReader.readLine()) != null) {
+					boolean removed = theSet.remove(app);
+					if (removed) {
+						System.out.println("Skipping application: " + app);
+					}
+				}
+				bufferedReader.close();
+			}
+
 			//TODO: Refine this - put it in a method 
 			if (line.hasOption("run-on-failed")) {
 				theSet = new ArrayList<String>();
@@ -854,28 +840,30 @@ public class Main {
 				runVerifyAnalysis();
 			} else if (line.hasOption("usage")) {
 				runUsageAnalysis();
+			} else if (line.hasOption("find-interesting")) {
+				findInteresting();
 			} else if (line.hasOption("unit")) {
 				runUsageAnalysis();
-			} else if (line.hasOption("create-json")) {
-				String input = line.getOptionValue("create-json");
-				createJSON(input);
 			} else if (line.hasOption("add-to-collection")) {
 				addToCollection(line.getOptionValues("add-to-collection"));
+			} else if (line.hasOption("report-results")) {
+				reportResults(line.getOptionValues("report-results"));				
 			} else if (line.hasOption("read-consumer")) {
 				readWorkConsumerResults();
 			} else {
-				for (Object opt: options.getOptions()) {
-					System.err.println(opt);
-				}
+				throw new UnrecognizedOptionException(null);
 			}
 
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
+		} 
+		catch (UnrecognizedOptionException e ) {
+			for (Object opt: options.getOptions()) {
+				System.err.println(opt);
+			}
+		}
+		catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-
-
 
 }
 
