@@ -770,7 +770,7 @@ public class Main {
 			//Define the set of apps to run the analysis on
 			if (line.hasOption("small-set")) {
 				/* The applications you specify here need to be in apk_collection !!! */
-				theSet.add("B+N_Nook");
+				theSet.add("SMS_Control_Center");
 			}
 			else if (line.hasOption("unit")) {
 				theSet.add("Unit_01");
