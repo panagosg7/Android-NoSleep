@@ -84,11 +84,9 @@ public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 			if (isInterestingType(typeRef)) {
 				//This really should be a component
 				if ((target != null) && (target instanceof Component)) {
-					Component component = (Component) target;
 					if (DEBUG > 0) {
 						System.out.println("Associated with: " + target.toString());
 					}
-					ri.setCalledComponent(component);
 				}
 				//We should not let go of this info for the sake of sanity check later on 
 			}
@@ -115,6 +113,7 @@ public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 		return new RunnableInstance(field);
 	}
 
+	
 	@Override
 	void visitInvokeInstruction(SSAInvokeInstruction instruction) {	}
 
@@ -149,5 +148,5 @@ public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 	@Override
 	public RunnableInstance newInstance(IMethod m, int v) {
 		return new RunnableInstance(m,v);
-	}	
+	}
 }

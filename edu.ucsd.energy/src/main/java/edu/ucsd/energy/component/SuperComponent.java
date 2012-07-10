@@ -71,7 +71,7 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 			}
 		}
 
-		public String toString() {
+		public String toString() { 
 			StringBuffer sb = new StringBuffer();
 			if (!entrySet().isEmpty()) {
 				sb.append("SEEDS:\n");

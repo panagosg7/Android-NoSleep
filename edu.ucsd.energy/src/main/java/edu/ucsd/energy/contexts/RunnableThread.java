@@ -16,7 +16,8 @@ import edu.ucsd.energy.results.Violation;
 
 /**
  * This is not really a component, but i decided to treat it as one because 
- * a Runnable behaves like a called component (e.g. like an Service) 
+ * a Runnable behaves like a called component (e.g. like an Service), 
+ * and we need it to be this way for the super-graph construction 
  */
 public class RunnableThread extends Component {
 

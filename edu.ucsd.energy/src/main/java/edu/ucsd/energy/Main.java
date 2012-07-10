@@ -1,14 +1,18 @@
 package edu.ucsd.energy;
-//Author: John C. McCullough
+//Authors: John C. McCullough and Panagiotis Vekris
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -112,12 +116,24 @@ public class Main {
 
 		protected ApkInstance apk;
 
+		private static Integer counter = new Integer(0);
+
 		CallableTask(ApkInstance apk) {
 			this.apk = apk;
 		}
 
 		public String getApkName() {
 			return apk.getName();
+		}
+		
+		protected void updateCounter() {
+			synchronized(counter) {
+				DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+				Date date = new Date();
+				counter++;
+				System.out.println("\n### " + counter + " ### " + dateFormat.format(date) + "\n");
+				
+			}
 		}
 
 	}
@@ -138,6 +154,7 @@ public class Main {
 				String app_name = apk.getName();
 				if (apk.successfullyOptimized()) {
 					try {
+						updateCounter();
 						res = apk.analyzeFull();
 					} catch(Exception e) {
 						//Any exception should be notified

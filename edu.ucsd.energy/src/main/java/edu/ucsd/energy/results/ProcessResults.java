@@ -203,11 +203,6 @@ public class ProcessResults {
 				if (!(context instanceof Component)) continue;
 				Component component = (Component) context;
 				
-				
-				if (DEBUG > 0) {
-					System.out.println(" - Checking violatios for: " + component.toString());
-				}
-				
 				//Do not analyze abstract classes (they will have to be 
 				//extended in order to be used)
 				if (component.isAbstract()) {
@@ -221,7 +216,7 @@ public class ProcessResults {
 				Set<Violation> assembleReport = component.assembleReport();
 				report.insertViolations(component, assembleReport);
 				//Do this if you want to get color on the violating methods 
-				if (DEBUG > 2) {
+				if (DEBUG > 0) {
 					if (assembleReport.size() > 0) {
 						E.yellow();
 					}

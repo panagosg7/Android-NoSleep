@@ -64,7 +64,7 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 	protected Map<MethodReference, V> mMethodReturns;
 
 	protected Map<Pair<IMethod, Integer>, V> mParamRefs;
-
+	
 	protected Set<IClass> interestingTypes;
 
 	//A mapping for the instructions that perform the target action on the
@@ -323,6 +323,7 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 	}
 
 	protected V traceInstance(int var, MutableSparseIntSet set, boolean create) {
+		
 		if (du == null) {
 			du = new DefUse(ir);
 		}
@@ -399,6 +400,7 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		return vi;
 
 	}
+
 
 
 	private void visitInstruction(SSAInstruction instr ) {

@@ -26,6 +26,11 @@ public abstract class ObjectInstance {
 		this.param = v;
 	}
 
+	//Using this really just to support the "this" case
+	public ObjectInstance() {
+
+	}
+
 	public int hashCode() {
 		return creationPP.hashCode();
 	} 

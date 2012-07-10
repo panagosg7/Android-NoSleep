@@ -116,7 +116,7 @@ public class ContextSummary {
 	}
 
 	public Set<LockUsage> getCallBackState(Selector selector) {
-		Set<CallBack> cbs = delegatingContext.getMostRecentCallBack(selector);
+		Set<CallBack> cbs = delegatingContext.getNextCallBack(selector, false);
 		Set<LockUsage> result = new HashSet<LockUsage>();
 		for (CallBack cb : cbs) {
 			new LockUsage(delegatingContext.getReturnState(cb.getNode()));

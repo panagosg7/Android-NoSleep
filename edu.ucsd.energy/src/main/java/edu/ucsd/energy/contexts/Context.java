@@ -178,12 +178,14 @@ public abstract class Context extends AbstractContext {
 	 * The callback that is returned is guaranteed to be overridden.
 	 * 
 	 * @param selector
+	 * @param fwd true if you want to get a successor callback,
+	 * 						false if you want to get a predecessor callback
 	 * @return null if the selector does not correspond to any known
 	 * callback
 	 * 
 	 * TODO: cache results (not so necessary - the graphs are small)
 	 */
-	public Set<CallBack> getMostRecentCallBack(Selector selector) {
+	public Set<CallBack> getNextCallBack(Selector selector, boolean fwd) {
 
 		if (DEBUG > 0) {
 			System.out.println("CallBack or predecessors for: " + selector.toString());
@@ -215,14 +217,15 @@ public abstract class Context extends AbstractContext {
 				//We need to get the predecessors from the full life-cycle
 				//graph - not the pruned one. The pruned one will not work 
 				//because it might even be missing the node we are looking for 
-				//(it might not even be overridden) 
-				Iterator<SensibleCGNode> predNodes = 
+				//(it might not even be overridden)
+				Iterator<SensibleCGNode> nextNodes = fwd? 
+						getFullLifecycleGraph().getSuccNodes(node):
 						getFullLifecycleGraph().getPredNodes(node);
-				while(predNodes.hasNext()) {
-					SensibleCGNode pred = predNodes.next();
-					worklist.add(pred);
+				while(nextNodes.hasNext()) {
+					SensibleCGNode succ = nextNodes.next();
+					worklist.add(succ);
 					if (DEBUG > 1) {
-						System.out.println("Adding to worklist: " + pred.toString());
+						System.out.println("Adding to worklist: " + succ.toString());
 					}
 				}
 			}
@@ -233,7 +236,7 @@ public abstract class Context extends AbstractContext {
 			}
 		}
 		if (DEBUG > 0) {
-			System.out.println(returnSet.toString());
+			System.out.println("Returning: " + returnSet.toString());
 		}
 		return returnSet;
 	}

@@ -2,6 +2,7 @@ package edu.ucsd.energy.managers;
 
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.types.FieldReference;
+import com.ibm.wala.types.TypeReference;
 
 /**
  * _Context-insensitive_ notion of an Runnable
@@ -20,6 +21,10 @@ public class RunnableInstance extends AbstractRunnableInstance {
 		super(m,v);
 	}
 
+	public RunnableInstance(TypeReference reference) {
+		super(reference);
+	}
+
 	public int hashCode() {
 		return newInstr.hashCode();
 	}
@@ -30,6 +35,7 @@ public class RunnableInstance extends AbstractRunnableInstance {
 			return newInstr.equals(i.getCreationInstruction());
 		}
 		return false;
-	} 
+	}
+
 	
 }

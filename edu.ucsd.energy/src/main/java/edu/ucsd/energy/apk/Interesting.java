@@ -167,27 +167,28 @@ public class Interesting {
 		activityCallbackMethods.add(ActivityOnStart);
 		activityCallbackMethods.add(ActivityOnStop);
 		
-		activityEntryMethods.add(ActivityConstructor);
+		activityEntryMethods.add(ActivityConstructor);	
 		activityEntryMethods.add(ActivityOnCreate);
 		activityEntryMethods.add(ActivityOnStart);
-		activityEntryMethods.add(ActivityOnResume);
-		//activityEntryMethods.add(ActivityOnRestart);
+		//activityEntryMethods.add(ActivityOnResume);
+		activityEntryMethods.add(ActivityOnRestart);
 		
-		activityExitMethods.add(ActivityOnDestroy);
+		//activityEntryMethods.add(ActivityOnPause);
 		activityExitMethods.add(ActivityOnStop);
+		activityExitMethods.add(ActivityOnDestroy);
 
 	//Service
 		serviceCallbackMethods.add(GenericInitializer);
 		serviceCallbackMethods.add(ServiceOnBind);
 		serviceCallbackMethods.add(ServiceOnDestroy);
 		serviceCallbackMethods.add(ServiceOnCreate);
-		serviceCallbackMethods.add(Selector.make("onLowMemory()V"));
 		serviceCallbackMethods.add(ServiceOnRebind);
 		serviceCallbackMethods.add(ServiceOnStart);
 		serviceCallbackMethods.add(ServiceOnStartCommand);
+		serviceCallbackMethods.add(ServiceOnUnbind);
+		serviceCallbackMethods.add(Selector.make("onLowMemory()V"));
 		serviceCallbackMethods.add(Selector.make("onTaskRemoved(Landroid/content/Intent;)V"));
 		serviceCallbackMethods.add(Selector.make("onTrimMemory(I)V"));
-		serviceCallbackMethods.add(ServiceOnUnbind);
 
 		serviceCallbackMethods.add(Selector.make("startForeground(ILandroid/app/Notification;)V"));
 		serviceCallbackMethods.add(Selector.make("stopForeground(B;)V"));
@@ -211,19 +212,32 @@ public class Interesting {
 		
 		
 	//Started service
-		startedServiceEntryMethods.add(ServiceOnStart);
+		//Don't propagate the state at onCreate as a entry point,
+		//this will cause state from the caller to be propagated 
+		//to both onBind and onStartCommand...
+		//A seed from onStartCommand would be propagated though to
+		//the rest of the callbacks.
+		
+		
+		//startedServiceEntryMethods.add(ServiceOnCreate);
+		//One of the two should be overridden ... 
+		//startedServiceEntryMethods.add(ServiceOnStart);		
 		startedServiceEntryMethods.add(ServiceOnStartCommand);
+		
 		startedServiceExitMethods.add(ServiceOnStart);
 		startedServiceExitMethods.add(ServiceOnStartCommand);
-		//startedServiceExitMethods.add(ServiceOnDestroy);
+		startedServiceExitMethods.add(ServiceOnDestroy);
+		
 
 	//Bound service
+		//boundServiceEntryMethods.add(ServiceOnCreate);
 		boundServiceEntryMethods.add(ServiceOnBind);
 		boundServiceEntryMethods.add(ServiceOnRebind);
 		boundServiceExitMethods.add(ServiceOnUnbind);
-		//boundServiceExitMethods.add(ServiceOnDestroy);
+		boundServiceExitMethods.add(ServiceOnDestroy);
 		
 	//Intent service
+		//intentServiceEntryMethods.add(ServiceOnCreate);
 		intentServiceEntryMethods.add(ServiceOnHandleIntent);
 		intentServiceExitMethods.add(ServiceOnHandleIntent);
 		intentServiceExitMethods.add(ServiceOnDestroy);

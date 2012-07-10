@@ -121,7 +121,7 @@ public class SuperContextCFG extends AbstractContextCFG {
 				//a successor of the invoke instruction
 				Set<Selector> exitPoints = targetComp.getExitPoints(callSelector);
 				for (Selector exitSel : exitPoints) {
-					Set<CallBack> callBacks = targetComp.getMostRecentCallBack(exitSel); 
+					Set<CallBack> callBacks = targetComp.getNextCallBack(exitSel, false); 
 //					CallBack callBack = targetComp.getCallBack(exitSel);	//this missed some cases...
 					//Continue only if this callback is indeed overridden
 					for (CallBack callBack : callBacks) {
@@ -154,7 +154,7 @@ public class SuperContextCFG extends AbstractContextCFG {
 				}
 				Set<Selector> entryPoints = targetComp.getEntryPoints(callSelector);
 				for (Selector sel : entryPoints) {
-					Set<CallBack> callBacks = targetComp.getMostRecentCallBack(sel); //getNextCallBack(sel, false);
+					Set<CallBack> callBacks = targetComp.getNextCallBack(sel, false);
 //					CallBack callBack = targetComp.getCallBack(sel);	//this missed some cases...
 					for (CallBack callBack : callBacks) {
 						if (callBack != null) {

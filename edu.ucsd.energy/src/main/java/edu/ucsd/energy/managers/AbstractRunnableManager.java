@@ -1,23 +1,28 @@
 package edu.ucsd.energy.managers;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
 import net.sf.json.JSONObject;
 
+import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
+import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.graph.Acyclic;
 import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
+import com.ibm.wala.util.intset.MutableSparseIntSet;
 
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.contexts.Context;
@@ -34,13 +39,14 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 
 	private Collection<Pair<MethodReference, SSAInvokeInstruction>> unresolvedCallSites;
 
+	//We needed a map to keep the "this" object whenever used. 
+	protected Map<IClass, V> mClassRefs;
+
 
 	public AbstractRunnableManager(GlobalManager gm) {
 		super(gm);
 		unresolvedCallSites = new HashSet<Pair<MethodReference,SSAInvokeInstruction>>();
 	}
-
-
 
 
 	public void computeConstraintGraph() {
@@ -57,6 +63,11 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 		for(Entry<Pair<MethodReference, SSAInstruction>, V> e : mInstruction2Instance.entrySet()) {
 			MethodReference mr = e.getKey().fst;
 			Set<Context> sFrom = cm.getContainingComponents(mr);
+			//Avoid adding calls to self component - will cause issues with 
+			//super-component CFG!!! What we want to avoid is adding the seed 
+			//to this component by itself.
+			if (e.getValue().isSelfCall()) continue;
+			
 			if (DEBUG > 1) {
 				System.out.println("Calls from: " + mr.toString());
 			}
@@ -90,9 +101,7 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 	}
 
 	private void testAcyclic(final SparseNumberedGraph<Context> g) {
-		if (DEBUG > 1) {
-			System.out.println("Testing for cycles... ");
-		}
+		
 		//Assert that there are no cycles in the component constraint graph.
 		com.ibm.wala.util.Predicate<Context> p = 
 				new com.ibm.wala.util.Predicate<Context>() {		
@@ -102,11 +111,16 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 			}
 		};
 
-		if (Opts.FAIL_AT_DEPENDENCY_CYCLES &&
-				(!com.ibm.wala.util.collections.Util.forAll(GraphUtil.inferRoots(g), p))) {
-			//GraphUtils.dumpConstraintGraph(g, getTag());
-			Assertions.UNREACHABLE("Cannot handle circular dependencies in thread calls. ");  
+		if (Opts.FAIL_AT_DEPENDENCY_CYCLES) {
+			if (DEBUG > 1) {
+				System.out.println("Testing for cycles... ");
+			}
+			if (!com.ibm.wala.util.collections.Util.forAll(GraphUtil.inferRoots(g), p)) {
+				//GraphUtils.dumpConstraintGraph(g, getTag());
+				Assertions.UNREACHABLE("Cannot handle circular dependencies in thread calls. ");
+			}
 		}
+			
 	} 
 
 
@@ -182,7 +196,6 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 
 
 	protected void sanityCheck() {
-
 		for (CGNode n : bottomUpList) {
 			node = n;
 			ir = n.getIR();

@@ -2,6 +2,7 @@ package edu.ucsd.energy.managers;
 
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.types.FieldReference;
+import com.ibm.wala.types.TypeReference;
 
 /**
  * _Context-insensitive_ notion of an intent
@@ -22,6 +23,10 @@ public class IntentInstance extends AbstractRunnableInstance {
 	
 	public IntentInstance(IMethod m, int v) {
 		super(m,v);
+	}
+
+	public IntentInstance(TypeReference reference) {
+		super(reference);
 	}
 
 	public int hashCode() {

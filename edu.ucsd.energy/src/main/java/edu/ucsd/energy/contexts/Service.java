@@ -41,7 +41,6 @@ public class Service extends Component {
 		//Started service
 		callbackEdges.add(Pair.make(Interesting.ServiceOnCreate, Interesting.ServiceOnStart));
 		callbackEdges.add(Pair.make(Interesting.ServiceOnStart, Interesting.ServiceOnStartCommand));
-		//callbackEdges.add(Pair.make(Interesting.ServiceOnStartCommand, Interesting.ServiceOnStart));
 		callbackEdges.add(Pair.make(Interesting.ServiceOnStartCommand, Interesting.ServiceOnDestroy));
 		//callbackEdges.add(Pair.make(Interesting.ServiceOnStartCommand, Interesting.ServiceOnDestroy));
 		

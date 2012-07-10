@@ -55,7 +55,6 @@ public class Activity extends Component {
 		callbackEdges.add(Pair.make(Interesting.ActivityOnStop, Interesting.ActivityOnDestroy));
 		//back-edges
 		callbackEdges.add(Pair.make(Interesting.ActivityOnPause, Interesting.ActivityOnResume));
-		callbackEdges.add(Pair.make(Interesting.ActivityOnStop, Interesting.ActivityOnResume));
 		callbackEdges.add(Pair.make(Interesting.ActivityOnStop, Interesting.ActivityOnCreate));
 		callbackEdges.add(Pair.make(Interesting.ActivityOnStop, Interesting.ActivityOnRestart));
 		callbackEdges.add(Pair.make(Interesting.ActivityOnRestart, Interesting.ActivityOnStart));
