@@ -28,7 +28,6 @@ import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.OrdinalSet;
 
 import edu.ucsd.energy.apk.AppCallGraph;
-import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.interproc.AbstractContextCFG;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.CtxSensLocking;
@@ -216,6 +215,6 @@ public abstract class AbstractContext extends NodeWithNumber implements IContext
 		
 	}
 
-	abstract public Set<Context> getContainingContexts(CGNode node);
+	abstract public Set<Component> getContainingContexts(CGNode node);
 	
 }

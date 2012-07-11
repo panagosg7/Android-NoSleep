@@ -19,7 +19,6 @@ import com.ibm.wala.types.TypeName;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.viz.NodeDecorator;
 
-import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.interproc.AbstractContextCFG;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SingleLockState;
@@ -51,7 +50,7 @@ public class ComponentPrinter<T extends AbstractContext> {
 
 	public void outputNormalCallGraph() {
 		String prefix = "unknown";
-		if (component instanceof Context) {
+		if (component instanceof Component) {
 			prefix = "context_callgraphs";
 		}
 		else if (component instanceof SuperComponent) {

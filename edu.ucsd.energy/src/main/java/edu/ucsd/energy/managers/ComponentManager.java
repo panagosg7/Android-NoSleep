@@ -37,6 +37,7 @@ import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.apk.ClassHierarchyUtils;
 import edu.ucsd.energy.component.AbstractContext;
 import edu.ucsd.energy.component.CallBack;
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.component.ComponentPrinter;
 import edu.ucsd.energy.component.SuperComponent;
 import edu.ucsd.energy.contexts.Activity;
@@ -44,8 +45,6 @@ import edu.ucsd.energy.contexts.Application;
 import edu.ucsd.energy.contexts.AsyncTask;
 import edu.ucsd.energy.contexts.BroadcastReceiver;
 import edu.ucsd.energy.contexts.Callable;
-import edu.ucsd.energy.contexts.ContentProvider;
-import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.contexts.IntentService;
 import edu.ucsd.energy.contexts.RunnableThread;
 import edu.ucsd.energy.contexts.Service;
@@ -77,7 +76,7 @@ public class ComponentManager {
 	private static final int SOLVE_DEBUG = 0;
 	static final int RESOLVE_DEBUG = 0;
 
-	private  HashMap<TypeName, Context> componentMap;
+	private  HashMap<TypeName, Component> componentMap;
 
 	private List<SuperComponent> superComponents = new ArrayList<SuperComponent>(); 
 
@@ -91,18 +90,18 @@ public class ComponentManager {
 	public ComponentManager() {
 		global = GlobalManager.get();
 		originalCG = global.getAppCallGraph();
-		componentMap = new HashMap<TypeName, Context>();
+		componentMap = new HashMap<TypeName, Component>();
 	}
 
-	public Collection<Context> getComponents() {
+	public Collection<Component> getComponents() {
 		return componentMap.values();
 	}
 
-	private void registerComponent(TypeReference declaringClass, Context comp) {
+	private void registerComponent(TypeReference declaringClass, Component comp) {
 		componentMap.put(declaringClass.getName(), comp);
 	}
 
-	public Context getComponent(TypeName c) {
+	public Component getComponent(TypeName c) {
 		return componentMap.get(c);
 	}
 
@@ -150,7 +149,7 @@ public class ComponentManager {
 
 			TypeName type = c.getName();
 			//This is probably going to fail
-			Context context = componentMap.get(type);
+			Component context = componentMap.get(type);
 			if (context == null) {
 				// A class can only extend one class so order does not matter
 				ArrayList<IClass> classAncestors = ClassHierarchyUtils.getClassAncestors(c);
@@ -169,10 +168,11 @@ public class ComponentManager {
 						context = new Service(c);
 						break;
 					}
-					if (ancName.equals("Landroid/content/ContentProvider")) {
-						context = new ContentProvider(c);
-						break;
-					}
+					//Some time, we might need to include this case
+//					if (ancName.equals("Landroid/content/ContentProvider")) {
+//						context = new ContentProvider(c);
+//						break;
+//					}
 					if (ancName.equals("Landroid/content/BroadcastReceiver")) {
 						context = new BroadcastReceiver(c);
 						break;
@@ -185,30 +185,6 @@ public class ComponentManager {
 						context = new Application(c);
 						break;
 					}
-					/*
-					//It does not offer us anything to treat these cases separately 
-					//we can just unify them in unresolved context
-					if (ancName.equals("Landroid/view/View")) {
-						context = new View(c);
-						break;
-					}
-					if (ancName.equals("Landroid/os/Handler")) {
-						context = new Handler(c);
-						break;
-					}
-					if (ancName.equals("Landroid/webkit/WebViewClient")) {
-						context = new WebViewClient(c);
-						break;
-					}
-					if (ancName.equals("Landroid/telephony/PhoneStateListener")) {
-						context = new PhoneStateListener(c);
-						break;
-					}
-					if (ancName.equals("Landroid/database/sqlite/SQLiteOpenHelper")) {
-						context = new SQLiteOpenHelper(c);
-						break;
-					}
-					*/
 				}
 			}
 
@@ -358,17 +334,17 @@ public class ComponentManager {
 		List<CGNode> path = pf.find();
 	}
 
-	private Map<MethodReference, Set<Context>> method2Component; 
+	private Map<MethodReference, Set<Component>> method2Component; 
 
 	private void fillMethod2Component() {
-		method2Component =  new HashMap<MethodReference, Set<Context>>();
-		for (Context comp : getComponents()) {
+		method2Component =  new HashMap<MethodReference, Set<Component>>();
+		for (Component comp : getComponents()) {
 			for (Iterator<CGNode> it = comp.getContextCallGraph().iterator(); it.hasNext(); ) {
 				CGNode node = it.next();
 				MethodReference mr = node.getMethod().getReference();
-				Set<Context> sComponents = method2Component.get(mr);
+				Set<Component> sComponents = method2Component.get(mr);
 				if (sComponents == null) {
-					sComponents = new HashSet<Context>();
+					sComponents = new HashSet<Component>();
 				}
 				sComponents.add(comp);
 				method2Component.put(mr, sComponents);
@@ -377,7 +353,7 @@ public class ComponentManager {
 		}
 	}
 
-	public Set<Context> getContainingComponents(MethodReference mr) {
+	public Set<Component> getContainingComponents(MethodReference mr) {
 		if (method2Component == null) {
 			fillMethod2Component();
 		}
@@ -419,32 +395,32 @@ public class ComponentManager {
 		}
 		//Build the constraints' graph 
 		RunnableManager runnableManager = global.getRunnableManager();
-		SparseNumberedGraph<Context> rCG = runnableManager.getConstraintGraph();
+		SparseNumberedGraph<Component> rCG = runnableManager.getConstraintGraph();
 
 		IntentManager intentManager = global.getIntentManager();
-		SparseNumberedGraph<Context> iCG = intentManager.getConstraintGraph();
+		SparseNumberedGraph<Component> iCG = intentManager.getConstraintGraph();
 
-		SparseNumberedGraph<Context> constraintGraph = GraphUtils.merge(rCG,iCG);
+		SparseNumberedGraph<Component> constraintGraph = GraphUtils.merge(rCG,iCG);
 		GraphUtils.dumpConstraintGraph(constraintGraph, "all_constraints");
 
 		Collection<? extends AbstractContext> componentSet;
 
 		if (!Opts.ANALYZE_SUPERCOMPONENTS) {
 			//Run the analysis just on the Components
-			Iterator<Context> bottomUpIterator = GraphUtils.topDownIterator(constraintGraph);
+			Iterator<Component> bottomUpIterator = GraphUtils.topDownIterator(constraintGraph);
 			// Analyze the components based on this graph
 			while (bottomUpIterator.hasNext()) {
-				Context ctx = bottomUpIterator.next();
+				Component ctx = bottomUpIterator.next();
 				solveComponent(ctx);
 			}
 			componentSet = getComponents();
 		}
 		else {
 			//Create SuperComponents based on component constraints
-			Iterator<Set<Context>> scItr = GraphUtils.connectedComponentIterator(constraintGraph);
+			Iterator<Set<Component>> scItr = GraphUtils.connectedComponentIterator(constraintGraph);
 			//SuperComponents: the sequence does not matter
 			while(scItr.hasNext()) {
-				Set<Context> sCtx = scItr.next();	//The set of components that construct this supercomponent
+				Set<Component> sCtx = scItr.next();	//The set of components that construct this supercomponent
 				SuperComponent superComponent = new SuperComponent(sCtx);
 				if (SOLVE_DEBUG > 0) {
 					superComponent.dumpContainingComponents();
@@ -500,8 +476,8 @@ public class ComponentManager {
 					return (getGraphReachability().getReachableSet(n).size() > 0);    
 				}
 			};
-			if (component instanceof Context) {
-				Context context = (Context) component;
+			if (component instanceof Component) {
+				Component context = (Component) component;
 				if (!CollectionUtils.exists(context.getCallbacks(), predicate))
 					return;
 			}

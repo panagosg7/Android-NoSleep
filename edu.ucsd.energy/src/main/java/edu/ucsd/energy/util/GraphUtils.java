@@ -17,7 +17,7 @@ import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.graph.traverse.SCCIterator;
 import com.ibm.wala.util.graph.traverse.Topological;
 
-import edu.ucsd.energy.contexts.Context;
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.viz.GraphDotUtil;
 
 public class GraphUtils {
@@ -88,12 +88,12 @@ public class GraphUtils {
 		return new SCCIterator<T>(doubleLinkedGraph);		
 	}
 
-	public static void dumpConnectedComponents(SparseNumberedGraph<Context> g) {
+	public static void dumpConnectedComponents(SparseNumberedGraph<Component> g) {
 		//E.log(1, "Dumping connecting components... ");
-		Iterator<Set<Context>> ccIt = GraphUtils.connectedComponentIterator(g);
+		Iterator<Set<Component>> ccIt = GraphUtils.connectedComponentIterator(g);
 	    while(ccIt.hasNext()) {
-	    	Set<Context> sComp = ccIt.next();    	
-	    	for(Context c :sComp) {
+	    	Set<Component> sComp = ccIt.next();    	
+	    	for(Component c :sComp) {
 	    		System.out.println(c.toString());	    		
 	    	}
 	    	System.out.println("----------------------------------");

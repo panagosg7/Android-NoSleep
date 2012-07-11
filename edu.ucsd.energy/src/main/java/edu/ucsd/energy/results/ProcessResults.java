@@ -12,8 +12,6 @@ import com.ibm.wala.util.collections.HashSetMultiMap;
 
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.component.SuperComponent;
-import edu.ucsd.energy.contexts.Context;
-import edu.ucsd.energy.contexts.GeneralContext;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.managers.ComponentManager;
@@ -22,7 +20,7 @@ import edu.ucsd.energy.util.Log;
 
 public class ProcessResults {
 
-	private static final int DEBUG = 1;
+	private static final int DEBUG = 2;
 
 	
 	public static class LockUsage extends HashMap<WakeLockInstance, SingleLockState> {
@@ -33,21 +31,21 @@ public class ProcessResults {
 			super();
 		}
 		
-		Set<Context> relevant;
+		Set<Component> relevant;
 		
 		public LockUsage(CompoundLockState cls) {
 			super(cls.getLockStateMap());
-			relevant = new HashSet<Context>();			
+			relevant = new HashSet<Component>();			
 			for (SingleLockState ls : cls.getLockStateMap().values()) {
 				relevant.addAll(ls.involvedContexts());				
 			}
 		}
 		
-		public boolean relevant(Context c) {
+		public boolean relevant(Component c) {
 			return relevant.contains(c);
 		}
 
-		public Set<Context> getRelevantCtxs() {
+		public Set<Component> getRelevantCtxs() {
 			return relevant;
 		}
 
@@ -159,7 +157,10 @@ public class ProcessResults {
 
 
 	public ViolationReport processExitStates() {
-		Log.println();
+		if(DEBUG > 0) {
+			Log.println();	
+		}
+		
 		//LockUsageReport usageReport = new LockUsageReport();
 		ViolationReport report = new ViolationReport();
 		
@@ -170,7 +171,8 @@ public class ProcessResults {
 				componentManager.getCriticalUnresolvedAsyncCalls();
 		
 		if (criticalUnresolvedAsyncCalls.size() > 0) {
-			report.insertViolation(GeneralContext.singleton(), new Violation(ResultType.UNRESOLVED_ASYNC_CALLS));
+			GeneralViolation generalViolation = new GeneralViolation("General");
+			report.insertViolation(generalViolation, new Violation(ResultType.UNRESOLVED_ASYNC_CALLS));
 		}
 		
 		for (MethodReference mr : criticalUnresolvedAsyncCalls.keySet()) {
@@ -198,18 +200,12 @@ public class ProcessResults {
 			Log.println("Checking: "+ superComponent.toString());
 			
 			//Each context should belong to exactly one SuperComponent
-			for (Context context : superComponent.getContexts()) {
-				
-				//Focus just on Components (Activities, Services, BcastRcv...)
-				//Check all possible contexts - not just components
-				//if (!(context instanceof Component)) continue;
-				Component component = (Component) context;
-				
+			for (Component component : superComponent.getContexts()) {
 				//Do not analyze abstract classes (they will have to be 
 				//extended in order to be used)
-				if (context.isAbstract()) {
+				if (component.isAbstract()) {
 					if (DEBUG > 0) {
-						Log.grey("Skipping abstract: " + context.toString() );
+						Log.grey("Skipping abstract: " + component.toString() );
 					}
 					continue;
 				}

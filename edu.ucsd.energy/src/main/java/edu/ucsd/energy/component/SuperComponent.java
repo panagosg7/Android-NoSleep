@@ -17,7 +17,6 @@ import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.graph.INodeWithNumber;
 
 import edu.ucsd.energy.contexts.Activity;
-import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.contexts.Service;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SuperContextCFG;
@@ -28,11 +27,11 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 	private static final int DEBUG = 0;
 
 	//The contexts that constitute this SuperComponent
-	Set<Context> sComponent;
+	Set<Component> sComponent;
 
 	Set<CallBack> sCallBack;
 
-	public SuperComponent(Set<Context> set) {
+	public SuperComponent(Set<Component> set) {
 		super();
 		setGraphNodeId(getNextId());
 		sComponent = set;
@@ -41,7 +40,7 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 	public Set<CallBack> getCallBacks() {
 		if (sCallBack == null) {
 			sCallBack = new HashSet<CallBack>();
-			for (Context c : sComponent) {
+			for (Component c : sComponent) {
 				sCallBack.addAll(c.getCallbacks());
 			}
 		}
@@ -52,14 +51,14 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 
 		private static final long serialVersionUID = 6969397892661845448L;
 
-		public void registerSeeds(Context dest) {
+		public void registerSeeds(Component dest) {
 			//This will work only for components, so ...
 			if (dest instanceof Component) {
 				Component component = (Component) dest;
-				HashSetMultiMap<Context, SSAInstruction> seeds = component.getSeeds();
+				HashSetMultiMap<Component, SSAInstruction> seeds = component.getSeeds();
 				if (seeds != null) {
-					Set<Context> ctxs = seeds.keySet();
-					for (Context c : ctxs) {
+					Set<Component> ctxs = seeds.keySet();
+					for (Component c : ctxs) {
 						Set<SSAInstruction> insts = seeds.get(c);
 						for (SSAInstruction i : insts) {
 							put(i, component);
@@ -92,7 +91,7 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 		Set<Pair<CGNode, CGNode>> edgePairs = new HashSet<Pair<CGNode, CGNode>>();
 		//Inter-context edges
 		SeedMap mSeeds = new SeedMap();
-		for (Context c : sComponent) {
+		for (Component c : sComponent) {
 			// Gather nodes
 			Iterator<CGNode> nItr = c.getNodes();
 			while (nItr.hasNext()) {
@@ -122,7 +121,7 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 
 	public String toFileName() {
 		if (fileName == null) {
-			for (Context c : sComponent) {
+			for (Component c : sComponent) {
 				if ((c instanceof Activity) || (c instanceof Service)) {
 					fileName = c.toFileName();
 					break;
@@ -139,7 +138,7 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 
 	public String toString() {
 		if (name == null) {
-			for (Context c : sComponent) {
+			for (Component c : sComponent) {
 				if ((c instanceof Activity) || (c instanceof Service)) {
 					name = "SUPER_" + c.toString();
 					break;
@@ -156,13 +155,13 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 	public void dumpContainingComponents() {
 		Log.println("========================================");
 		Log.println("SuperComponent (#nodes: " + getContextCallGraph().getNumberOfNodes() + ") containing:");
-		for (Context c : sComponent) {
+		for (Component c : sComponent) {
 			Log.println("\t" + c.toString());			
 		}
 		Log.println();
 	}
 
-	public Set<Context> getContexts() {
+	public Set<Component> getContexts() {
 		return sComponent;
 	}
 
@@ -194,7 +193,7 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 	public CallGraph getContextCallGraph() {
 		if (componentCallgraph == null) {
 			Collection<CGNode> nodeSet = new HashSet<CGNode>();
-			for (Context c : sComponent) {
+			for (Component c : sComponent) {
 				c.setContainingSuperComponent(this);
 				// Gather nodes
 				Iterator<CGNode> nItr = c.getNodes();
@@ -212,7 +211,7 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 
 	public boolean callsInteresting() {
 		if (callsInteresting == null) {
-			for (Context c : sComponent) {
+			for (Component c : sComponent) {
 				if (c.callsInteresting()) {
 					callsInteresting = new Boolean(true);
 					return true;
@@ -227,9 +226,9 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 	/**
 	 * Return a set with all the contexts that contain node in them
 	 */
-	public Set<Context> getContainingContexts(CGNode node) {
-		HashSet<Context> hashSet = new HashSet<Context>();
-		for (Context c : sComponent) {
+	public Set<Component> getContainingContexts(CGNode node) {
+		HashSet<Component> hashSet = new HashSet<Component>();
+		for (Component c : sComponent) {
 			if (c.getContextCallGraph().containsNode(node)) {
 				hashSet.add(c);
 			}

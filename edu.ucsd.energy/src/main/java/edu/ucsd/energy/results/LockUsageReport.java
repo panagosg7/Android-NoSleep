@@ -6,16 +6,15 @@ import java.util.Map.Entry;
 
 import net.sf.json.JSONObject;
 import edu.ucsd.energy.component.Component;
-import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.results.ContextSummary.ContextState;
 
 public class LockUsageReport implements IReport {
 
 	public LockUsageReport() {
-		mComponent = new HashMap<Context, ContextState>();
+		mComponent = new HashMap<Component, ContextState>();
 	}
 	
-	private Map<Context, ContextState> mComponent;
+	private Map<Component, ContextState> mComponent;
 	
 	public String getTag() {
 		return "Lock Usage";
@@ -24,7 +23,7 @@ public class LockUsageReport implements IReport {
 	public JSONObject toJSON() {
 		JSONObject obj = new JSONObject();
 		if (mComponent != null) { 
-			for (Entry<Context, ContextState> e : mComponent.entrySet()) {
+			for (Entry<Component, ContextState> e : mComponent.entrySet()) {
 				obj.put(e.getKey().toString(), e.getValue().toJSON());
 			}
 		}
@@ -33,7 +32,7 @@ public class LockUsageReport implements IReport {
 	
 	public String toShortDescription() {
 		StringBuffer sb = new StringBuffer();
-		for (Entry<Context, ContextState> e : mComponent.entrySet()) {
+		for (Entry<Component, ContextState> e : mComponent.entrySet()) {
 			sb.append(e.getKey().toString() + " :: " + e.getValue().toString() + "\n");
 		}
 		return sb.toString().replaceAll("\n{2,}", "\n");		//ugly fix...

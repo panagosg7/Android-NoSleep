@@ -30,7 +30,7 @@ import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.IntSetAction;
 import com.ibm.wala.util.intset.MutableSparseIntSet;
 
-import edu.ucsd.energy.contexts.Context;
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.interproc.CtxSensLocking.LockingProblem;
 import edu.ucsd.energy.managers.WakeLockInstance;
 
@@ -48,7 +48,7 @@ CGNode, Pair<WakeLockInstance, SingleLockState>> {
 
 	protected final LockingFlowFunctions flowFunctionMap;
 	
-	final protected Map<Context, ContextSummaryEdges> ctxSummaryEdges = HashMapFactory.make();
+	final protected Map<Component, ContextSummaryEdges> ctxSummaryEdges = HashMapFactory.make();
 
 	protected LockingTabulationSolver(LockingProblem problem, IProgressMonitor monitor, AbstractContextCFG icfg) {
 		super(problem, monitor);
@@ -275,7 +275,7 @@ CGNode, Pair<WakeLockInstance, SingleLockState>> {
 		//If there is _some_ state to propagate
 		if (reached != null) {
 
-			final Context calledContext = icfg.getCalleeContext(caller);
+			final Component calledContext = icfg.getCalleeContext(caller);
 			if(calledContext == null) {
 				Assertions.UNREACHABLE();
 				return;		//This might suffice
@@ -361,7 +361,7 @@ CGNode, Pair<WakeLockInstance, SingleLockState>> {
 	
 	protected void processExit(final PathEdge<BasicBlockInContext<IExplodedBasicBlock>> edge) {
 		BasicBlockInContext<IExplodedBasicBlock> target = edge.getTarget();
-		Context ctx = icfg.returnFromContext(target);
+		Component ctx = icfg.returnFromContext(target);
 		//Check if this is a context return block
 		if (ENABLE_CTX_SENS && (ctx != null)) {
 			if (DEBUG > 0) {
@@ -465,7 +465,7 @@ CGNode, Pair<WakeLockInstance, SingleLockState>> {
   }
 	 */
 	
-	protected ContextSummaryEdges findOrCreateContextSummaryEdges(Context proc) {
+	protected ContextSummaryEdges findOrCreateContextSummaryEdges(Component proc) {
     ContextSummaryEdges result = ctxSummaryEdges.get(proc);
     if (result == null) {
       result = new ContextSummaryEdges();

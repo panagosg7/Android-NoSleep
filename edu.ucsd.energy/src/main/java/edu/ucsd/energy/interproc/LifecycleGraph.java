@@ -20,7 +20,7 @@ import com.ibm.wala.util.intset.IntSetAction;
 import com.ibm.wala.viz.NodeDecorator;
 
 import edu.ucsd.energy.component.CallBack;
-import edu.ucsd.energy.contexts.Context;
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.interproc.LifecycleGraph.SensibleCGNode;
 import edu.ucsd.energy.util.SystemUtil;
 import edu.ucsd.energy.viz.GraphDotUtil;
@@ -34,7 +34,7 @@ public class LifecycleGraph extends SparseNumberedGraph<SensibleCGNode> {
 
 	private HashMap<Selector, SensibleCGNode> dictionary;
 
-	private Context component;
+	private Component component;
 
 
 	public class SensibleCGNode extends NodeWithNumber {
@@ -97,20 +97,20 @@ public class LifecycleGraph extends SparseNumberedGraph<SensibleCGNode> {
 		return fullLifeCycleGraph;
 	}
 	
-	public LifecycleGraph(Context context) {
-		this.component = context;
+	public LifecycleGraph(Component comp) {
+		this.component = comp;
 		dictionary = new HashMap<Selector, SensibleCGNode>();
 		
 		if (DEBUG > 1) {
 			System.out.println();
-			System.out.println("Creating lifecycle graph: " + context.toString());
-			System.out.println("Size typ callbacks: " + context.getTypicalCallbacks());
+			System.out.println("Creating lifecycle graph: " + comp.toString());
+			System.out.println("Size typ callbacks: " + comp.getTypicalCallbacks());
 		}
 		
-		for (Selector cb : context.getTypicalCallbacks()) {
+		for (Selector cb : comp.getTypicalCallbacks()) {
 			addSensibleNode(cb);
 		}
-		for (Pair<Selector, Selector> edge : context.getCallbackEdges()) {
+		for (Pair<Selector, Selector> edge : comp.getCallbackEdges()) {
 			addSensibleEdge(edge.fst, edge.snd);
 		}
 		//The full life-cycle graph will be the snapshot of the final graph  

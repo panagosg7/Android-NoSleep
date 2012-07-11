@@ -17,7 +17,6 @@ import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
-import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ManagerReport;
 
@@ -77,7 +76,7 @@ public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 				System.out.println(getTag() + " new Instance: " + ri.toString());
 			}
 			ri.setCalledType(concreteType);
-			Context target = cm.getComponent(concreteType);
+			Component target = cm.getComponent(concreteType);
 			if (isInterestingType(typeRef)) {
 				//This really should be a component
 				if ((target != null) && (target instanceof Component)) {

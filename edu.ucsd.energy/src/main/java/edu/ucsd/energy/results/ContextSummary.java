@@ -11,7 +11,7 @@ import net.sf.json.JSONObject;
 import com.ibm.wala.types.Selector;
 
 import edu.ucsd.energy.component.CallBack;
-import edu.ucsd.energy.contexts.Context;
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.managers.WakeLockInstance;
@@ -52,10 +52,10 @@ public class ContextSummary {
 	private Set<WakeLockInstance> instances;
 
 	//The context which this class summarizes
-	private Context delegatingContext;
+	private Component delegatingContext;
 	
 
-	public ContextSummary(Context component) {
+	public ContextSummary(Component component) {
 		callBackExitStates = new ContextState();
 		instances = new HashSet<WakeLockInstance>();
 		delegatingContext = component;

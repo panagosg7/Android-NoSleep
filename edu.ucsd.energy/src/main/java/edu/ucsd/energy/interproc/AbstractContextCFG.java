@@ -19,7 +19,7 @@ import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.component.AbstractContext;
-import edu.ucsd.energy.contexts.Context;
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.util.Log;
 
 /**
@@ -165,7 +165,7 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 	}
 
 
-	public Set<Context> getContainingContext(BasicBlockInContext<IExplodedBasicBlock> bb) {
+	public Set<Component> getContainingContext(BasicBlockInContext<IExplodedBasicBlock> bb) {
 		CGNode cgNode = getCGNode(bb);
 		return absCtx.getContainingContexts(cgNode);
 	}
@@ -182,11 +182,11 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 
 	public abstract boolean isCallToContext(BasicBlockInContext<IExplodedBasicBlock> src);
 	
-	abstract public Context returnFromContext(BasicBlockInContext<IExplodedBasicBlock> src);
+	abstract public Component returnFromContext(BasicBlockInContext<IExplodedBasicBlock> src);
 	
-	abstract public Context getCalleeContext(BasicBlockInContext<IExplodedBasicBlock> bb);
+	abstract public Component getCalleeContext(BasicBlockInContext<IExplodedBasicBlock> bb);
 	
-	abstract public Set<BasicBlockInContext<IExplodedBasicBlock>> getContextExit(Context c);
+	abstract public Set<BasicBlockInContext<IExplodedBasicBlock>> getContextExit(Component c);
 	
 	
 }

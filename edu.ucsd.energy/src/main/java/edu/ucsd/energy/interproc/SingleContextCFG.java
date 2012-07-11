@@ -9,7 +9,7 @@ import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
 
 import edu.ucsd.energy.component.AbstractContext;
-import edu.ucsd.energy.contexts.Context;
+import edu.ucsd.energy.component.Component;
 
 public class SingleContextCFG extends AbstractContextCFG {
 
@@ -29,13 +29,13 @@ public class SingleContextCFG extends AbstractContextCFG {
 
 	  //This should be like this for single-context CFGs
 	  @Override
-		public Context getCalleeContext(BasicBlockInContext<IExplodedBasicBlock> bb) {
+		public Component getCalleeContext(BasicBlockInContext<IExplodedBasicBlock> bb) {
 	  	Assertions.UNREACHABLE();
 			return null;
 		}
 
 	  @Override
-		public Set<BasicBlockInContext<IExplodedBasicBlock>> getContextExit(Context c) {
+		public Set<BasicBlockInContext<IExplodedBasicBlock>> getContextExit(Component c) {
 	  	Assertions.UNREACHABLE();
 			return null;
 		}
@@ -63,7 +63,7 @@ public class SingleContextCFG extends AbstractContextCFG {
 		}
 
 		@Override
-		public Context returnFromContext(BasicBlockInContext<IExplodedBasicBlock> src) {
+		public Component returnFromContext(BasicBlockInContext<IExplodedBasicBlock> src) {
 			Assertions.UNREACHABLE();
 			return null;
 		}

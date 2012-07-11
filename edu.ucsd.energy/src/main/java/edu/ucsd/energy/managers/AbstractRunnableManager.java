@@ -25,7 +25,7 @@ import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.intset.MutableSparseIntSet;
 
 import edu.ucsd.energy.analysis.Opts;
-import edu.ucsd.energy.contexts.Context;
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.GraphUtils;
@@ -35,7 +35,7 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 	private final int DEBUG = 0;
 
 
-	private SparseNumberedGraph<Context> constraintGraph;
+	private SparseNumberedGraph<Component> constraintGraph;
 
 	private Collection<Pair<MethodReference, SSAInvokeInstruction>> unresolvedCallSites;
 
@@ -53,16 +53,16 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 		if (DEBUG > 1) {
 			Log.println("Computing constraint graph for " + getTag());
 		}
-		constraintGraph = new SparseNumberedGraph<Context>(1);
+		constraintGraph = new SparseNumberedGraph<Component>(1);
 
-		Collection<Context> sComponents = cm.getComponents();
-		for(Context c : sComponents) {
+		Collection<Component> sComponents = cm.getComponents();
+		for(Component c : sComponents) {
 			constraintGraph.addNode(c);
 		}
 
 		for(Entry<Pair<MethodReference, SSAInstruction>, V> e : mInstruction2Instance.entrySet()) {
 			MethodReference mr = e.getKey().fst;
-			Set<Context> sFrom = cm.getContainingComponents(mr);
+			Set<Component> sFrom = cm.getContainingComponents(mr);
 			//Avoid adding calls to self component - will cause issues with 
 			//super-component CFG!!! What we want to avoid is adding the seed 
 			//to this component by itself.
@@ -74,12 +74,12 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 			if (sFrom != null) {
 				TypeName calledType = e.getValue().getCalledType();
 				if (calledType != null) {
-					Context to = cm.getComponent(calledType);
+					Component to = cm.getComponent(calledType);
 					if (to != null) {
 						if (DEBUG > 1) {
 							Log.println("\tCalled Type: " + calledType);
 						}
-						for (Context from : sFrom) {
+						for (Component from : sFrom) {
 							if (DEBUG > 1) {
 								Log.println("\t" + to.toString() + " <-- " + from.toString());
 							}
@@ -100,13 +100,13 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 		testAcyclic(constraintGraph);
 	}
 
-	private void testAcyclic(final SparseNumberedGraph<Context> g) {
+	private void testAcyclic(final SparseNumberedGraph<Component> g) {
 		
 		//Assert that there are no cycles in the component constraint graph.
-		com.ibm.wala.util.Predicate<Context> p = 
-				new com.ibm.wala.util.Predicate<Context>() {		
+		com.ibm.wala.util.Predicate<Component> p = 
+				new com.ibm.wala.util.Predicate<Component>() {		
 			@Override
-			public boolean test(Context c) {
+			public boolean test(Component c) {
 				return Acyclic.isAcyclic(g, c);
 			}
 		};
@@ -176,7 +176,7 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 
 	abstract public IReport getReport();
 
-	public SparseNumberedGraph<Context> getConstraintGraph() {
+	public SparseNumberedGraph<Component> getConstraintGraph() {
 		if (constraintGraph == null) {
 			computeConstraintGraph();
 			GraphUtils.dumpConstraintGraph(constraintGraph, getTag());
@@ -201,7 +201,7 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 						if (v != null) {
 							TypeName calledType = v.getCalledType();
 							if (calledType != null) {
-								Context calledContext = cm.getComponent(calledType);
+								Component calledContext = cm.getComponent(calledType);
 								if (calledContext != null) {
 									continue;
 								}

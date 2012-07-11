@@ -14,10 +14,10 @@ import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.MutableSparseIntSet;
 
 import edu.ucsd.energy.analysis.Opts;
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.conditions.SpecialConditions.IsHeldCondition;
 import edu.ucsd.energy.conditions.SpecialConditions.NullCondition;
 import edu.ucsd.energy.conditions.SpecialConditions.SpecialCondition;
-import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.util.Log;
 
@@ -154,8 +154,8 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 					//If the incoming state operates on the same lock... 
 					if (releasedWL.equals(mappedObject.fst)) {
 						SingleLockState oldSt = mappedObject.snd;
-						Set<Context> releaseCtxs = ctxSensLocking.getICFG().getContainingContext(src);
-						Set<Context> oldCtxs = oldSt.involvedContexts();
+						Set<Component> releaseCtxs = ctxSensLocking.getICFG().getContainingContext(src);
+						Set<Component> oldCtxs = oldSt.involvedContexts();
 						if (oldSt.async()) {
 							//If the incoming state is an asynchronous acquire then
 							//we cannot guarantee that this release is going to take 
@@ -173,7 +173,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 								result.add(d1);
 							}
 							else {
-								Set<Context> newCtxs = new HashSet<Context>(oldCtxs);
+								Set<Component> newCtxs = new HashSet<Component>(oldCtxs);
 								newCtxs.addAll(releaseCtxs);
 								SingleLockState newSt = new SingleLockState(acquired, timed, async, newCtxs);
 								result.add(ctxSensLocking.getDomain().add(Pair.make(releasedWL, newSt)));
@@ -183,7 +183,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 						else {
 							//If it is not an asynchronous operation then release is used normally.
 							
-							Set<Context> acquireCtxs = oldCtxs;
+							Set<Component> acquireCtxs = oldCtxs;
 							
 							//It suffices to have the release in a superset of the contexts that the 
 							//acquire can belong to. In the case the release is in the same context

@@ -3,7 +3,7 @@ package edu.ucsd.energy.interproc;
 import java.util.HashSet;
 import java.util.Set;
 
-import edu.ucsd.energy.contexts.Context;
+import edu.ucsd.energy.component.Component;
 /**
  * State of a program point - very simple at the moment
  * @author pvekris
@@ -20,7 +20,7 @@ public class SingleLockState {
 	
 	//All the possible contexts that this state can originate from
 	//or contexts that operate on this state
-	private Set<Context> involvedContexts;
+	private Set<Component> involvedContexts;
 
 	private LockStateDescription lockStateColor;
 
@@ -47,7 +47,7 @@ public class SingleLockState {
 		private LockStateDescription(String c) { color = c; }
 	}
 
-	public SingleLockState(boolean a, boolean t, boolean as, Set<Context> sc) {
+	public SingleLockState(boolean a, boolean t, boolean as, Set<Component> sc) {
 		acquired = a;
 		timed = t;
 		async = as;   
@@ -87,7 +87,7 @@ public class SingleLockState {
 			return this;
 		}		
 		//Obviously we need a may analysis here
-		HashSet<Context> sOrig = new HashSet<Context>();
+		HashSet<Component> sOrig = new HashSet<Component>();
 		sOrig.addAll(l.involvedContexts());
 		sOrig.addAll(involvedContexts());
 		
@@ -100,11 +100,11 @@ public class SingleLockState {
 	}
 
 
-	public Set<Context> involvedContexts() {
+	public Set<Component> involvedContexts() {
 		return involvedContexts;
 	}
 	
-	public void addContexts(Set<Context> ctxs) {
+	public void addContexts(Set<Component> ctxs) {
 		involvedContexts.addAll(ctxs);		
 	}
 

@@ -1,6 +1,5 @@
 package edu.ucsd.energy.results;
 
-import java.util.HashSet;
 import java.util.Set;
 
 import net.sf.json.JSONArray;
@@ -8,42 +7,42 @@ import net.sf.json.JSONObject;
 
 import com.ibm.wala.util.collections.HashSetMultiMap;
 
-import edu.ucsd.energy.contexts.Context;
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.util.Log;
 
 public class ViolationReport implements IReport {
 	
-	private HashSetMultiMap<Context, Violation> violations;
+	private HashSetMultiMap<IViolationKey, Violation> violations;
 	
 	private boolean hasViolations = false; 
 	
 	public ViolationReport() {
-		violations = new HashSetMultiMap<Context, Violation>();
+		violations = new HashSetMultiMap<IViolationKey, Violation>();
 	}
 
 	public boolean hasViolations() {
 		return hasViolations;
 	}
 
-	public HashSetMultiMap<Context, Violation> getViolations() {
+	public HashSetMultiMap<IViolationKey, Violation> getViolations() {
 		return violations;
 	}
 
 	
 	public void mergeReport(ViolationReport violation) {
 		if (violation == null) return;
-		for (Context c : violation.getViolations().keySet()) {
+		for (IViolationKey c : violation.getViolations().keySet()) {
 			Set<Violation> vs = violation.getViolations().get(c);
 			insertViolations(c, vs);
 		}
 	}
 	
-	public void insertViolations(Context c, Set<Violation> vs) {
+	public void insertViolations(IViolationKey c, Set<Violation> vs) {
 		violations.putAll(c, vs);
 		hasViolations = (vs.isEmpty())?hasViolations:true;
 	}
 
-	public void insertViolation(Context c, Violation v) {
+	public void insertViolation(IViolationKey c, Violation v) {
 		violations.put(c, v);
 		hasViolations = true;		//we definitely have a violation here
 	}
@@ -51,7 +50,7 @@ public class ViolationReport implements IReport {
 	
 	public JSONObject toJSON() {
 		JSONObject obj = new JSONObject();
-		for (Context ctx : violations.keySet()) {
+		for (IViolationKey ctx : violations.keySet()) {
 			Set<Violation> set = violations.get(ctx);
 			JSONArray arr = new JSONArray();
 			for (Violation v : set) {
@@ -77,7 +76,7 @@ public class ViolationReport implements IReport {
 			System.out.println("POLICY VIOLATIONS:");
       Log.resetColor();
 		}
-		for (Context r : violations.keySet()) {
+		for (IViolationKey r : violations.keySet()) {
 			Set<Violation> set = violations.get(r);
 			for (Violation v : set) {
 				int level = v.getResultType().getLevel();

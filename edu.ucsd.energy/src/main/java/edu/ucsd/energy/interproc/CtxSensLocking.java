@@ -29,9 +29,9 @@ import com.ibm.wala.util.intset.IntSet;
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.AbstractContext;
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.conditions.SpecialConditions;
 import edu.ucsd.energy.conditions.SpecialConditions.SpecialCondition;
-import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.interproc.LockingTabulationSolver.LockingResult;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
@@ -204,7 +204,7 @@ public class CtxSensLocking {
 						}
 						//Get all the possible contexts that this bb might belong to 
 						CGNode node = supergraph.getProcOf(bb);
-						Set<Context> contCtxs = component.getContainingContexts(node);
+						Set<Component> contCtxs = component.getContainingContexts(node);
 						SingleLockState sls = new SingleLockState(true, true, false, contCtxs);
 						Pair<WakeLockInstance, SingleLockState> fact = Pair.make(timedAcquiredWL, sls);					
 						int factNum = domain.add(fact);
@@ -219,7 +219,7 @@ public class CtxSensLocking {
 						System.out.println("Adding acquire seed: " + bb.toString());
 					}
 					CGNode node = supergraph.getProcOf(bb);
-					Set<Context> contCtxs = component.getContainingContexts(node);
+					Set<Component> contCtxs = component.getContainingContexts(node);
 					SingleLockState sls = new SingleLockState(true, false, false, contCtxs);
 					Pair<WakeLockInstance, SingleLockState> fact = Pair.make(acquiredWL, sls);					
 					int factNum = domain.add(fact);

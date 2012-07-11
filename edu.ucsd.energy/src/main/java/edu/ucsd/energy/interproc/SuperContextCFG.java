@@ -19,7 +19,6 @@ import com.ibm.wala.util.debug.Assertions;
 import edu.ucsd.energy.component.AbstractContext;
 import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.component.Component;
-import edu.ucsd.energy.contexts.Context;
 
 public class SuperContextCFG extends AbstractContextCFG {
 
@@ -33,14 +32,14 @@ public class SuperContextCFG extends AbstractContextCFG {
 	protected HashSetMultiMap<BasicBlockInContext<IExplodedBasicBlock>, BasicBlockInContext<IExplodedBasicBlock>> mContextReturnEdge = 
 			new HashSetMultiMap<BasicBlockInContext<IExplodedBasicBlock>, BasicBlockInContext<IExplodedBasicBlock>>();
 
-	private Map<BasicBlockInContext<IExplodedBasicBlock>, Context> mCallerToContext = 
-			new HashMap<BasicBlockInContext<IExplodedBasicBlock>, Context>();
+	private Map<BasicBlockInContext<IExplodedBasicBlock>, Component> mCallerToContext = 
+			new HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component>();
 	
-	private Map<BasicBlockInContext<IExplodedBasicBlock>, Context> mContextReturn = 
-			new HashMap<BasicBlockInContext<IExplodedBasicBlock>, Context>();
+	private Map<BasicBlockInContext<IExplodedBasicBlock>, Component> mContextReturn = 
+			new HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component>();
 	
-	private HashSetMultiMap<Context, BasicBlockInContext<IExplodedBasicBlock>> mContextToExit = 
-			new HashSetMultiMap<Context, BasicBlockInContext<IExplodedBasicBlock>>();
+	private HashSetMultiMap<Component, BasicBlockInContext<IExplodedBasicBlock>> mContextToExit = 
+			new HashSetMultiMap<Component, BasicBlockInContext<IExplodedBasicBlock>>();
 	
 	public boolean isCallToContextEdge(BasicBlockInContext<IExplodedBasicBlock> a, BasicBlockInContext<IExplodedBasicBlock> b) {
 		Set<BasicBlockInContext<IExplodedBasicBlock>> b1 = mContextCall.get(a);
@@ -56,15 +55,15 @@ public class SuperContextCFG extends AbstractContextCFG {
 		return ((b1!=null)?b1.contains(b):false);
 	}
 	
-	public Context returnFromContext(BasicBlockInContext<IExplodedBasicBlock> a) {
+	public Component returnFromContext(BasicBlockInContext<IExplodedBasicBlock> a) {
 		return mContextReturn.get(a);
 	}
 	
-	public Context getCalleeContext(BasicBlockInContext<IExplodedBasicBlock> bb) {
+	public Component getCalleeContext(BasicBlockInContext<IExplodedBasicBlock> bb) {
 		return mCallerToContext.get(bb);
 	}
 	
-	public Set<BasicBlockInContext<IExplodedBasicBlock>> getContextExit(Context c) {
+	public Set<BasicBlockInContext<IExplodedBasicBlock>> getContextExit(Component c) {
 		return mContextToExit.get(c);
 	}
 	
