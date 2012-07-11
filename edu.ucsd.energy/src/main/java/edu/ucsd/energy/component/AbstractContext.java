@@ -81,19 +81,6 @@ public abstract class AbstractContext extends NodeWithNumber implements IContext
 	}
 		
 
-	protected Set<CGNode> getDescendants(CallGraph cg, CGNode node) {
-		Filter<CGNode> filter = IndiscriminateFilter.<CGNode> singleton();
-		GraphReachability<CGNode> graphReachability = new GraphReachability<CGNode>(cg, filter);
-		try {
-			graphReachability.solve(null);
-		} catch (CancelException e) {
-			e.printStackTrace();
-		}
-		OrdinalSet<CGNode> reachableSet = graphReachability.getReachableSet(node);
-		return Util.iteratorToSet(reachableSet.iterator());
-	}
-
-
 	public AbstractContextCFG getICFG() {
 		if (icfg == null) {
 			icfg = makeCFG();

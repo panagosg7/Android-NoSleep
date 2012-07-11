@@ -36,6 +36,7 @@ import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.apk.ClassHierarchyUtils;
 import edu.ucsd.energy.component.AbstractContext;
+import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.component.ComponentPrinter;
 import edu.ucsd.energy.component.SuperComponent;
 import edu.ucsd.energy.contexts.Activity;
@@ -58,13 +59,14 @@ import edu.ucsd.energy.contexts.SQLiteOpenHelper;
 import edu.ucsd.energy.contexts.SensorEventListener;
 import edu.ucsd.energy.contexts.Service;
 import edu.ucsd.energy.contexts.ServiceConnection;
+import edu.ucsd.energy.contexts.UnresolvedContext;
 import edu.ucsd.energy.contexts.View;
 import edu.ucsd.energy.contexts.WebViewClient;
 import edu.ucsd.energy.contexts.Widget;
 import edu.ucsd.energy.results.ProcessResults;
 import edu.ucsd.energy.results.ViolationReport;
-import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.GraphUtils;
+import edu.ucsd.energy.util.Log;
 
 
 /**
@@ -86,7 +88,7 @@ import edu.ucsd.energy.util.GraphUtils;
 public class ComponentManager {
 
 	private static final int SOLVE_DEBUG = 0;
-	private static final int RESOLVE_DEBUG = 2;
+	static final int RESOLVE_DEBUG = 1;
 
 	private  HashMap<TypeName, Context> componentMap;
 
@@ -151,25 +153,14 @@ public class ComponentManager {
 
 		//Keep the nodes that belong to some context
 		Set<CGNode> sNodes = new HashSet<CGNode>();
-
+		int counter = 0;
 		for(IClass c : ch) {
 
 			//Avoid primordial (system) classes
 			if(c.getClassLoader().getReference().equals(ClassLoaderReference.Primordial)) {
 				continue;
 			}
-			/*
-			//These are just Application classes...
-			if(c.getClassLoader().getReference().equals(ClassLoaderReference.Extension)) {
-				Log.println("EXTENSION classloader:  " + c.toString());
-			}
-			if(c.getClassLoader().getReference().equals(ClassLoaderReference.Java)) {
-				Log.println("JAVA classloader:       " + c.toString());
-			}
-			if(c.getClassLoader().getReference().equals(ClassLoaderReference.Application)) {
-				Log.println("APPLICATION classloader:" + c.toString());
-			}
-			*/
+
 			TypeName type = c.getName();
 			//This is probably going to fail
 			Context context = componentMap.get(type);
@@ -266,6 +257,12 @@ public class ComponentManager {
 					context = new OnCompletionListener(c);
 				}
 			}
+			
+			
+			//If all else fails register the class as an unresolved context
+			if (context == null) {
+				context = new UnresolvedContext(c);
+			}
 
 			if (context != null) {
 				//Add the methods declared by this class or any of its super-classes to the 
@@ -275,16 +272,20 @@ public class ComponentManager {
 					Set<CGNode> nodes = originalCG.getNodes(m.getReference());
 					context.addNodes(nodes);
 				}
+				
 				sNodes.addAll(Iterator2Collection.toSet(context.getContextCallGraph().iterator()));
 				registerComponent(c.getReference(), context);
 				resolvedClasses++;
 
-				if (RESOLVE_DEBUG > 0) {
+				if (RESOLVE_DEBUG > 1) {
 					Log.println("Resolved  : " + context.toString());
+					for(CallBack cb : context.getCallbacks()) {
+						Log.println("  " + cb.toString()); 
+					}
 				}
 			}
-			else {
-				if (RESOLVE_DEBUG > 0) {
+			else {	//This will not be executed when using unresolved contexts
+				if (RESOLVE_DEBUG > 1) {
 					Log.yellow();
 					Log.println("Unresolved: " + c.getName().toString());
 					if (RESOLVE_DEBUG > 1) {
@@ -296,21 +297,23 @@ public class ComponentManager {
 				unresolvedClasses++;
 			}
 		} // for IClass c
-
+		
 		
 		//Find the dangling nodes - these nodes might actually not be reachable at all ...
 		Collection<CGNode> allNodes = Iterator2Collection.toSet(global.getAppCallGraph().iterator());
 		for (CGNode n : allNodes ) {
 			if (!sNodes.contains(n)) {
 				danglingMethods++;
-				if (RESOLVE_DEBUG > 0) {
-					Log.red();
-					Log.println("Not in any context: " + n.getMethod().getSignature());
-					Log.resetColor();
+				if (RESOLVE_DEBUG > 1) {
+					Log.red("Not in any context: " + n.getMethod().getSignature());
 				}
 			}
 		}
+		if (RESOLVE_DEBUG > 1 && danglingMethods == 0) {
+			Log.green("No dangling methods.");
+		}
 
+		
 		resolutionStats();
 
 	}
@@ -504,7 +507,7 @@ public class ComponentManager {
 		
 		if (!component.callsInteresting()) {
 			if (SOLVE_DEBUG > 0) {
-				Log.println(component.toString() + " does not deal with resource management. Moving on ...");
+				Log.grey(component.toString() + " does not deal with resource management. Moving on ...");
 			}
 			return;
 		}

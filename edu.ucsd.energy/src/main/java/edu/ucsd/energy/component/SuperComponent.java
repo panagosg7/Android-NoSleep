@@ -154,11 +154,12 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 	}
 
 	public void dumpContainingComponents() {
-		Log.log(1, "========================================");
-		Log.log(1, "SuperComponent (#nodes: " + getContextCallGraph().getNumberOfNodes() + ") containing:");
+		Log.println("========================================");
+		Log.println("SuperComponent (#nodes: " + getContextCallGraph().getNumberOfNodes() + ") containing:");
 		for (Context c : sComponent) {
-			Log.log(1, "\t" + c.toString());			
+			Log.println("\t" + c.toString());			
 		}
+		Log.println();
 	}
 
 	public Set<Context> getContexts() {

@@ -4,6 +4,8 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 import edu.ucsd.energy.analysis.Opts;
@@ -13,6 +15,8 @@ public class Log {
 	static int DEBUG_LEVEL = 1;   /* higher means more details */
 
 	private static String LOG_FILE = "log.out";
+	
+	private static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 
 	/**
 	 * Print to standard output and to log file, if this is enabled.
@@ -111,7 +115,24 @@ public class Log {
 		}
 	}
 
+	public static void print(String format) {
+		if (!Opts.RUN_IN_PARALLEL) {
+			System.out.print(format);
+		}		
+	}
+
+	public static void time() {
+		if (!Opts.RUN_IN_PARALLEL) {
+			System.out.println(dateFormat.format(new Date()));
+		}		
+	}
 	
+
+	public static void time(String str) {
+		if (!Opts.RUN_IN_PARALLEL) {
+			System.out.print("[" + dateFormat.format(new Date()) + "] "+ str);
+		}		
+	}
 
 	public static void yellow() {
 		System.out.print("\033[33m");
@@ -139,6 +160,30 @@ public class Log {
 
 	public static void grey() {
 		System.out.print("\033[1;30;40m");		
+	}
+
+	public static void red(String string) {
+		red();
+		println(string);
+		resetColor();
+	}
+	
+	public static void green(String string) {
+		green();
+		println(string);
+		resetColor();
+	}
+
+	public static void grey(String string) {
+		grey();
+		println(string);
+		resetColor();		
+	}
+
+	public static void timeln(String string) {
+		if (!Opts.RUN_IN_PARALLEL) {
+			System.out.println("[" + dateFormat.format(new Date()) + "] "+ string);
+		}
 	}
 
 

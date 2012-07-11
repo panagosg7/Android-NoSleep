@@ -17,10 +17,15 @@ import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.Selector;
+import com.ibm.wala.util.CancelException;
+import com.ibm.wala.util.collections.Filter;
 import com.ibm.wala.util.collections.HashSetMultiMap;
+import com.ibm.wala.util.collections.IndiscriminateFilter;
 import com.ibm.wala.util.collections.Pair;
+import com.ibm.wala.util.graph.GraphReachability;
 import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
+import com.ibm.wala.util.intset.OrdinalSet;
 
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.AbstractContext;
@@ -30,6 +35,7 @@ import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.LifecycleGraph;
 import edu.ucsd.energy.interproc.LifecycleGraph.SensibleCGNode;
 import edu.ucsd.energy.interproc.SingleContextCFG;
+import edu.ucsd.energy.util.Util;
 
 public abstract class Context extends AbstractContext {
 
@@ -87,7 +93,9 @@ public abstract class Context extends AbstractContext {
 		if (componentCallgraph == null) {
 			HashSet<CGNode> set = new HashSet<CGNode>();    
 			for (CGNode node : sNode ) {    	
-				set.addAll(getDescendants(originalCallgraph, node));
+				OrdinalSet<CGNode> reachableSet = originalCallgraph.getReachability().getReachableSet(node);
+				Set<CGNode> desc = Util.iteratorToSet(reachableSet.iterator());
+				set.addAll(desc);
 			}    
 			//sNode is not really the root set, but this should work,
 			//cause they should work as entry points
@@ -149,7 +157,7 @@ public abstract class Context extends AbstractContext {
 		return getKlass().isAbstract();
 	}
 
-	private void gatherCallBacks() {
+	private void requiresCallBacks() {
 		if (mActualCallback == null) {
 			mActualCallback = new HashMap<Selector, CallBack>();
 			for (CGNode node : GraphUtil.inferRoots(getContextCallGraph())) {
@@ -161,12 +169,12 @@ public abstract class Context extends AbstractContext {
 	}
 
 	public Collection<CallBack> getCallbacks() {
-		gatherCallBacks();
+		requiresCallBacks();
 		return mActualCallback.values();
 	}
 
 	public CallBack getCallBack(Selector sel) {
-		gatherCallBacks();
+		requiresCallBacks();
 		return mActualCallback.get(sel);
 	}
 

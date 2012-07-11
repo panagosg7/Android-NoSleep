@@ -10,6 +10,7 @@ import edu.ucsd.energy.apk.ClassHierarchyUtils;
 import edu.ucsd.energy.conditions.SpecialConditions;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ViolationReport;
+import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.SystemUtil;
 
 public class GlobalManager {
@@ -26,6 +27,8 @@ public class GlobalManager {
 	
 	private static final String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/" +
 			"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";
+	
+	
 	
 	private static ThreadLocal<GlobalManager> threadGM = new ThreadLocal<GlobalManager>();
 	
@@ -58,7 +61,14 @@ public class GlobalManager {
 	
 	public void createComponentManager() {
 		cm = new ComponentManager();
+		if (ComponentManager.RESOLVE_DEBUG > 0) {
+			Log.timeln("Resolving Components ... ");
+		}
 		cm.resolveComponents();
+		if (ComponentManager.RESOLVE_DEBUG > 0) {
+			Log.timeln("Resolved Components ... ");
+		}
+		
 	}
 
 	/**

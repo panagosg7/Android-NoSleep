@@ -15,7 +15,8 @@ import java.util.Properties;
 import java.util.Queue;
 import java.util.Set;
 
-import com.ibm.wala.cfg.cdg.ControlDependenceGraph;
+import javax.swing.ProgressMonitor;
+
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
@@ -36,8 +37,6 @@ import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.ipa.callgraph.impl.Util;
 import com.ibm.wala.ipa.callgraph.propagation.LocalPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
-import com.ibm.wala.ipa.cfg.ExceptionPrunedCFG;
-import com.ibm.wala.ipa.cfg.PrunedCFG;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.properties.WalaProperties;
@@ -53,31 +52,32 @@ import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
-import com.ibm.wala.util.collections.CollectionFilter;
 import com.ibm.wala.util.collections.Filter;
+import com.ibm.wala.util.collections.IndiscriminateFilter;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.graph.Graph;
+import com.ibm.wala.util.graph.GraphReachability;
 import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.InferGraphRoots;
 import com.ibm.wala.util.graph.impl.InvertedGraph;
 import com.ibm.wala.util.graph.traverse.BoundedBFSIterator;
 import com.ibm.wala.util.intset.IntSet;
+import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.util.io.FileProvider;
-import com.ibm.wala.viz.DotUtil;
 import com.ibm.wala.viz.NodeDecorator;
-import com.ibm.wala.viz.PDFViewUtil;
 
 import edu.ucsd.energy.analysis.Opts;
-import edu.ucsd.energy.intraproc.IntraProcAnalysis;
 import edu.ucsd.energy.managers.IntentManager;
 import edu.ucsd.energy.managers.WakeLockManager;
 import edu.ucsd.energy.util.Log;
-import edu.ucsd.energy.util.GraphUtils;
 import edu.ucsd.energy.util.SystemUtil;
 import edu.ucsd.energy.viz.GraphDotUtil;
 
 public class AppCallGraph implements CallGraph {
 
+	private static final int DEBUG = 0;
+	
+	
 	// Output Files
 	private  String PDF_FILE = "cg.pdf";
 	private  String DOT_FILE = "cg.dot";
@@ -113,15 +113,20 @@ public class AppCallGraph implements CallGraph {
 
 	public AppCallGraph(ClassHierarchy ch) throws IllegalArgumentException, WalaException, CancelException,	IOException {
 		this.cha = ch;
-		//String appJar = cha.getAppJar();
-		//String exclusionFile = cha.getExclusionFileName();
 		
-		// Get the graph on which we will work
-		g = buildPrunedCallGraph(/*appJar, FileProvider.getFile(exclusionFile)*/);
+		g = buildPrunedCallGraph();
+		
 		if (Opts.OUTPUT_CG_DOT_FILE) {
+			if (DEBUG > 0) {
+				Log.timeln("Outputting callgraphs... ");
+			}
 			outputCallGraphToDot(g);
 			outputCFGs();
+			if (DEBUG > 0) {
+				Log.timeln("Outputted callgraphs.");
+			}
 		}
+		
 	}
 
 	public void outputCallGraphToDot(CallGraph g) {
@@ -173,12 +178,19 @@ public class AppCallGraph implements CallGraph {
 		cache = new AnalysisCache();
 		targetCGNodeHash = new Hashtable<String, CGNode>();
 
-		Log.log(0, "#Nodes: " + entrypoints.size());
+		Log.println("Total number of nodes in application callgraph: " + entrypoints.size());
 
 		// Build the call graph
 		CallGraphBuilder builder = Util.makeZeroCFABuilder(options, cache, cha, scope);
 		
+		if (DEBUG > 0) {
+			Log.timeln("Builder making WALA callgraph ... ");
+		}
+		//This is the bottleneck...
 		ExplicitCallGraph cg = (ExplicitCallGraph) builder.makeCallGraph(options, null);
+		if (DEBUG > 0) {
+			Log.timeln("Builder made WALA callgraph.");
+		}
 
 		//Add wakelock methods and their call-sites to the call graph
 		insertTargetMethodsToCG(cg);
@@ -198,9 +210,13 @@ public class AppCallGraph implements CallGraph {
 			CGNode node = iterator.next();
 			if (isAppNode(node) /*|| isTargetMethod(node)*/) {
 				keepers.add(node);
-				Log.log(2, "Keep: " + node.getMethod().toString());
+				if (DEBUG > 1) {
+					Log.println("Keep: " + node.getMethod().toString());
+				}
 			} else {
-				Log.log(2, "Prune: " + node.getMethod().toString());
+				if (DEBUG > 1) {
+					Log.println("Prune: " + node.getMethod().toString());
+				}
 			}
 		}
 		return PartialCallGraph.make(cg, keepers, keepers);
@@ -292,10 +308,10 @@ public class AppCallGraph implements CallGraph {
 			if (isAppNode(iterator.next()))	appNodes++;
 			else primNodes++;
 		}
-		Log.log(1, "");
-		Log.log(1, "AppNodes:\t" + appNodes + "/" + (appNodes + primNodes));
-		Log.log(1, "PrimNodes:\t" + primNodes + "/" + (appNodes + primNodes));
-		Log.log(1, "");
+		Log.println();
+		Log.println("AppNodes:\t" + appNodes + "/" + (appNodes + primNodes));
+		Log.println("PrimNodes:\t" + primNodes + "/" + (appNodes + primNodes));
+		Log.println();
 	}
 
 	/**
@@ -527,8 +543,7 @@ public class AppCallGraph implements CallGraph {
 		} catch (WalaException e) {
 			e.printStackTrace();
 		}
-		String cfgs = SystemUtil.getResultDirectory()
-				+ File.separatorChar + "cfg";
+		String cfgs = SystemUtil.getResultDirectory() + File.separatorChar + "cfg";
 		new File(cfgs).mkdirs();
 
 		Iterator<CGNode> it = this.iterator();
@@ -716,12 +731,21 @@ public class AppCallGraph implements CallGraph {
 		return g.getPossibleTargets(node, site);
 	}
 	
-	WakeLockManager wlm = null;
-	IntentManager 	im	= null;
+
+	//Cache reachability - it can be very slow otherwise
+	private GraphReachability<CGNode> reachability;
 	
-	
-	public PointerAnalysis getPointerAnalysis() {
-		return pointerAnalysis;
+	public GraphReachability<CGNode> getReachability() {
+		if (reachability == null) {
+			Filter<CGNode> filter = IndiscriminateFilter.<CGNode> singleton();
+			reachability = new GraphReachability<CGNode>(this, filter);
+			try {
+				reachability.solve(null);
+			} catch (CancelException e) {
+				e.printStackTrace();
+			}
+		}
+		return reachability;
 	}
 
 	

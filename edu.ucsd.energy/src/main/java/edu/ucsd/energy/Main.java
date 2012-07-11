@@ -52,6 +52,7 @@ import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ProcessResults.ResultType;
 import edu.ucsd.energy.results.ResultReporter;
 import edu.ucsd.energy.results.Violation;
+import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.SystemUtil;
 
 public class Main {
@@ -65,6 +66,7 @@ public class Main {
 	private static ApkCollection collection;
 
 	private static ArrayList<String> theSet = new ArrayList<String>();
+	private static Set<String>	skip = new HashSet<String>();
 
 	public static void runWakeLockAnalysis() 
 			throws IOException, ApkException, RetargetException, WalaException, CancelException, InterruptedException {
@@ -173,6 +175,7 @@ public class Main {
 						//Any exception should be notified
 						e.printStackTrace();		//XXX: keep this somewhere
 						res = new FailReport(ResultType.ANALYSIS_FAILURE);
+						System.out.println("\n<<< "+ apk.getName()+ " FAILURE");
 					}
 					catch (UnimplementedError e) {
 						e.printStackTrace();
@@ -826,11 +829,10 @@ public class Main {
 				String app;
 				System.out.println();
 				while ((app = bufferedReader.readLine()) != null) {
-					boolean removed = theSet.remove(app);
-					if (removed) {
-						System.out.println("Skipping application: " + app);
-					}
+					skip.add(app);
+					Log.println("Skipping application: " + app);
 				}
+				theSet.removeAll(skip);
 				bufferedReader.close();
 			}
 
