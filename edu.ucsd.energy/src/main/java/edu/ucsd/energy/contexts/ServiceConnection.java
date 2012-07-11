@@ -2,8 +2,12 @@ package edu.ucsd.energy.contexts;
 
 import com.ibm.wala.classLoader.IClass;
 
-import edu.ucsd.energy.managers.GlobalManager;
 
+/**
+ * TODO: We have some life-cycle info for this
+ * @author pvekris
+ *
+ */
 public class ServiceConnection extends Context{
 
   public ServiceConnection(IClass c) {
