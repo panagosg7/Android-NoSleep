@@ -1,7 +1,6 @@
 package edu.ucsd.energy.managers;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -16,19 +15,15 @@ import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
-import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.Pair;
-import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.graph.Acyclic;
 import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
-import com.ibm.wala.util.intset.MutableSparseIntSet;
 
-import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.results.IReport;
-import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.GraphUtils;
+import edu.ucsd.energy.util.Log;
 
 public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance> extends AbstractDUManager<V> { 
 
@@ -45,7 +40,6 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 
 	public AbstractRunnableManager() {
 		super();
-		unresolvedCallSites = new HashSet<Pair<MethodReference,SSAInvokeInstruction>>();
 	}
 
 
@@ -135,43 +129,46 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 	public JSONObject toJSON() {
 		JSONObject result = new JSONObject();
 		JSONObject obj = new JSONObject();
+		
 		/*
-		if (mFieldRefs != null) {
-			for (Entry<FieldReference, V> e : mFieldRefs.entrySet()) {
-				obj.put(e.getKey().toString(), e.getValue().toJSON());
-			}
-		}
-		result.put("fields", obj);
-		 */
-		obj = new JSONObject();
+		JSONObject crRefs = new JSONObject();
 		if (mCreationRefs != null) {
 			for (Entry<CreationPoint, V> e : mCreationRefs.entrySet()) {
-				obj.put(e.getKey().toString(), e.getValue().toJSON());
+				crRefs.put(e.getKey().toString(), e.getValue().toJSON());
 			}
 		}
-		result.put("creation_sites", obj);
-		obj = new JSONObject();
-		if (mInstruction2Instance != null) {
-			int i = 1;
-			for (Entry<Pair<MethodReference, SSAInstruction>, V> e : mInstruction2Instance.entrySet()) {
-				MethodReference methRef = e.getKey().fst;
-				SSAInstruction instr = e.getKey().snd;
-				AbstractRunnableInstance ri = e.getValue();
-				if (instr instanceof SSAInvokeInstruction) {
-					JSONObject o = new JSONObject();
-					o.put("caller", methRef.getSignature());
-					TypeName comp = ri.getCalledType();
-					o.put("target type", (comp==null)?"NO_TARGET":comp.toString());
-					FieldReference field = ri.getField();
-					o.put("field", (field==null)?"NO_FIELD":field.toString());
-					CreationPoint pp = ri.getPP();
-					o.put("created", (pp==null)?"NO_PROG_POINT":pp.toString());
-					obj.put(Integer.toString(i++),o);
+		result.put("creation_sites", crRefs);
+		*/
+		if (DEBUG > 0) {
+			JSONObject insts = new JSONObject();
+			if (mInstruction2Instance != null) {
+				int i = 1;
+				for (Entry<Pair<MethodReference, SSAInstruction>, V> e : mInstruction2Instance.entrySet()) {
+					MethodReference methRef = e.getKey().fst;
+					SSAInstruction instr = e.getKey().snd;
+					AbstractRunnableInstance ri = e.getValue();
+					if (instr instanceof SSAInvokeInstruction) {
+						JSONObject o = new JSONObject();
+						o.put("caller", methRef.getSignature());
+						TypeName comp = ri.getCalledType();
+						o.put("target type", (comp==null)?"NO_TARGET":comp.toString());
+						FieldReference field = ri.getField();
+						o.put("field", (field==null)?"NO_FIELD":field.toString());
+						CreationPoint pp = ri.getPP();
+						o.put("created", (pp==null)?"NO_PROG_POINT":pp.toString());
+						insts.put(Integer.toString(i++),o);
+					}
 				}
 			}
+			result.put("calls", insts);
 		}
-		result.put("calls", obj);
+		
+		Pair<Integer, Integer> resolutionStats = getResolutionStats();
+		result.put("successfully_resolved_calls", resolutionStats.fst.toString());
+		result.put("total_calls", resolutionStats.snd.toString());
+	
 		return result;
+
 	}
 
 	abstract public IReport getReport();
@@ -186,6 +183,7 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 
 
 	protected void sanityCheck() {
+		unresolvedCallSites = new HashSet<Pair<MethodReference,SSAInvokeInstruction>>();
 		for (CGNode n : bottomUpList) {
 			node = n;
 			ir = n.getIR();
@@ -214,8 +212,9 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 						}
 					}
 				}
-			}			
+			}
 		}
+	
 		int size = mInstruction2Instance.size();
 		if (unresolvedCallSites.size() == 0) {
 			Log.green();
@@ -226,6 +225,14 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 		Log.println((size - unresolvedCallSites.size()) + " / " + size + " " + getTag() +" call sites were resolved successfully.");
 		Log.resetColor();
 	}
+
+	
+	private Pair<Integer, Integer> getResolutionStats() {
+		int size = mInstruction2Instance.size();
+		return Pair.make(	new Integer(size - unresolvedCallSites.size()),
+											new Integer(size));
+	}
+
 
 	public Collection<Pair<MethodReference, SSAInvokeInstruction>> getUnresolvedCallSites() {
 		if (unresolvedCallSites == null) {
