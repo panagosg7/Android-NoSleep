@@ -27,7 +27,7 @@ import com.ibm.wala.util.intset.MutableSparseIntSet;
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.results.IReport;
-import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.GraphUtils;
 
 public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance> extends AbstractDUManager<V> { 
@@ -43,15 +43,15 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 	protected Map<IClass, V> mClassRefs;
 
 
-	public AbstractRunnableManager(GlobalManager gm) {
-		super(gm);
+	public AbstractRunnableManager() {
+		super();
 		unresolvedCallSites = new HashSet<Pair<MethodReference,SSAInvokeInstruction>>();
 	}
 
 
 	public void computeConstraintGraph() {
 		if (DEBUG > 1) {
-			System.out.println("Computing constraint graph for " + getTag());
+			Log.println("Computing constraint graph for " + getTag());
 		}
 		constraintGraph = new SparseNumberedGraph<Context>(1);
 
@@ -69,7 +69,7 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 			if (e.getValue().isSelfCall()) continue;
 			
 			if (DEBUG > 1) {
-				System.out.println("Calls from: " + mr.toString());
+				Log.println("Calls from: " + mr.toString());
 			}
 			if (sFrom != null) {
 				TypeName calledType = e.getValue().getCalledType();
@@ -77,11 +77,11 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 					Context to = cm.getComponent(calledType);
 					if (to != null) {
 						if (DEBUG > 1) {
-							System.out.println("\tCalled Type: " + calledType);
+							Log.println("\tCalled Type: " + calledType);
 						}
 						for (Context from : sFrom) {
 							if (DEBUG > 1) {
-								System.out.println("\t" + to.toString() + " <-- " + from.toString());
+								Log.println("\t" + to.toString() + " <-- " + from.toString());
 							}
 							//Component "to" will be started with the state of 
 							//component "from" at the specific program point
@@ -95,7 +95,7 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 			}
 		}
 		if (DEBUG > 1) {
-			System.out.println("Building abstract " + getTag() + " constraint graph... " + GraphUtil.countEdges(constraintGraph) + " edge(s).");
+			Log.println("Building abstract " + getTag() + " constraint graph... " + GraphUtil.countEdges(constraintGraph) + " edge(s).");
 		};
 		testAcyclic(constraintGraph);
 	}
@@ -111,33 +111,23 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 			}
 		};
 
-		if (Opts.FAIL_AT_DEPENDENCY_CYCLES) {
-			if (DEBUG > 1) {
-				System.out.println("Testing for cycles... ");
-			}
-			if (!com.ibm.wala.util.collections.Util.forAll(GraphUtil.inferRoots(g), p)) {
-				//GraphUtils.dumpConstraintGraph(g, getTag());
-				Assertions.UNREACHABLE("Cannot handle circular dependencies in thread calls. ");
-			}
-		}
-			
 	} 
 
 
 	public void dumpInfo() {
-		System.out.println("\nDumping " + getTag() + " Manager");
-		System.out.println("------------------------------------------");
+		Log.println("\nDumping " + getTag() + " Manager");
+		Log.println("------------------------------------------");
 		for (Entry<CreationPoint, V> e : mCreationRefs.entrySet()) {
 			V value = e.getValue();
-			System.out.println(value.toString());
+			Log.println(value.toString());
 		}
-		System.out.println("------------------------------------------");
+		Log.println("------------------------------------------");
 		for (Entry<Pair<MethodReference, SSAInstruction>, V> e : mInstruction2Instance.entrySet()) {
 			Pair<MethodReference, SSAInstruction> key = e.getKey();
 			V value = e.getValue();
-			System.out.println(key.toString() + " :: " + value.toString());
+			Log.println(key.toString() + " :: " + value.toString());
 		}
-		System.out.println("==========================================\n");		
+		Log.println("==========================================\n");		
 	}
 
 
@@ -218,9 +208,9 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 							}
 							unresolvedCallSites.add(key);
 							//we missed this interesting call
-							E.flog(getTag() + " in method" + method + " was not resolved successfully.");
-							E.flog("  target instruction: " +	inv.toString());
-							E.flog("");
+							Log.flog(getTag() + " in method" + method + " was not resolved successfully.");
+							Log.flog("  target instruction: " +	inv.toString());
+							Log.flog("");
 						}
 					}
 				}
@@ -228,13 +218,13 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 		}
 		int size = mInstruction2Instance.size();
 		if (unresolvedCallSites.size() == 0) {
-			E.green();
+			Log.green();
 		}
 		else {
-			E.yellow();
+			Log.yellow();
 		}
-		System.out.println((size - unresolvedCallSites.size()) + " / " + size + " " + getTag() +" call sites were resolved successfully.");
-		E.resetColor();
+		Log.println((size - unresolvedCallSites.size()) + " / " + size + " " + getTag() +" call sites were resolved successfully.");
+		Log.resetColor();
 	}
 
 	public Collection<Pair<MethodReference, SSAInvokeInstruction>> getUnresolvedCallSites() {

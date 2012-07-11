@@ -44,10 +44,6 @@ public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 		FALSE;		
 	}
 
-	public WakeLockManager(GlobalManager globalManager) {
-		super(globalManager);
-	}
-
 	public void prepare() {
 		super.prepare();
 		if(DEBUG > 0) {

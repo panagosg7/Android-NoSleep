@@ -2,8 +2,6 @@ package edu.ucsd.energy.contexts;
 
 import com.ibm.wala.classLoader.IClass;
 
-import edu.ucsd.energy.managers.GlobalManager;
-
 
 /**
  * TODO: This is not really a component
@@ -14,9 +12,8 @@ import edu.ucsd.energy.managers.GlobalManager;
 
 public class ClickListener extends Context{
 
-  public ClickListener(GlobalManager gm, IClass c) {
-	    super(gm, c);
-
+  public ClickListener(IClass c) {
+  	super(c);
   }
 
   public String toString() {

@@ -6,8 +6,8 @@ import edu.ucsd.energy.managers.GlobalManager;
 
 public class ServiceConnection extends Context{
 
-  public ServiceConnection(GlobalManager gm, IClass c) {
-	    super(gm, c);
+  public ServiceConnection(IClass c) {
+	    super(c);
 
   }
   

@@ -14,8 +14,8 @@ import edu.ucsd.energy.managers.GlobalManager;
 
 public class OnSharedPreferenceChangeListener extends Context{
 
-  public OnSharedPreferenceChangeListener(GlobalManager gm, IClass c) {
-	    super(gm, c);
+  public OnSharedPreferenceChangeListener(IClass c) {
+	    super(c);
 
   }
 

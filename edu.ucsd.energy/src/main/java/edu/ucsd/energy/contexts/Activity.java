@@ -10,7 +10,6 @@ import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
-import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.results.ContextSummary;
 import edu.ucsd.energy.results.ProcessResults.ResultType;
 import edu.ucsd.energy.results.Violation;
@@ -41,8 +40,8 @@ public class Activity extends Component {
 		return Interesting.activityExitMethods;
 	}
 
-	public Activity(GlobalManager global, IClass c) {
-		super(global, c);
+	public Activity(IClass c) {
+		super(c);
 		sTypicalCallback.addAll(Arrays.asList(elements));
 		
 		//hard-coding the activity life-cycle edges as found here: 
@@ -66,8 +65,8 @@ public class Activity extends Component {
 	 */
 	protected Set<Violation> gatherViolations(ContextSummary summary) {
 		Set<Violation> violations = new HashSet<Violation>();
-		violations.addAll(super.gatherviolations(summary, Interesting.ActivityOnPause, ResultType.ACTIVITY_ONPAUSE));
-		violations.addAll(super.gatherviolations(summary, Interesting.ActivityOnStop, ResultType.ACTIVITY_ONSTOP));
+		violations.addAll(super.gatherViolations(summary, Interesting.ActivityOnPause, ResultType.ACTIVITY_ONPAUSE));
+		violations.addAll(super.gatherViolations(summary, Interesting.ActivityOnStop, ResultType.ACTIVITY_ONSTOP));
 		return violations;
 	}
 

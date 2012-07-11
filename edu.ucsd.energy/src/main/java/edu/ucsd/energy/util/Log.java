@@ -8,7 +8,7 @@ import java.util.List;
 
 import edu.ucsd.energy.analysis.Opts;
 
-public class E {
+public class Log {
 	private static final int MAX_METHOD_NAME = 40;  
 	static int DEBUG_LEVEL = 1;   /* higher means more details */
 
@@ -66,7 +66,7 @@ public class E {
 
 	private static String getLastRealMethod(StackTraceElement[] clone) {
 		int i;    
-		for(i = 1; clone[i].getClassName () == E.class.getName(); i++);
+		for(i = 1; clone[i].getClassName () == Log.class.getName(); i++);
 		String className = clone[i].getClassName().toString();
 		String cn = className.substring(className.lastIndexOf('.') + 1);
 		return cn + " $ "  + clone[i].getMethodName().toString();
@@ -98,7 +98,20 @@ public class E {
 	public static void err(String string) {
 		System.err.println(string);    
 	}
+	
+	public static void println(String string) {
+		if (!Opts.RUN_IN_PARALLEL) {
+			System.out.println(string);
+		}
+	}
 
+	public static void println() {
+		if (!Opts.RUN_IN_PARALLEL) {
+			System.out.println();
+		}
+	}
+
+	
 
 	public static void yellow() {
 		System.out.print("\033[33m");
@@ -127,5 +140,6 @@ public class E {
 	public static void grey() {
 		System.out.print("\033[1;30;40m");		
 	}
+
 
 }

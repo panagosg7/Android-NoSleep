@@ -37,26 +37,26 @@ import edu.ucsd.energy.interproc.LockingTabulationSolver.LockingResult;
 import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
-import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.Util;
 
 public abstract class AbstractContext extends NodeWithNumber implements IContext {
 
-	protected GlobalManager 	global;  
+	protected static GlobalManager global;   
 
-	protected CallGraph 		componentCallgraph;
+	protected CallGraph componentCallgraph;
 
 	//The whole application call graph
-	protected AppCallGraph 		originalCallgraph;
+	protected AppCallGraph originalCallgraph;
 
 	protected AbstractContextCFG icfg = null;
 
 	protected ISupergraph<BasicBlockInContext<IExplodedBasicBlock>, CGNode> supergraph = null;
 
 
-	public AbstractContext(GlobalManager gm) {
-		global = gm;
-		originalCallgraph = gm.getAppCallGraph();
+	public AbstractContext() {
+		global = GlobalManager.get();
+		originalCallgraph = global.getAppCallGraph();
 	}
 
 	/**
@@ -156,11 +156,6 @@ public abstract class AbstractContext extends NodeWithNumber implements IContext
 
 	}
 
-
-	public GlobalManager getGlobalManager() {
-		return global;
-	}
-
 	abstract public CompoundLockState getReturnState(CGNode cgNode);
 
 	
@@ -216,16 +211,16 @@ public abstract class AbstractContext extends NodeWithNumber implements IContext
 					if (!state.isEmpty()) {
 						if (state.simplify().acquired()) {
 							unresolvedHighState.add(p);
-							E.flog("UNRESOLVED ASYNC CALL: " + this.toString() + " calls " + p.snd.toString());
+							Log.flog("UNRESOLVED ASYNC CALL: " + this.toString() + " calls " + p.snd.toString());
 						}
 						else {
-							E.log(2, this.toString());
-							E.log(2, "NOT ADDING:" + p.toString());
+							Log.log(2, this.toString());
+							Log.log(2, "NOT ADDING:" + p.toString());
 						}
 					}
 					else {
-						E.log(2, this.toString());
-						E.log(2, "NOT ADDING:" + p.toString());
+						Log.log(2, this.toString());
+						Log.log(2, "NOT ADDING:" + p.toString());
 					}
 				}
 			}

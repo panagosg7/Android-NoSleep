@@ -71,7 +71,7 @@ import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.intraproc.IntraProcAnalysis;
 import edu.ucsd.energy.managers.IntentManager;
 import edu.ucsd.energy.managers.WakeLockManager;
-import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.GraphUtils;
 import edu.ucsd.energy.util.SystemUtil;
 import edu.ucsd.energy.viz.GraphDotUtil;
@@ -173,7 +173,7 @@ public class AppCallGraph implements CallGraph {
 		cache = new AnalysisCache();
 		targetCGNodeHash = new Hashtable<String, CGNode>();
 
-		E.log(0, "#Nodes: " + entrypoints.size());
+		Log.log(0, "#Nodes: " + entrypoints.size());
 
 		// Build the call graph
 		CallGraphBuilder builder = Util.makeZeroCFABuilder(options, cache, cha, scope);
@@ -198,9 +198,9 @@ public class AppCallGraph implements CallGraph {
 			CGNode node = iterator.next();
 			if (isAppNode(node) /*|| isTargetMethod(node)*/) {
 				keepers.add(node);
-				E.log(2, "Keep: " + node.getMethod().toString());
+				Log.log(2, "Keep: " + node.getMethod().toString());
 			} else {
-				E.log(2, "Prune: " + node.getMethod().toString());
+				Log.log(2, "Prune: " + node.getMethod().toString());
 			}
 		}
 		return PartialCallGraph.make(cg, keepers, keepers);
@@ -223,7 +223,7 @@ public class AppCallGraph implements CallGraph {
 		for (Entry<String, IMethod> entry : targetMethodHash.entrySet()) {
 			q.add(cg.getNode(entry.getValue(), Everywhere.EVERYWHERE));
 		}
-		E.log(1, "Initial worklist size: " + q.size() + " (normal = 4)");
+		Log.log(1, "Initial worklist size: " + q.size() + " (normal = 4)");
 		callGraphStats(cg);
 
 		/*
@@ -248,11 +248,11 @@ public class AppCallGraph implements CallGraph {
 		 * Check if there are any new nodes added - apart from acquire/release
 		 */
 		if (keepNodes.size() < 5) {
-			E.err("No calls to WakeLock/WifiLock functions");
+			Log.err("No calls to WakeLock/WifiLock functions");
 		}
 
 		// printNodeCollectionFull(keepNodes, "Keep Nodes");
-		E.log(1, "Number of nodes in analysis graph: " + keepNodes.size());
+		Log.log(1, "Number of nodes in analysis graph: " + keepNodes.size());
 
 		PartialCallGraph pcg = null;
 
@@ -277,9 +277,9 @@ public class AppCallGraph implements CallGraph {
 		 * Leaf nodes should just be the lock operations
 		 */
 		Collection<CGNode> leaves = GraphUtil.inferLeaves(boundedGraph);
-		E.log(1, "Leaf nodes: " + leaves.size());
+		Log.log(1, "Leaf nodes: " + leaves.size());
 		for (CGNode leave : leaves) {
-			E.log(1, "Leaf: " + leave.getMethod().getSignature().toString());
+			Log.log(1, "Leaf: " + leave.getMethod().getSignature().toString());
 		}
 		return boundedGraph;
 	}
@@ -292,10 +292,10 @@ public class AppCallGraph implements CallGraph {
 			if (isAppNode(iterator.next()))	appNodes++;
 			else primNodes++;
 		}
-		E.log(1, "");
-		E.log(1, "AppNodes:\t" + appNodes + "/" + (appNodes + primNodes));
-		E.log(1, "PrimNodes:\t" + primNodes + "/" + (appNodes + primNodes));
-		E.log(1, "");
+		Log.log(1, "");
+		Log.log(1, "AppNodes:\t" + appNodes + "/" + (appNodes + primNodes));
+		Log.log(1, "PrimNodes:\t" + primNodes + "/" + (appNodes + primNodes));
+		Log.log(1, "");
 	}
 
 	/**
@@ -348,10 +348,10 @@ public class AppCallGraph implements CallGraph {
 	}
 
 	private  void printRootInfo(CGNode root) {
-		E.log(0, "Examining root:");
-		E.log(0, root.getMethod().getDeclaringClass().toString());
-		E.log(0, root.getMethod().getSignature().toString());
-		E.log(0, "");
+		Log.log(0, "Examining root:");
+		Log.log(0, root.getMethod().getDeclaringClass().toString());
+		Log.log(0, root.getMethod().getSignature().toString());
+		Log.log(0, "");
 	}
 
 	/**
@@ -478,7 +478,7 @@ public class AppCallGraph implements CallGraph {
 								// Might have to change
 								currNode.addTarget(site, entry.getValue());
 
-								E.log(2, currNode.getMethod().getSignature()
+								Log.log(2, currNode.getMethod().getSignature()
 										.toString());
 
 							}
@@ -514,89 +514,7 @@ public class AppCallGraph implements CallGraph {
 		}
 	}
 
-	/**
-	 * 
-	 * Run an analysis per node
-	 * 
-	 * Traverse the call graph bottom up and apply intraProcAnalysis to every
-	 * node of it
-	 * 
-	 * @param analysis
-	 * @param cg
-	 * @throws WalaException
-	 */
-	public void doBottomUpAnalysis(IntraProcAnalysis ipa) throws WalaException {
-		int methodCount = Opts.LIMIT_ANALYSIS;
-		/* Filter that filters non-target methods */
-		CollectionFilter<CGNode> targetFilter = new CollectionFilter<CGNode>(
-				targetCGNodeHash.values());
-		Iterator<CGNode> bottomUpIterator = GraphUtils.bottomUpIterator(
-				this, targetFilter);
-		while (bottomUpIterator.hasNext()
-				&& (methodCount < 0 || methodCount-- > 0)) {
-			/* Run the intra-procedural analysis */
-			CGNode n = bottomUpIterator.next();
-			ipa.run(this, n);
-		}
-	}
-
-	public void outputDotFiles() throws WalaException {
-		Properties p = null;
-		try {
-			p = WalaExamplesProperties.loadProperties();
-			p.putAll(WalaProperties.loadProperties());
-		} catch (WalaException e) {
-			e.printStackTrace();
-			Assertions.UNREACHABLE();
-		}
-
-		Iterator<CGNode> iter = this.iterator();
-		while (iter.hasNext()) {
-			CGNode n = iter.next();
-			IR ir = n.getIR();
-			String bareFileName = ir.getMethod().getDeclaringClass().getName()
-					.toString().replace('/', '.')
-					+ "_" + ir.getMethod().getName().toString();
-
-			PrunedCFG<SSAInstruction, ISSABasicBlock> epCFG = null;
-
-			if (Opts.OUTPUT_SIMPLE_CFG_DOT || Opts.OUTPUT_SIMPLE_CDG_DOT) {
-				epCFG = ExceptionPrunedCFG.make(ir.getControlFlowGraph());
-			}
-
-			if (Opts.OUTPUT_SIMPLE_CFG_DOT) {
-
-				String cfgs = SystemUtil.getResultDirectory()
-						+ File.separatorChar + "cfg";
-				new File(cfgs).mkdirs();
-				// Output the CFG
-				String cfgFileName = cfgs + File.separatorChar + bareFileName
-						+ ".dot";
-
-				if (epCFG != null) {
-					DotUtil.writeDotFile(epCFG,
-							PDFViewUtil.makeIRDecorator(ir), ir.getMethod()
-									.getSignature(), cfgFileName);
-				} else {
-					System.out.println("Exception pruned graph is null.");
-				}
-			}
-
-			if (Opts.OUTPUT_SIMPLE_CDG_DOT) {
-				String cdgs = SystemUtil.getResultDirectory()
-						+ File.separatorChar + "cdgs/";
-				new File(cdgs).mkdirs();
-				// Output the CDG
-				String cdgFileName = cdgs + File.separatorChar + bareFileName
-						+ ".dot";
-				ControlDependenceGraph<SSAInstruction, ISSABasicBlock> cdg = new ControlDependenceGraph<SSAInstruction, ISSABasicBlock>(
-						epCFG, true);
-				DotUtil.writeDotFile(cdg, PDFViewUtil.makeIRDecorator(ir), ir
-						.getMethod().getSignature(), cdgFileName);
-			}
-		}
-	}
-
+	
 	/**
 	 * Output the CFG for each node in the callgraph
 	 */

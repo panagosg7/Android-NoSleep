@@ -10,7 +10,6 @@ import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
-import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.results.ContextSummary;
 import edu.ucsd.energy.results.ProcessResults.ResultType;
 import edu.ucsd.energy.results.Violation;
@@ -31,8 +30,8 @@ public class IntentService extends Component {
 		return Interesting.intentServiceEntryMethods;
 	}
 
-	public IntentService(GlobalManager gm, IClass c) {
-		super(gm, c);
+	public IntentService(IClass c) {
+		super(c);
 		sTypicalCallback.addAll(Arrays.asList(elements));
 		
 		//Handle Intent stuff
@@ -61,7 +60,7 @@ public class IntentService extends Component {
 	
 	public Set<Violation> gatherViolations(ContextSummary summary) {
 		Set<Violation> violations = new HashSet<Violation>();
-		violations.addAll(super.gatherviolations(summary, Interesting.ServiceOnHandleIntent, ResultType.INTENTSERVICE_ONHANDLEINTENT));
+		violations.addAll(super.gatherViolations(summary, Interesting.ServiceOnHandleIntent, ResultType.INTENTSERVICE_ONHANDLEINTENT));
 		return violations;
 	}
 

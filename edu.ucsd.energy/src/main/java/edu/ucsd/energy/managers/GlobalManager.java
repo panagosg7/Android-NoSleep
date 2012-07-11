@@ -1,17 +1,20 @@
 package edu.ucsd.energy.managers;
 
+import java.io.File;
+
 import com.ibm.wala.ipa.cha.ClassHierarchy;
 
+import edu.ucsd.energy.analysis.Wala;
 import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.apk.ClassHierarchyUtils;
 import edu.ucsd.energy.conditions.SpecialConditions;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ViolationReport;
+import edu.ucsd.energy.util.SystemUtil;
 
 public class GlobalManager {
 
 	private String appJar;
-	private String excludionFile;
 	private ClassHierarchy ch;
 	private AppCallGraph cg;
 	private ComponentManager cm;
@@ -20,15 +23,32 @@ public class GlobalManager {
 	private RunnableManager runnableManager;
 	private SpecialConditions specialConditions; 
 	
-	public GlobalManager(String appJar, String exclusionFile) {
+	
+	private static final String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/" +
+			"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";
+	
+	private static ThreadLocal<GlobalManager> threadGM = new ThreadLocal<GlobalManager>();
+	
+	public static GlobalManager get() {
+		GlobalManager global = threadGM.get();
+		if (global == null) {
+			File mPath = Wala.mPath.get();
+			String absolutePath = mPath.getAbsolutePath();
+			SystemUtil.setResultDirectory(absolutePath);
+			threadGM.set(new GlobalManager(absolutePath));
+		}
+		return threadGM.get();
+	}
+	
+	
+	private GlobalManager(String appJar) {
 		this.appJar = appJar;
-		this.excludionFile = exclusionFile;		
 	}
 
 	public ClassHierarchy getClassHierarchy() {
 		if (ch == null) {
 			try {
-				ch = ClassHierarchyUtils.make(appJar, excludionFile);
+				ch = ClassHierarchyUtils.make(appJar, exclusionFile);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -37,8 +57,7 @@ public class GlobalManager {
 	}
 	
 	public void createComponentManager() {
-		cm = new ComponentManager(this);
-		cm.prepareReachability();
+		cm = new ComponentManager();
 		cm.resolveComponents();
 	}
 
@@ -51,24 +70,24 @@ public class GlobalManager {
 
 	
 	public void createWakeLockManager() {
-		wakeLockManager = new WakeLockManager(this);
+		wakeLockManager = new WakeLockManager();
 		wakeLockManager.prepare();
 	}
 
 	public void createIntentManager() {
-		intentManager = new IntentManager(this);
+		intentManager = new IntentManager();
 		intentManager.prepare();
 	}
 
 	public void createRunnableManager() {
-		runnableManager = new RunnableManager(this);
+		runnableManager = new RunnableManager();
 		runnableManager.prepare();
 		//runnableManager.computeConstraintGraph();
 		//runnableManager.dumpConstraintGraph();
 	}
 	
 	public void createSpecialConditions() {
-		specialConditions = new SpecialConditions(this);
+		specialConditions = new SpecialConditions();
 		specialConditions.prepare();
 	}
 	
@@ -140,6 +159,15 @@ public class GlobalManager {
 		}
 		return intentManager;
 		
+	}
+
+	/**
+	 * BE CEREFUL - THIS NEEDS TO BE DONE IN PARALLEL MODE
+	 * Reset the global manager as it might be used by another thread
+	 * in the thread pool later
+	 */
+	public void reset() {
+		threadGM.set(null);		
 	}
 	
 }

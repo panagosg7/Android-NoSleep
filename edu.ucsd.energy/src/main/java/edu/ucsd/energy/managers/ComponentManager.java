@@ -63,7 +63,7 @@ import edu.ucsd.energy.contexts.WebViewClient;
 import edu.ucsd.energy.contexts.Widget;
 import edu.ucsd.energy.results.ProcessResults;
 import edu.ucsd.energy.results.ViolationReport;
-import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.GraphUtils;
 
 
@@ -85,7 +85,8 @@ import edu.ucsd.energy.util.GraphUtils;
  */
 public class ComponentManager {
 
-	private static final int DEBUG = 0;
+	private static final int SOLVE_DEBUG = 0;
+	private static final int RESOLVE_DEBUG = 2;
 
 	private  HashMap<TypeName, Context> componentMap;
 
@@ -93,14 +94,14 @@ public class ComponentManager {
 
 	private GlobalManager global;
 
-	private GraphReachability<CGNode> graphReachability;
+	private GraphReachability<CGNode> graphReachability = null;
 
 	private AppCallGraph originalCG;
 
 
-	public ComponentManager(GlobalManager gm) {
-		global = gm;
-		originalCG = gm.getAppCallGraph();
+	public ComponentManager() {
+		global = GlobalManager.get();
+		originalCG = global.getAppCallGraph();
 		componentMap = new HashMap<TypeName, Context>();
 	}
 
@@ -116,15 +117,17 @@ public class ComponentManager {
 		return componentMap.get(c);
 	}
 
-	public void prepareReachability() {    
-		Filter<CGNode> filter = new CollectionFilter<CGNode>(
-				originalCG.getTargetCGNodeHash().values());
-		graphReachability = new GraphReachability<CGNode>(originalCG, filter);
-		try { 
-			graphReachability.solve(null);
-		} catch (CancelException e) {
-			e.printStackTrace();
+	public GraphReachability<CGNode> getGraphReachability() {
+		if (graphReachability == null) {
+			Filter<CGNode> filter = new CollectionFilter<CGNode>(originalCG.getTargetCGNodeHash().values());
+			try { 
+				graphReachability = new GraphReachability<CGNode>(originalCG, filter);
+				graphReachability.solve(null);
+			} catch (CancelException e) {
+				e.printStackTrace();
+			}
 		}
+		return graphReachability;
 	}
 
 
@@ -155,11 +158,21 @@ public class ComponentManager {
 			if(c.getClassLoader().getReference().equals(ClassLoaderReference.Primordial)) {
 				continue;
 			}
-
+			/*
+			//These are just Application classes...
+			if(c.getClassLoader().getReference().equals(ClassLoaderReference.Extension)) {
+				Log.println("EXTENSION classloader:  " + c.toString());
+			}
+			if(c.getClassLoader().getReference().equals(ClassLoaderReference.Java)) {
+				Log.println("JAVA classloader:       " + c.toString());
+			}
+			if(c.getClassLoader().getReference().equals(ClassLoaderReference.Application)) {
+				Log.println("APPLICATION classloader:" + c.toString());
+			}
+			*/
 			TypeName type = c.getName();
 			//This is probably going to fail
 			Context context = componentMap.get(type);
-
 			if (context == null) {
 				// A class can only extend one class so order does not matter
 				ArrayList<IClass> classAncestors = ClassHierarchyUtils.getClassAncestors(c);
@@ -167,51 +180,51 @@ public class ComponentManager {
 					String ancName = anc.getName().toString();
 					
 					if (ancName.equals("Landroid/app/Activity")) {
-						context = new Activity(global, c);
+						context = new Activity(c);
 						break;
 					}
 					if (ancName.equals("Landroid/app/IntentService")) {
-						context = new IntentService(global, c);
+						context = new IntentService(c);
 						break;
 					}					
 					if (ancName.equals("Landroid/app/Service")) {
-						context = new Service(global, c);
+						context = new Service(c);
 						break;
 					}
 					if (ancName.equals("Landroid/content/ContentProvider")) {
-						context = new ContentProvider(global, c);
+						context = new ContentProvider(c);
 						break;
 					}
 					if (ancName.equals("Landroid/content/BroadcastReceiver")) {
-						context = new BroadcastReceiver(global, c);
+						context = new BroadcastReceiver(c);
 						break;
 					}
 					if (ancName.equals("Landroid/os/AsyncTask")) {
-						context = new AsyncTask(global, c);
+						context = new AsyncTask(c);
 						break;
 					}
 					if (ancName.equals("Landroid/view/View")) {
-						context = new View(global, c);
+						context = new View(c);
 						break;
 					}
 					if (ancName.equals("Landroid/app/Application")) {
-						context = new Application(global, c);
+						context = new Application(c);
 						break;
 					}
 					if (ancName.equals("Landroid/os/Handler")) {
-						context = new Handler(global, c);
+						context = new Handler(c);
 						break;
 					}
 					if (ancName.equals("Landroid/webkit/WebViewClient")) {
-						context = new WebViewClient(global, c);
+						context = new WebViewClient(c);
 						break;
 					}
 					if (ancName.equals("Landroid/telephony/PhoneStateListener")) {
-						context = new PhoneStateListener(global, c);
+						context = new PhoneStateListener(c);
 						break;
 					}
 					if (ancName.equals("Landroid/database/sqlite/SQLiteOpenHelper")) {
-						context = new SQLiteOpenHelper(global, c);
+						context = new SQLiteOpenHelper(c);
 						break;
 					}
 				}
@@ -222,35 +235,35 @@ public class ComponentManager {
 				//in which to decide on which one should be used. The only restriction at 
 				//this moment is Runnable, which should be tested on first. 
 				if (implementsInterface(c, "Ljava/lang/Runnable")) {
-					context = new RunnableThread(global, c);
+					context = new RunnableThread(c);
 				}
 				else if (implementsInterface(c, "Ljava/util/concurrent/Callable")) {
-					context = new Callable(global, c);
+					context = new Callable(c);
 				}
 				else if (implementsInterface(c,"ClickListener")) {
-					context = new ClickListener(global, c);
+					context = new ClickListener(c);
 				}
 				else if (implementsInterface(c, "Landroid/content/SharedPreferences$OnSharedPreferenceChangeListener")
 						|| implementsInterface(c, "Landroid/preference/Preference$OnPreferenceChangeListener")) {
-					context = new OnSharedPreferenceChangeListener(global, c);
+					context = new OnSharedPreferenceChangeListener(c);
 				}
 				else if (implementsInterface(c, "Landroid/location/LocationListener")) {
-					context = new LocationListener(global, c);
+					context = new LocationListener(c);
 				}
 				else if (implementsInterface(c, "Landroid/widget/")) {
-					context = new Widget(global, c);
+					context = new Widget(c);
 				}
 				else if (implementsInterface(c, "Landroid/hardware/SensorEventListener")) {
-					context = new SensorEventListener(global, c);
+					context = new SensorEventListener(c);
 				}
 				else if (implementsInterface(c, "Landroid/content/ServiceConnection")) {
-					context = new ServiceConnection(global, c);
+					context = new ServiceConnection(c);
 				}
 				else if (implementsInterface(c, "Landroid/content/DialogInterface")) {
-					context = new DialogInterface(global, c);
+					context = new DialogInterface(c);
 				}
 				else if (implementsInterface(c, "Landroid/media/MediaPlayer$OnCompletionListener")) {
-					context = new OnCompletionListener(global, c);
+					context = new OnCompletionListener(c);
 				}
 			}
 
@@ -266,19 +279,19 @@ public class ComponentManager {
 				registerComponent(c.getReference(), context);
 				resolvedClasses++;
 
-				if (DEBUG > 0) {
-					System.out.println("Resolved  : " + context.toString());
+				if (RESOLVE_DEBUG > 0) {
+					Log.println("Resolved  : " + context.toString());
 				}
 			}
 			else {
-				if (DEBUG > 0) {
-					E.yellow();
-					System.out.println("Unresolved: " + c.getName().toString());
-					if (DEBUG > 1) {
+				if (RESOLVE_DEBUG > 0) {
+					Log.yellow();
+					Log.println("Unresolved: " + c.getName().toString());
+					if (RESOLVE_DEBUG > 1) {
 						outputUnresolvedInfo(c);
 					}
 
-					E.resetColor();
+					Log.resetColor();
 				}
 				unresolvedClasses++;
 			}
@@ -290,10 +303,10 @@ public class ComponentManager {
 		for (CGNode n : allNodes ) {
 			if (!sNodes.contains(n)) {
 				danglingMethods++;
-				if (DEBUG > 0) {
-					E.red();
-					System.out.println("Not in any context: " + n.getMethod().getSignature());
-					E.resetColor();
+				if (RESOLVE_DEBUG > 0) {
+					Log.red();
+					Log.println("Not in any context: " + n.getMethod().getSignature());
+					Log.resetColor();
 				}
 			}
 		}
@@ -310,21 +323,21 @@ public class ComponentManager {
 	 */
 	private void resolutionStats() {
 		totalClassesChecked = resolvedClasses + unresolvedClasses;
-		System.out.println();
-		System.out.println( "==========================================");
+		Log.println();
+		Log.println( "==========================================");
 		String fst = String.format("%-30s: %d (%.2f %%)", "Resolved classes", resolvedClasses,        
 				100 * ((double) resolvedClasses / (double) totalClassesChecked));
-		System.out.println(fst);
+		Log.println(fst);
 		fst = String.format("%-30s: %d (%.2f %%)", "UnResolved classes", unresolvedClasses,        
 				100 * ((double) unresolvedClasses / (double) totalClassesChecked));
-		System.out.println(fst);
-		System.out.println("------------------------------------------");
+		Log.println(fst);
+		Log.println("------------------------------------------");
 
 		fst = String.format("%-30s: %d", "Dangling nodes", danglingMethods);
-		System.out.println(fst);
+		Log.println(fst);
 		fst = String.format("%-30s: %d", "Total nodes", originalCG.getNumberOfNodes());
-		System.out.println(fst);
-		System.out.println("==========================================\n");
+		Log.println(fst);
+		Log.println("==========================================\n");
 
 	}
 
@@ -354,7 +367,7 @@ public class ComponentManager {
 				}
 				sComponents.add(comp);
 				method2Component.put(mr, sComponents);
-				E.log(3, mr.toString() + " < " + sComponents.toString());	//Huge output
+				Log.log(3, mr.toString() + " < " + sComponents.toString());	//Huge output
 			}
 		}
 	}
@@ -370,10 +383,10 @@ public class ComponentManager {
 	private  void outputUnresolvedInfo(IClass c) {
 		Collection<IClass> allImplementedInterfaces = c.getAllImplementedInterfaces();
 		for (IClass anc :  ClassHierarchyUtils.getClassAncestors(c)) {
-			System.out.println("#### CL: " + anc.getName().toString());
+			Log.println("#### CL: " + anc.getName().toString());
 		}
 		for (IClass intf : allImplementedInterfaces) {
-			System.out.println("#### IF: " + intf.getName().toString());
+			Log.println("#### IF: " + intf.getName().toString());
 		}
 	}
 
@@ -396,8 +409,8 @@ public class ComponentManager {
 	 * 
 	 ****************************************************************************/
 	public void solveComponents() {
-		if (DEBUG > 0) {
-			System.out.println("\nSolving components...");
+		if (SOLVE_DEBUG > 0) {
+			Log.println("\nSolving components...");
 		}
 		//Build the constraints' graph 
 		RunnableManager runnableManager = global.getRunnableManager();
@@ -427,8 +440,8 @@ public class ComponentManager {
 			//SuperComponents: the sequence does not matter
 			while(scItr.hasNext()) {
 				Set<Context> sCtx = scItr.next();	//The set of components that construct this supercomponent
-				SuperComponent superComponent = new SuperComponent(global, sCtx);
-				if (DEBUG > 0) {
+				SuperComponent superComponent = new SuperComponent(sCtx);
+				if (SOLVE_DEBUG > 0) {
 					superComponent.dumpContainingComponents();
 				}
 				ComponentPrinter<SuperComponent> printer = new ComponentPrinter<SuperComponent>(superComponent);
@@ -464,8 +477,8 @@ public class ComponentManager {
 
 	private <T extends AbstractContext> void solveComponent(T component) {
 
-		if (DEBUG > 0) {
-			System.out.println("Solving: " + component.toString());
+		if (SOLVE_DEBUG > 0) {
+			Log.println("Solving: " + component.toString());
 		}
 
 		ComponentPrinter<T> componentPrinter = new ComponentPrinter<T>(component);
@@ -479,7 +492,7 @@ public class ComponentManager {
 			Predicate predicate = new Predicate() {      
 				public boolean evaluate(Object c) {
 					CGNode n = (CGNode) c;          
-					return (graphReachability.getReachableSet(n).size() > 0);    
+					return (getGraphReachability().getReachableSet(n).size() > 0);    
 				}
 			};
 			if (component instanceof Context) {
@@ -487,11 +500,11 @@ public class ComponentManager {
 				if (!CollectionUtils.exists(context.getCallbacks(), predicate))
 					return;
 			}
-		}
+		}	//Lock reaching callbacks
 		
 		if (!component.callsInteresting()) {
-			if (DEBUG > 0) {
-				System.out.println(component.toString() + " does not deal with resource management. Moving on ...");
+			if (SOLVE_DEBUG > 0) {
+				Log.println(component.toString() + " does not deal with resource management. Moving on ...");
 			}
 			return;
 		}
@@ -526,8 +539,8 @@ public class ComponentManager {
 		return superComponents;
 	}
 	
-	public GlobalManager getGlobalManager() {
-		return global;
+	public void setGraphReachability(GraphReachability<CGNode> graphReachability) {
+		this.graphReachability = graphReachability;
 	}
 
 }

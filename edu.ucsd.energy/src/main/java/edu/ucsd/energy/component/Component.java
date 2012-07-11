@@ -11,7 +11,6 @@ import com.ibm.wala.util.debug.Assertions;
 
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.interproc.CompoundLockState;
-import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.results.ContextSummary;
 import edu.ucsd.energy.results.ProcessResults.LockUsage;
@@ -22,8 +21,8 @@ abstract public class Component extends Context {
 
 	private static final int DEBUG = 0;
 
-	protected Component(GlobalManager gm, IClass c) {
-		super(gm, c);
+	protected Component(IClass c) {
+		super(c);
 	}
 
 	public Set<Violation> assembleReport() {
@@ -61,7 +60,7 @@ abstract public class Component extends Context {
 
 	
 	
-	public Set<Violation> gatherviolations(ContextSummary summary, Selector sel, ResultType res) {
+	public Set<Violation> gatherViolations(ContextSummary summary, Selector sel, ResultType res) {
 		Set<LockUsage> stateForSelector = summary.getCallBackState(sel);
 		if (DEBUG > 0) {
 			System.out.println("States for :" + sel.toString());

@@ -24,7 +24,7 @@ import edu.ucsd.energy.interproc.AbstractContextCFG;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.interproc.SingleLockState.LockStateDescription;
-import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.SystemUtil;
 import edu.ucsd.energy.viz.GraphDotUtil;
 import edu.ucsd.energy.viz.IColorNodeDecorator;
@@ -67,7 +67,7 @@ public class ComponentPrinter<T extends AbstractContext> {
 			String fileName = folder + File.separatorChar + component.toFileName() + ".dot";
 			String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
 			String pdfFile = null;
-			E.log(2, "Dumping: " + fileName);
+			Log.log(2, "Dumping: " + fileName);
 			GraphDotUtil.dotify(cg, null, fileName, pdfFile, dotExe);
 			return;
 		} catch (IllegalArgumentException e) {

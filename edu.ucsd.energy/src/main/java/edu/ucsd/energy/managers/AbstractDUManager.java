@@ -32,7 +32,7 @@ import com.ibm.wala.util.intset.MutableSparseIntSet;
 
 import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.apk.Interesting;
-import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.GraphUtils;
 
 public abstract class AbstractDUManager<V extends ObjectInstance>  {
@@ -75,10 +75,10 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 	Iterator2List<CGNode> bottomUpList;	//TODO: Compute this once for all managers (make static) 
 
 
-	public AbstractDUManager(GlobalManager gm) {
-		this.gm = gm;
-		this.cg = gm.getAppCallGraph();
-		this.cm = gm.getComponentManager();
+	public AbstractDUManager() {
+		gm = GlobalManager.get();
+		cg = gm.getAppCallGraph();
+		cm = gm.getComponentManager();
 		mCreationRefs = new HashMap<CreationPoint, V>();
 		mMethodReturns = new HashMap<MethodReference, V>();
 		mInstruction2Instance = new HashMap<Pair<MethodReference,SSAInstruction>, V>();
@@ -514,7 +514,7 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		} catch (IllegalArgumentException e) {
 
 			if (DEBUG > 0) {
-				E.yellow();
+				Log.yellow();
 				System.out.println("Method: " + method.getSignature());
 				System.out.println("Static: " + method.isStatic());
 				System.out.println("Var: " + var + " -> " + paramIndex);
@@ -522,7 +522,7 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 					System.out.println("Param"+ i + ": " + method.getParameterType(i));
 				}
 				System.out.println("Value from symtab " + ir.getSymbolTable().getValueString(var));
-				E.resetColor();
+				Log.resetColor();
 			}
 
 			//drop exception

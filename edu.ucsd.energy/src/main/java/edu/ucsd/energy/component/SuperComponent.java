@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -22,8 +21,7 @@ import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.contexts.Service;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SuperContextCFG;
-import edu.ucsd.energy.managers.GlobalManager;
-import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.Log;
 
 public class SuperComponent extends AbstractContext implements INodeWithNumber {
 
@@ -34,8 +32,8 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 
 	Set<CallBack> sCallBack;
 
-	public SuperComponent(GlobalManager gm, Set<Context> set) {
-		super(gm);
+	public SuperComponent(Set<Context> set) {
+		super();
 		setGraphNodeId(getNextId());
 		sComponent = set;
 	}
@@ -156,10 +154,10 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 	}
 
 	public void dumpContainingComponents() {
-		E.log(1, "========================================");
-		E.log(1, "SuperComponent (#nodes: " + getContextCallGraph().getNumberOfNodes() + ") containing:");
+		Log.log(1, "========================================");
+		Log.log(1, "SuperComponent (#nodes: " + getContextCallGraph().getNumberOfNodes() + ") containing:");
 		for (Context c : sComponent) {
-			E.log(1, "\t" + c.toString());			
+			Log.log(1, "\t" + c.toString());			
 		}
 	}
 

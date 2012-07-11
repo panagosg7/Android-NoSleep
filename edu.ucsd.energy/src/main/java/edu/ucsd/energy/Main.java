@@ -6,7 +6,6 @@ import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -112,28 +111,41 @@ public class Main {
 
 	private static abstract class CallableTask implements Callable<IReport> {
 
-		public static JSONObject fullObject = new JSONObject();
-
 		protected ApkInstance apk;
 
+		private static DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+
 		private static Integer counter = new Integer(0);
+
+		private Integer myCounter;
+
+		private Date startTime;
+		private Date stopTime;
 
 		CallableTask(ApkInstance apk) {
 			this.apk = apk;
 		}
 
-		public String getApkName() {
-			return apk.getName();
+		protected synchronized void startTimer() {
+			startTime = new Date();
+			counter++;
+			myCounter = new Integer(counter.intValue());
+			Date date = new Date();				
+			StringBuffer sb = new StringBuffer();
+			sb.append("\n>>> " + dateFormat.format(date) + "\n");						
+			sb.append(">>> " + myCounter + ". " +  apk.getName() + " version: " + apk.getVersion() + "\n");
+			System.out.println(sb.toString());
 		}
-		
-		protected void updateCounter() {
-			synchronized(counter) {
-				DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-				Date date = new Date();
-				counter++;
-				System.out.println("\n### " + counter + " ### " + dateFormat.format(date) + "\n");
-				
-			}
+
+		protected synchronized void stopTimer() {
+			stopTime = new Date();
+			long diff = stopTime.getTime() - startTime.getTime();
+			double diffSeconds = (double) diff / 1000 % 60;  
+			long diffMinutes = diff / (60 * 1000) % 60;
+			Date date = new Date();
+			System.out.println("\n<<< "+ dateFormat.format(date));						
+			System.out.println("<<< " + myCounter + ". " +  apk.getName() + " version: " + 
+					apk.getVersion() + " (elapsed: " + diffMinutes + "m" + String.format("%.2f", diffSeconds) + "s)\n");
 		}
 
 	}
@@ -149,12 +161,13 @@ public class Main {
 
 		public IReport call() throws Exception {
 			IReport res;
+			startTimer();
 			try {
 				//LOGGER.info("Starting: " + apk.getName());
 				String app_name = apk.getName();
 				if (apk.successfullyOptimized()) {
 					try {
-						updateCounter();
+
 						res = apk.analyzeFull();
 					} catch(Exception e) {
 						//Any exception should be notified
@@ -170,15 +183,19 @@ public class Main {
 					LOGGER.warning("Optimization failed: " + app_name);
 					res = new FailReport(ResultType.OPTIMIZATION_FAILURE);
 				}
+
 				JSONObject json = res.toJSON();
 				json.put("version", apk.getVersion());
 				SystemUtil.commitReport(apk.getName(), json);
+
 			} catch (IOException e) {
 				e.printStackTrace();
 				res = new FailReport(ResultType.IOEXCEPTION_FAILURE);
 			}
 			//Dump the output file in each intermediate step
 			SystemUtil.writeToFile();
+
+			stopTimer();			
 			return res;
 		}
 
@@ -698,13 +715,13 @@ public class Main {
 		System.out.println("Using input: " + optionValue);
 		acqrelDatabaseFile = new File(optionValue);
 	}
-	
-	
+
+
 
 	private static void reportResults(String[] optionValues) {
 		ResultReporter resultReporter = new ResultReporter(optionValues[0]);
 		resultReporter.fullResults();		
-		
+
 	}
 
 
@@ -730,7 +747,7 @@ public class Main {
 		options.addOption(new Option("rr", "report-results", true, "report the results that were found in json files in the given directory"));
 		options.addOption(new Option("t", "threads", true, "run the analysis on t threads (works for pattern analysis only)"));
 		options.addOption(new Option("skipN", true, "skip the first N application that are in line for analysis"));
-		
+
 		//Some applications may cause our analysis to hang - avoid them by writing them down in 
 		//the properties file as "skip_apps = /home/pvekris/dev/apk_scratch/output/too_big.txt"
 		options.addOption(new Option("sb", "skip-big", false, "skip the applications that are known to make the analysis hang"));
@@ -794,7 +811,7 @@ public class Main {
 			}
 
 			if (line.hasOption("skipN")) {
-				Integer integer = Integer.parseInt(line.getOptionValue("skip"));
+				Integer integer = Integer.parseInt(line.getOptionValue("skipN"));
 				if (integer != null) {
 					for(int i = 0; i < integer.intValue(); i ++) {
 						String removed = theSet.remove(0);

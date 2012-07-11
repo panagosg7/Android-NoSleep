@@ -9,7 +9,6 @@ import com.ibm.wala.types.Selector;
 
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
-import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.results.ContextSummary;
 import edu.ucsd.energy.results.ProcessResults.ResultType;
 import edu.ucsd.energy.results.Violation;
@@ -23,8 +22,8 @@ public class RunnableThread extends Component {
 
 	static Selector elements[] = { Interesting.ThreadRun };
 
-	public RunnableThread(GlobalManager gm, IClass c) {
-		super(gm, c);
+	public RunnableThread(IClass c) {
+		super(c);
 		sTypicalCallback.addAll(Arrays.asList(elements));
 	}
 
@@ -47,9 +46,8 @@ public class RunnableThread extends Component {
 	@Override
 	protected Set<Violation> gatherViolations(ContextSummary summary) {
 		Set<Violation> violations = new HashSet<Violation>();
-		violations.addAll(super.gatherviolations(summary, Interesting.ThreadRun, ResultType.SERVICE_ONSTART));
+		violations.addAll(super.gatherViolations(summary, Interesting.ThreadRun, ResultType.RUNNABLE_RUN));
 		return violations;
-
 	}
 
 	@Override

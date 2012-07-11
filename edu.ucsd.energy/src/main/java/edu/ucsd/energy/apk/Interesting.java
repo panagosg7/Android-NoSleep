@@ -54,6 +54,8 @@ public class Interesting {
 	public static Set<Selector> runnableEntryMethods = new HashSet<Selector>();
 	public static Set<Selector> runnableExitMethods = new HashSet<Selector>();
 	
+	public static Set<Selector> callableCallbackMethods = new HashSet<Selector>();
+	
 	
 	public static Set<Selector> ignoreIntentSelectors = new HashSet<Selector>();
 	
@@ -247,6 +249,9 @@ public class Interesting {
 		runnableCallbackMethods.add(ThreadRun);
 		runnableEntryMethods.add(ThreadRun);
 		runnableExitMethods.add(ThreadRun);
+		
+	//Callable
+		callableCallbackMethods.add(ThreadCall);
 		
 	//BroadcastReceivers
 		broadcastReceiverEntryMethods.add(BroadcastReceiverOnReceive);

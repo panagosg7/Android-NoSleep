@@ -31,7 +31,7 @@ import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.conditions.CompoundCondition;
 import edu.ucsd.energy.conditions.ConditionManager;
 import edu.ucsd.energy.conditions.GeneralCondition;
-import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.InvokeInfo;
  
 public class IntraProcAnalysis {
@@ -204,7 +204,7 @@ public class IntraProcAnalysis {
     Iterator<InvokeInfo> itr = invokeSiteSet.iterator();
     while (itr.hasNext()) {
       InvokeInfo invokeInfo = itr.next();
-      E.log(1, "Target:" + invokeInfo.toString());
+      Log.log(1, "Target:" + invokeInfo.toString());
 
       /* Compute the original set of conditions that hold for this call site */
       Collection<Path> pathsToTarget = 
@@ -213,18 +213,18 @@ public class IntraProcAnalysis {
         pathToConditionCollection(pathsToTarget);
       conditionManager.addOriginalConditions(invokeInfo, originalConditions);
             
-      E.log(2, "Loaded original conditions");
+      Log.log(2, "Loaded original conditions");
             
       /* This is the set of blocks on which this invocation depends on */
       HashSet<Integer> conditionDependencies = 
           conditionManager.getConditionDependencies(currCDG, invokeInfo);              
-      E.log(2, "Got condition dependencies");            
+      Log.log(2, "Got condition dependencies");            
             
       /* Filter the conditions based on dependency information */
       HashSet<CompoundCondition> filteredConditions = 
           conditionManager.filterConditionMap(originalConditions, conditionDependencies);
       conditionManager.addFilteredConditions(invokeInfo, filteredConditions);            
-      E.log(2, "Done filtering conditions");      
+      Log.log(2, "Done filtering conditions");      
     }    
   }
 

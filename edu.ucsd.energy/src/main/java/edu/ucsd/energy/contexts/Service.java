@@ -10,7 +10,6 @@ import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
-import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.results.ContextSummary;
 import edu.ucsd.energy.results.ProcessResults.ResultType;
 import edu.ucsd.energy.results.Violation;
@@ -29,8 +28,8 @@ public class Service extends Component {
 	};
 
 	
-	public Service(GlobalManager gm, IClass c) {
-		super(gm, c);
+	public Service(IClass c) {
+		super(c);
 		sTypicalCallback.addAll(Arrays.asList(elements));
 		callbackEdges.add(Pair.make(Interesting.ServiceOnCreate, Interesting.ServiceOnStart));
 		//XXX: the service can't be implementing both, right...?
@@ -89,10 +88,10 @@ public class Service extends Component {
 		//What should be done is check all the possible call-sites of this service and 
 		//check if it is started or bound. But this is definitely a good indicator.
 		if (isCallBack(Interesting.ServiceOnStartCommand) || isCallBack(Interesting.ServiceOnStartCommand)) {
-			violations.addAll(super.gatherviolations(summary, Interesting.ServiceOnStartCommand, ResultType.SERVICE_ONSTART));	
+			violations.addAll(super.gatherViolations(summary, Interesting.ServiceOnStartCommand, ResultType.SERVICE_ONSTART));	
 		}
 		if (isCallBack(Interesting.ServiceOnBind)) {
-			violations.addAll(super.gatherviolations(summary, Interesting.ServiceOnUnbind, ResultType.SERVICE_ONUNBIND));
+			violations.addAll(super.gatherViolations(summary, Interesting.ServiceOnUnbind, ResultType.SERVICE_ONUNBIND));
 		}
 		return violations;
 	}

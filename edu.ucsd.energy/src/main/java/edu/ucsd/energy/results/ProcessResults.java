@@ -18,7 +18,7 @@ import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.managers.ComponentManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
-import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.Log;
 
 public class ProcessResults {
 
@@ -118,6 +118,8 @@ public class ProcessResults {
 		INTENTSERVICE_ONHANDLEINTENT(2),
 		//Runnable
 		RUNNABLE_RUN(2),
+		//Callable
+		CALLABLE_CALL(2),
 		//BoradcaseReceiver
 		BROADCAST_RECEIVER_ONRECEIVE(2),		
 		//Application
@@ -142,9 +144,6 @@ public class ProcessResults {
 	}
 
 
-
-
-
 	/**
 	 * Main structures that hold the analysis results for every component
 	 */
@@ -157,7 +156,7 @@ public class ProcessResults {
 
 
 	public ViolationReport processExitStates() {
-		System.out.println();
+		Log.println();
 		//LockUsageReport usageReport = new LockUsageReport();
 		ViolationReport report = new ViolationReport();
 		
@@ -168,33 +167,32 @@ public class ProcessResults {
 				componentManager.getCriticalUnresolvedAsyncCalls();
 		
 		if (criticalUnresolvedAsyncCalls.size() > 0) {
-			report.insertViolation(GeneralContext.singleton(componentManager.getGlobalManager()),
-					new Violation(ResultType.UNRESOLVED_ASYNC_CALLS));
+			report.insertViolation(GeneralContext.singleton(), new Violation(ResultType.UNRESOLVED_ASYNC_CALLS));
 		}
 		
 		for (MethodReference mr : criticalUnresolvedAsyncCalls.keySet()) {
 			Set<SSAInstruction> is = criticalUnresolvedAsyncCalls.get(mr);
-			E.red();
-			System.out.println("Unresolved Intent/Runnable(s) called at high energy state: "); 
-			System.out.println("  by method: " + mr.getSignature());
-			System.out.println("  through instruction(s): ");
+			Log.red();
+			Log.println("Unresolved Intent/Runnable(s) called at high energy state: "); 
+			Log.println("  by method: " + mr.getSignature());
+			Log.println("  through instruction(s): ");
 			for (SSAInstruction i : is) {
-				System.out.println("  " + i.toString());
+				Log.println("  " + i.toString());
 			}
-			System.out.println();
-			E.resetColor();
+			Log.println();
+			Log.resetColor();
 		}
 		
 		for (SuperComponent superComponent : componentManager.getSuperComponents()) {
 			
 			if (!superComponent.callsInteresting()) {
-				E.grey();
-				System.out.println("Skipping uninteresting: "+ superComponent.toString());
-				E.resetColor();
+				Log.grey();
+				Log.println("Skipping uninteresting: "+ superComponent.toString());
+				Log.resetColor();
 				continue;
 			}
 			
-			System.out.println("Checking: "+ superComponent.toString());
+			Log.println("Checking: "+ superComponent.toString());
 			
 			//Each context should belong to exactly one SuperComponent
 			for (Context context : superComponent.getContexts()) {
@@ -207,9 +205,9 @@ public class ProcessResults {
 				//extended in order to be used)
 				if (component.isAbstract()) {
 					if (DEBUG > 0) {
-						E.grey();
-						System.out.println(" - Skipping abstract: " + component.toString() );
-						E.resetColor();
+						Log.grey();
+						Log.println(" - Skipping abstract: " + component.toString() );
+						Log.resetColor();
 					}
 					continue;
 				}
@@ -218,10 +216,10 @@ public class ProcessResults {
 				//Do this if you want to get color on the violating methods 
 				if (DEBUG > 0) {
 					if (assembleReport.size() > 0) {
-						E.yellow();
+						Log.yellow();
 					}
-					System.out.println(" - Checking violatios for: " + component.toString());
-					E.resetColor();
+					Log.println(" - Checking violatios for: " + component.toString());
+					Log.resetColor();
 				}
 			}
 		}

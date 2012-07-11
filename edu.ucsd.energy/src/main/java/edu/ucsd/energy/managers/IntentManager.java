@@ -21,7 +21,7 @@ import com.ibm.wala.util.intset.MutableSparseIntSet;
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ManagerReport;
-import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.Log;
 
 
 /**
@@ -68,16 +68,11 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 		return Interesting.mIntentMethods.get(declaredTarget.getSelector());
 	}
 
-	public IntentManager(GlobalManager cm) {
-		super(cm);
-	}
-
 	public void prepare() {
 		super.prepare();
 		if(DEBUG > 0) {
 			dumpInfo();
 		}
-
 	}
 
 
@@ -131,8 +126,8 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 			setCalledType(inv, 4, ii);
 		}
 		else {
-			E.flog("Intent selector not handled: " + selector);
-			E.flog(inv.toString());
+			Log.flog("Intent selector not handled: " + selector);
+			Log.flog(inv.toString());
 		}
 
 	}
@@ -161,15 +156,15 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 
 		if (methSel.equals(Selector.make("setComponent(Landroid/content/ComponentName;)Landroid/content/Intent"))) {
 			//TODO: this will not be so easy due to resolving ComponentName
-			E.flog("Setting Component: " + method);
-			E.flog("  " + inv.toString());
+			Log.flog("Setting Component: " + method);
+			Log.flog("  " + inv.toString());
 		}
 		if (methSel.toString().contains("setClassName")) {
 			//TODO
 
 
-			E.flog("Could not handle special Intent call to: " + methSel.toString());
-			E.flog("  in method: " + method);
+			Log.flog("Could not handle special Intent call to: " + methSel.toString());
+			Log.flog("  in method: " + method);
 		}
 
 		if (methSel.toString().contains("setClass")) {
@@ -184,8 +179,8 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 			}
 			else {
 				//XXX: throw a better warning
-				E.flog("Could not resolve: " + method);
-				E.flog("  calling: " + inv.toString());
+				Log.flog("Could not resolve: " + method);
+				Log.flog("  calling: " + inv.toString());
 			}
 		}
 
@@ -195,15 +190,15 @@ public class IntentManager extends AbstractRunnableManager<IntentInstance> {
 			IntentInstance ii = traceInstanceNoCreate(inv.getUse(0));
 			if (ii != null) {
 				if (DEBUG > 0) {
-					E.green();
+					Log.green();
 					System.out.println("Meth: " + methSel.toString());
 					System.out.println("Stopping Component: " + inv.toString());
 					System.out.println(ii.toString());
-					E.resetColor();
+					Log.resetColor();
 				}
 			}
 			else {
-				E.flog("Stopping An Unresolved Intent Component: " + inv.toString());
+				Log.flog("Stopping An Unresolved Intent Component: " + inv.toString());
 			}
 		}
 	}

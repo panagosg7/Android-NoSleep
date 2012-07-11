@@ -8,6 +8,8 @@ public class Opts {
   /*******************************************
    * Class Hierarchy Options
    */
+
+  public static final boolean OUTPUT_CLASS_HIERARCHY = true;
   
   
   /*******************************************
@@ -125,11 +127,6 @@ public class Opts {
    */
   
   /**
-   * Toggle intra-procedural analysis
-   */
-  public static final boolean DO_INTRA_PROC_ANALYSIS  = false;
-  
-  /**
    * Limit the analysis to the first LIMIT_ANALYSIS methods in the callgraph
    * -1 means this doesn't apply
    */
@@ -145,24 +142,40 @@ public class Opts {
           }));
   
   /**
-   * Prune exceptional edges in CFG
+   * Prune exceptional edges in CFG - not really important
    */
   public static final boolean PRUNE_EXCEPTION_EDGES_IN_GFG = false;
 
-  public static final boolean OUTPUT_PLAIN_CFGS = false;
-
-  public static final boolean OUTPUT_CLASS_HIERARCHY = true;
-
+  
+  /**
+   * Special treatment for isHeld() and null-checks on interesting objects
+   */
   public static final boolean ENFORCE_SPECIAL_CONDITIONS = true;
 	
+  
+  /**
+   * Do not propagate flow from exceptional edges (kind of imprecise but
+   * would be a hassle to account for inter-procedural exceptional edges). 
+   */
   public static final boolean DATAFLOW_IGNORE_EXCEPTIONAL = true;
 	
-  public static final boolean FAIL_AT_DEPENDENCY_CYCLES = false;
 
-
-
+  /**
+   * Do you want the analysis to be run on the supercomponents 
+   * (true) or just the components (false)? 
+   */
 	public static final boolean ANALYZE_SUPERCOMPONENTS = true;
+
+
+	/**
+	 * We should not be using timed acquire as a seed...
+	 */
+	public static final boolean USE_TIMED_ACQUIRE_AS_SEED = false;
 	
+	/**
+	 * This will be set automatically if multiple threads are used for 
+	 * the analysis  
+	 */
   public static boolean RUN_IN_PARALLEL = false;
 
 

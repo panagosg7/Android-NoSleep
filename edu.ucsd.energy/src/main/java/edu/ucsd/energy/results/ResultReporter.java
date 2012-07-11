@@ -26,7 +26,7 @@ import org.apache.commons.io.IOUtils;
 
 import com.ibm.wala.util.debug.Assertions;
 
-import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.Log;
 
 /**
  * Custom tailored class to process and find aggregate numbers on
@@ -110,10 +110,10 @@ public class ResultReporter {
 			if (violation != null) {
 				if (violation.size() == 0) {					
 					VERIFIED++;
-					E.green();
+					Log.green();
 				}
 				else {
-					E.yellow();
+					Log.yellow();
 					Set<String> tags = new HashSet<String>();
 					//Forall components
 					for(String comp : (Set<String>) violation.keySet()) {
@@ -135,14 +135,14 @@ public class ResultReporter {
 				}
 			}
 			else {
-				E.red();
+				Log.red();
 				sb.append(appObj);
 				ANALYSIS_FAILURES++;
 			}
 
 			System.out.println(new Formatter().format("%-50s (%s)", name, version).toString());
 			System.out.println(sb.toString());
-			E.resetColor();
+			Log.resetColor();
 
 		}
 

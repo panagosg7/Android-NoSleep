@@ -19,7 +19,7 @@ import edu.ucsd.energy.conditions.SpecialConditions.NullCondition;
 import edu.ucsd.energy.conditions.SpecialConditions.SpecialCondition;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.managers.WakeLockInstance;
-import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.Log;
 
 class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContext<IExplodedBasicBlock>> {
 
@@ -44,7 +44,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 		 * span across multiple procedures (if possible) cannot be determined.
 		 */
 		if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && this.ctxSensLocking.getICFG().isExceptionalEdge(src, dest)) {
-			E.log(PRINT_EXCEPTIONAL, "KILL EXC: " + src.toShortString() + " -> " + dest.toShortString());				
+			Log.log(PRINT_EXCEPTIONAL, "KILL EXC: " + src.toShortString() + " -> " + dest.toShortString());				
 			return KillEverything.singleton(); 
 		}
 
@@ -100,7 +100,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 			BasicBlockInContext<IExplodedBasicBlock> src,
 			BasicBlockInContext<IExplodedBasicBlock> dest,
 			BasicBlockInContext<IExplodedBasicBlock> ret) {
-		E.log(PRINT_EXCEPTIONAL, "CALL FLOW: " + src.toShortString() + "->" + dest.toShortString());
+		Log.log(PRINT_EXCEPTIONAL, "CALL FLOW: " + src.toShortString() + "->" + dest.toShortString());
 		return IdentityFlowFunction.identity();
 	}
 
@@ -114,7 +114,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 			BasicBlockInContext<IExplodedBasicBlock> dest) {
 		
 		if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && this.ctxSensLocking.getICFG().isExceptionalEdge(src, dest)) {			
-			E.log(PRINT_EXCEPTIONAL, "KILL(call-to-return):" + src.toShortString() + " -> " + dest.toShortString());
+			Log.log(PRINT_EXCEPTIONAL, "KILL(call-to-return):" + src.toShortString() + " -> " + dest.toShortString());
 			return KillEverything.singleton();				
 		}
 
@@ -140,7 +140,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 			final BasicBlockInContext<IExplodedBasicBlock> dest) {
 		
 		if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && this.ctxSensLocking.getICFG().isExceptionalEdge(src, dest)) {
-			E.log(PRINT_EXCEPTIONAL, "KILL(call-none-to-return): " +
+			Log.log(PRINT_EXCEPTIONAL, "KILL(call-none-to-return): " +
 					src.toShortString() + " -> " + dest.toShortString());
 			return KillEverything.singleton();
 		}
@@ -243,7 +243,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 		}
 		
 		if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {
-			E.log(PRINT_EXCEPTIONAL,  "KILL(unbal): " + src.toShortString() + " -> " + dest.toShortString());
+			Log.log(PRINT_EXCEPTIONAL,  "KILL(unbal): " + src.toShortString() + " -> " + dest.toShortString());
 			return KillEverything.singleton();
 		}
 		return IdentityFlowFunction.identity();
@@ -261,7 +261,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 		 * are not determined.
 		 */
 		if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && this.ctxSensLocking.getICFG().isExceptionalEdge(call, dest)) {
-			E.log(PRINT_EXCEPTIONAL, "KILL(return): " + src.toShortString() + " -> " + dest.toShortString());
+			Log.log(PRINT_EXCEPTIONAL, "KILL(return): " + src.toShortString() + " -> " + dest.toShortString());
 			return KillEverything.singleton();							
 		}
 		

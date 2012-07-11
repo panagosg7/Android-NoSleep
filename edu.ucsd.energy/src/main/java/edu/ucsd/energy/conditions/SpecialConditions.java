@@ -17,7 +17,7 @@ import com.ibm.wala.util.collections.Iterator2List;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.managers.WakeLockManager;
-import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.SSAProgramPoint;
 
 /**
@@ -31,8 +31,8 @@ public class SpecialConditions {
 
 	private GlobalManager global;
 	
-	public SpecialConditions(GlobalManager gm) {
-		this.global = gm;
+	public SpecialConditions() {
+		this.global = GlobalManager.get();
 	}
 
 	//private HashMap<SSAProgramPoint,SpecialCondition> mSpecCond = null;
@@ -130,9 +130,9 @@ public class SpecialConditions {
 			du = null;
 			ir = n.getIR();
 			/* Null for JNI methods */
-			E.log(DEBUG + 1, "Analyzing: " + n.getMethod().getSignature());
+			Log.log(DEBUG + 1, "Analyzing: " + n.getMethod().getSignature());
 			if (ir == null) {
-				E.log(DEBUG, "Skipping: " + n.getMethod().getSignature());
+				Log.log(DEBUG, "Skipping: " + n.getMethod().getSignature());
 				continue;				
 			}	
 			SSACFG cfg = ir.getControlFlowGraph();
@@ -162,13 +162,13 @@ public class SpecialConditions {
 						if (((ins1 != null) && ir.getSymbolTable().isNullConstant(use2)) ||
 							((ins2 != null) && ir.getSymbolTable().isNullConstant(use1))) {
 							WakeLockInstance ins = (ins1!=null)?ins1:ins2;
-							E.log(DEBUG, ins.toString());
-							E.log(DEBUG, instr.toString());
+							Log.log(DEBUG, ins.toString());
+							Log.log(DEBUG, instr.toString());
 							SSAProgramPoint pp = new SSAProgramPoint(n,cinstr);
 							ISSABasicBlock trueSucc = succNodesArray.get(0);
 							ISSABasicBlock falseSucc = succNodesArray.get(1);									
 							NullCondition c = new NullCondition(pp.getBasicBlock(), ins, trueSucc, falseSucc);
-							E.log(DEBUG, c.toString());										
+							Log.log(DEBUG, c.toString());										
 							mSpecCond.put(instr, c);
 							continue;
 						}
@@ -180,14 +180,14 @@ public class SpecialConditions {
 						if (((ins1 != null) && ir.getSymbolTable().isZero(use2)) ||
 							((ins2 != null) && ir.getSymbolTable().isZero(use1))) {
 							WakeLockInstance field = (ins1 != null)?ins1:ins2;
-							E.log(DEBUG, field.toString());
-							E.log(DEBUG, instr.toString());
+							Log.log(DEBUG, field.toString());
+							Log.log(DEBUG, instr.toString());
 							SSAProgramPoint pp = new SSAProgramPoint(n,cinstr);
 							ISSABasicBlock trueSucc = succNodesArray.get(0);
 							ISSABasicBlock falseSucc = succNodesArray.get(1);
 							IsHeldCondition c = new IsHeldCondition(pp.getBasicBlock(), field, falseSucc, trueSucc);
 							mSpecCond.put(instr,c);
-							E.log(DEBUG, c.toString());
+							Log.log(DEBUG, c.toString());
 							continue;
 						}
 					}

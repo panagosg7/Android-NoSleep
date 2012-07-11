@@ -12,92 +12,60 @@ import edu.ucsd.energy.ApkException;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.results.CompoundReport;
 import edu.ucsd.energy.results.IReport;
-import edu.ucsd.energy.util.SystemUtil;
 
 public class Wala {
-	private File mPath;
-	
+
+	public static ThreadLocal<File> mPath = new ThreadLocal<File>();
 	
 	public Wala(File path, File androidJarPath, File cachePath) {
-		mPath = path;
+		mPath.set(path);
 	}
 
 	public IReport wakelockAnalyze() throws IOException, WalaException, CancelException, ApkException, JSONException {
-		String appJar = mPath.getAbsolutePath();
-		String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/" +
-				"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";						
-		SystemUtil.setResultDirectory(mPath.getAbsolutePath());
-		if(!Opts.RUN_IN_PARALLEL) {
-			edu.ucsd.energy.util.Util.printLabel(mPath.getAbsolutePath());	
-		}
-		GlobalManager gm = new GlobalManager(appJar, exclusionFile);
+		GlobalManager gm = GlobalManager.get();
 		gm.createComponentManager();
-		
 		gm.createWakeLockManager();
 		gm.createIntentManager();
 		gm.createRunnableManager();
-		
 		CompoundReport report = new CompoundReport();
 		report.register(gm.getIntentReport());
 		report.register(gm.getRunnableReport());
 		report.register(gm.getWakeLockReport());
+		//finalize
+		gm.reset();		
 		return report;
 	}
 
 	
 	public IReport analyzeFull() throws IOException, WalaException, CancelException, ApkException {
-		String appJar = mPath.getAbsolutePath();
-		//TODO: Put this somewhere else
-		String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/" +
-				"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";						
-		SystemUtil.setResultDirectory(mPath.getAbsolutePath());
-		if(!Opts.RUN_IN_PARALLEL) {
-			edu.ucsd.energy.util.Util.printLabel(mPath.getAbsolutePath());	
-		}
-		GlobalManager gm = new GlobalManager(appJar, exclusionFile);
+		GlobalManager gm = GlobalManager.get();						
 		gm.createComponentManager();
-		
 		gm.createWakeLockManager();
 		gm.createSpecialConditions();
-		
 		//Component Manager stuff
-		
 		gm.createIntentManager();
 		gm.createRunnableManager();
-
 		//Perform the data flow
 		gm.solveComponents();
-		
 		CompoundReport report = new CompoundReport();
-//		report.register(gm.getIntentReport());
-//		report.register(gm.getRunnableReport());
+		report.register(gm.getIntentReport());
+		report.register(gm.getRunnableReport());
 //		report.register(gm.getWakeLockReport());
 		report.register(gm.getAnalysisReport());
-
+		gm.reset();
 		return report;
 	}
 	
 	public IReport analyzeUsage() throws IOException, WalaException, CancelException, ApkException {
-		String appJar = mPath.getAbsolutePath();
-		//TODO: Put this somewhere else
-		String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/" +
-				"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";						
-		SystemUtil.setResultDirectory(mPath.getAbsolutePath());
-		if(!Opts.RUN_IN_PARALLEL) {
-			edu.ucsd.energy.util.Util.printLabel(mPath.getAbsolutePath());	
-		}
-		GlobalManager gm = new GlobalManager(appJar, exclusionFile);
+		GlobalManager gm = GlobalManager.get();
 		gm.createComponentManager();
-		
 		gm.createWakeLockManager();
 		gm.createSpecialConditions();
-		
 		//Component Manager stuff
-
 		gm.solveComponents();
-		
 		CompoundReport report = new CompoundReport();
-
+		//finalize
+		gm.reset();
 		return report;
 	}
 	

@@ -30,7 +30,6 @@ import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.LifecycleGraph;
 import edu.ucsd.energy.interproc.LifecycleGraph.SensibleCGNode;
 import edu.ucsd.energy.interproc.SingleContextCFG;
-import edu.ucsd.energy.managers.GlobalManager;
 
 public abstract class Context extends AbstractContext {
 
@@ -76,8 +75,8 @@ public abstract class Context extends AbstractContext {
 		return mActualCallback.containsKey(s);	  
 	}
 
-	protected Context(GlobalManager gm, IClass c) {
-		super(gm);
+	protected Context(IClass c) {
+		super();
 		klass = c;
 		sTypicalCallback = new HashSet<Selector>();
 		callbackEdges = new HashSet<Pair<Selector,Selector>>();
@@ -88,7 +87,7 @@ public abstract class Context extends AbstractContext {
 		if (componentCallgraph == null) {
 			HashSet<CGNode> set = new HashSet<CGNode>();    
 			for (CGNode node : sNode ) {    	
-				set.addAll(getDescendants(originalCallgraph, node));      
+				set.addAll(getDescendants(originalCallgraph, node));
 			}    
 			//sNode is not really the root set, but this should work,
 			//cause they should work as entry points

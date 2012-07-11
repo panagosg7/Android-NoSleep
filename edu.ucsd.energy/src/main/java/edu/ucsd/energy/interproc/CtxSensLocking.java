@@ -26,15 +26,17 @@ import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 
+import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.AbstractContext;
 import edu.ucsd.energy.conditions.SpecialConditions;
 import edu.ucsd.energy.conditions.SpecialConditions.SpecialCondition;
 import edu.ucsd.energy.contexts.Context;
 import edu.ucsd.energy.interproc.LockingTabulationSolver.LockingResult;
+import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.managers.WakeLockManager;
-import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.Log;
 
 public class CtxSensLocking {
 
@@ -80,7 +82,7 @@ public class CtxSensLocking {
 		this.component = comp;
 		this.setICFG(component.getICFG());
 		this.supergraph = component.getSupergraph(); 
-		this.wakeLockManager = component.getGlobalManager().getWakeLockManager();
+		this.wakeLockManager = GlobalManager.get().getWakeLockManager();
 	}
 
 	private WakeLockManager wakeLockManager;
@@ -123,7 +125,7 @@ public class CtxSensLocking {
 			SSAInvokeInstruction inv = (SSAInvokeInstruction) instruction;
 			String signature = inv.getDeclaredTarget().getSignature();
 			if (signature.endsWith("finish()V")) {
-				E.log(1, signature);
+				Log.log(1, signature);
 				return true;
 			}
 		}
@@ -140,7 +142,7 @@ public class CtxSensLocking {
 	 */
 	SpecialCondition getSpecialCondition(BasicBlockInContext<IExplodedBasicBlock> bb) {
 		if (specialConditions == null) {
-			specialConditions = getICFG().getComponent().getGlobalManager().getSpecialConditions();
+			specialConditions = GlobalManager.get().getSpecialConditions();
 		}
 		return specialConditions.get(bb.getDelegate().getInstruction());
 	}		
@@ -189,21 +191,26 @@ public class CtxSensLocking {
 				System.out.println("Computing seeds");
 			}
 			for (BasicBlockInContext<IExplodedBasicBlock> bb : supergraph) {
-				WakeLockInstance timedAcquiredWL = timedAcquire(bb);
-				//Note: We do not add release as a seed. Release will kill the relevant acquire 
-				//
-				if (timedAcquiredWL != null) {
-					if (DEBUG > 0) {
-						System.out.println("Adding timed acquire seed: " + bb.toString());
+				
+				
+				if (Opts.USE_TIMED_ACQUIRE_AS_SEED) {
+					
+					WakeLockInstance timedAcquiredWL = timedAcquire(bb);
+					//Note: We do not add release as a seed. Release will kill the relevant acquire 
+					//
+					if (timedAcquiredWL != null) {
+						if (DEBUG > 0) {
+							System.out.println("Adding timed acquire seed: " + bb.toString());
+						}
+						//Get all the possible contexts that this bb might belong to 
+						CGNode node = supergraph.getProcOf(bb);
+						Set<Context> contCtxs = component.getContainingContexts(node);
+						SingleLockState sls = new SingleLockState(true, true, false, contCtxs);
+						Pair<WakeLockInstance, SingleLockState> fact = Pair.make(timedAcquiredWL, sls);					
+						int factNum = domain.add(fact);
+						BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(bb.getNode());
+						result.add(PathEdge.createPathEdge(fakeEntry, factNum, bb, factNum));
 					}
-					//Get all the possible contexts that this bb might belong to 
-					CGNode node = supergraph.getProcOf(bb);
-					Set<Context> contCtxs = component.getContainingContexts(node);
-					SingleLockState sls = new SingleLockState(true, true, false, contCtxs);
-					Pair<WakeLockInstance, SingleLockState> fact = Pair.make(timedAcquiredWL, sls);					
-					int factNum = domain.add(fact);
-					BasicBlockInContext<IExplodedBasicBlock> fakeEntry = getFakeEntry(bb.getNode());
-					result.add(PathEdge.createPathEdge(fakeEntry, factNum, bb, factNum));
 				}
 
 				WakeLockInstance acquiredWL = acquire(bb);
@@ -250,7 +257,7 @@ public class CtxSensLocking {
 							SingleLockState resState = jObj.snd.merge(iObj.snd);							
 							Pair<WakeLockInstance, SingleLockState> pair = Pair.make(iField, resState);							
 							int ind = domain.add(pair);
-							E.log(2, "Merge yields: " + ind + " :: " + resState.toString());
+							Log.log(2, "Merge yields: " + ind + " :: " + resState.toString());
 							Assertions.productionAssertion(ind>=0, pair.toString());
 							return ind;
 						}

@@ -20,7 +20,7 @@ import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.component.AbstractContext;
 import edu.ucsd.energy.contexts.Context;
-import edu.ucsd.energy.util.E;
+import edu.ucsd.energy.util.Log;
 
 /**
  * This is an exploded inter-procedural CFG with extra edges connecting 
@@ -122,7 +122,7 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 		//probably an exceptional one.
 		if((!src.getMethod().equals(dest.getMethod())) && src.getDelegate().isExitBlock()
 				&& dest.getDelegate().isExitBlock()) {
-			E.log(2, "EXCE: " + src.toShortString() + " -> " + dest.toShortString());
+			Log.log(2, "EXCE: " + src.toShortString() + " -> " + dest.toShortString());
 			return true;
 		}
 		//Exceptional successors from method's CFG
@@ -130,7 +130,7 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 			Collection<IExplodedBasicBlock> exceptionalSuccessors = 
 					getCFG(src).getExceptionalSuccessors(src.getDelegate());
 			if (exceptionalSuccessors.contains(dest.getDelegate())) {
-				E.log(2, "EXCE1: " + src.toShortString() + " -> " + dest.toShortString());
+				Log.log(2, "EXCE1: " + src.toShortString() + " -> " + dest.toShortString());
 				return true;
 			}
 		}
