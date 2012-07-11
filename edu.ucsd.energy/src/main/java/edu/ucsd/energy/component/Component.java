@@ -38,18 +38,15 @@ abstract public class Component extends Context {
 				Assertions.productionAssertion(method.isNative(), 
 						"Empty exit state from non-native method: " + method.toString());
 			}
-			
 		}
 		return gatherViolations(ctxSum);
 	}
 
 	abstract protected Set<Violation> gatherViolations(ContextSummary ctx);
 
-
 	protected boolean relevant(LockUsage st) {
 		return st.relevant(this);
 	}
-
 
 	/**
 	 * The set of entry and exit points might depend on the call method used 
@@ -72,30 +69,35 @@ abstract public class Component extends Context {
 				System.out.println("Checking policies for lock: " + wli.toShortString());
 			}
 
-			for (LockUsage st : stateForSelector) {
-				
-				boolean relevant = relevant(st);
-				
-				if (DEBUG > 0) {
-					if (!relevant) {
-						System.out.println("IRRELEVANT Examining: " + st.toString());
-						System.out.println("Relevant ctxs: " + st.getRelevantCtxs());
-					}
-				}
-				
-				if (relevant && st.locking(wli)) {
+			if (stateForSelector != null) {
+				for (LockUsage st : stateForSelector) {
+					
+					boolean relevant = relevant(st);
+					
 					if (DEBUG > 0) {
-						System.out.println("Adding violation: " + wli.toShortString());
-						System.out.println();
+						if (!relevant) {
+							System.out.println("IRRELEVANT Examining: " + st.toString());
+							System.out.println("Relevant ctxs: " + st.getRelevantCtxs());
+						}
 					}
-					violations.add(new Violation(res));
-				}	
+					
+					if (relevant && st.locking(wli)) {
+						if (DEBUG > 0) {
+							System.out.println("Adding violation: " + wli.toShortString());
+							System.out.println();
+						}
+						violations.add(new Violation(res));
+					}	
+				}
 			}
-
+			else {
+				Assertions.UNREACHABLE("Cannot ask for a callback state and " +
+						"not be able to find it in our results.");
+			}
 		}
-
 		return violations;		
 	}
 
 }
 
+ 

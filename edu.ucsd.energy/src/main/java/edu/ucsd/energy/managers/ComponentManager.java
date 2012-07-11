@@ -44,25 +44,12 @@ import edu.ucsd.energy.contexts.Application;
 import edu.ucsd.energy.contexts.AsyncTask;
 import edu.ucsd.energy.contexts.BroadcastReceiver;
 import edu.ucsd.energy.contexts.Callable;
-import edu.ucsd.energy.contexts.ClickListener;
 import edu.ucsd.energy.contexts.ContentProvider;
 import edu.ucsd.energy.contexts.Context;
-import edu.ucsd.energy.contexts.DialogInterface;
-import edu.ucsd.energy.contexts.Handler;
 import edu.ucsd.energy.contexts.IntentService;
-import edu.ucsd.energy.contexts.LocationListener;
-import edu.ucsd.energy.contexts.OnCompletionListener;
-import edu.ucsd.energy.contexts.OnSharedPreferenceChangeListener;
-import edu.ucsd.energy.contexts.PhoneStateListener;
 import edu.ucsd.energy.contexts.RunnableThread;
-import edu.ucsd.energy.contexts.SQLiteOpenHelper;
-import edu.ucsd.energy.contexts.SensorEventListener;
 import edu.ucsd.energy.contexts.Service;
-import edu.ucsd.energy.contexts.ServiceConnection;
 import edu.ucsd.energy.contexts.UnresolvedContext;
-import edu.ucsd.energy.contexts.View;
-import edu.ucsd.energy.contexts.WebViewClient;
-import edu.ucsd.energy.contexts.Widget;
 import edu.ucsd.energy.results.ProcessResults;
 import edu.ucsd.energy.results.ViolationReport;
 import edu.ucsd.energy.util.GraphUtils;
@@ -88,7 +75,7 @@ import edu.ucsd.energy.util.Log;
 public class ComponentManager {
 
 	private static final int SOLVE_DEBUG = 0;
-	static final int RESOLVE_DEBUG = 1;
+	static final int RESOLVE_DEBUG = 0;
 
 	private  HashMap<TypeName, Context> componentMap;
 
@@ -194,12 +181,15 @@ public class ComponentManager {
 						context = new AsyncTask(c);
 						break;
 					}
-					if (ancName.equals("Landroid/view/View")) {
-						context = new View(c);
-						break;
-					}
 					if (ancName.equals("Landroid/app/Application")) {
 						context = new Application(c);
+						break;
+					}
+					/*
+					//It does not offer us anything to treat these cases separately 
+					//we can just unify them in unresolved context
+					if (ancName.equals("Landroid/view/View")) {
+						context = new View(c);
 						break;
 					}
 					if (ancName.equals("Landroid/os/Handler")) {
@@ -218,6 +208,7 @@ public class ComponentManager {
 						context = new SQLiteOpenHelper(c);
 						break;
 					}
+					*/
 				}
 			}
 
@@ -231,6 +222,7 @@ public class ComponentManager {
 				else if (implementsInterface(c, "Ljava/util/concurrent/Callable")) {
 					context = new Callable(c);
 				}
+				/*
 				else if (implementsInterface(c,"ClickListener")) {
 					context = new ClickListener(c);
 				}
@@ -256,12 +248,22 @@ public class ComponentManager {
 				else if (implementsInterface(c, "Landroid/media/MediaPlayer$OnCompletionListener")) {
 					context = new OnCompletionListener(c);
 				}
+				*/
 			}
 			
 			
 			//If all else fails register the class as an unresolved context
 			if (context == null) {
 				context = new UnresolvedContext(c);
+				unresolvedClasses++;
+				if (RESOLVE_DEBUG > 1) {
+					Log.yellow();
+					Log.println("Unresolved: " + c.getName().toString());
+					if (RESOLVE_DEBUG > 1) {
+						outputUnresolvedInfo(c);
+					}
+					Log.resetColor();
+				}
 			}
 
 			if (context != null) {
@@ -294,7 +296,7 @@ public class ComponentManager {
 
 					Log.resetColor();
 				}
-				unresolvedClasses++;
+				
 			}
 		} // for IClass c
 		

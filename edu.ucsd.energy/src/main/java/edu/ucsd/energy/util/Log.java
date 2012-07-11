@@ -186,5 +186,11 @@ public class Log {
 		}
 	}
 
+	public static void yellow(String string) {
+		yellow();
+		println(string);
+		resetColor();
+	}
+
 
 }

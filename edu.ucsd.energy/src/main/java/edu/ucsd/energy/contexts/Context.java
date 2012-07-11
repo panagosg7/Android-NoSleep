@@ -17,12 +17,8 @@ import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.Selector;
-import com.ibm.wala.util.CancelException;
-import com.ibm.wala.util.collections.Filter;
 import com.ibm.wala.util.collections.HashSetMultiMap;
-import com.ibm.wala.util.collections.IndiscriminateFilter;
 import com.ibm.wala.util.collections.Pair;
-import com.ibm.wala.util.graph.GraphReachability;
 import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.intset.OrdinalSet;
@@ -53,10 +49,10 @@ public abstract class Context extends AbstractContext {
 
 
 	//Typical callbacks specified by API
-	protected Set<Selector> sTypicalCallback;
+	protected static Set<Selector> sTypicalCallback;
 
 	//This is going to be needed for the construction of the sensible graph
-	protected HashSet<Pair<Selector, Selector>> callbackEdges;
+	protected static HashSet<Pair<Selector, Selector>> callbackEdges;
 
 	private Boolean callsInteresting = null;
 

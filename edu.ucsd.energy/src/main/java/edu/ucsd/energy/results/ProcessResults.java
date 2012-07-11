@@ -124,6 +124,9 @@ public class ProcessResults {
 		BROADCAST_RECEIVER_ONRECEIVE(2),		
 		//Application
 		APPLICATION_TERMINATE(2),
+		//Unresolved component
+		UNRESOLVED_CALLBACK(2),
+		
 		
 		//Analysis results
 		OPTIMIZATION_FAILURE(2),
@@ -198,22 +201,21 @@ public class ProcessResults {
 			for (Context context : superComponent.getContexts()) {
 				
 				//Focus just on Components (Activities, Services, BcastRcv...)
-				if (!(context instanceof Component)) continue;
+				//Check all possible contexts - not just components
+				//if (!(context instanceof Component)) continue;
 				Component component = (Component) context;
 				
 				//Do not analyze abstract classes (they will have to be 
 				//extended in order to be used)
-				if (component.isAbstract()) {
+				if (context.isAbstract()) {
 					if (DEBUG > 0) {
-						Log.grey();
-						Log.println(" - Skipping abstract: " + component.toString() );
-						Log.resetColor();
+						Log.grey("Skipping abstract: " + context.toString() );
 					}
 					continue;
 				}
+				
 				Set<Violation> assembleReport = component.assembleReport();
 				report.insertViolations(component, assembleReport);
-				//Do this if you want to get color on the violating methods 
 				if (DEBUG > 0) {
 					if (assembleReport.size() > 0) {
 						Log.yellow();

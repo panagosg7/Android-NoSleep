@@ -88,6 +88,9 @@ public class LifecycleGraph extends SparseNumberedGraph<SensibleCGNode> {
 
 	}
 
+	/**
+	 * The life-cycle graph before removing the missing nodes 
+	 */
 	private SparseNumberedGraph<SensibleCGNode> fullLifeCycleGraph;
 	
 	public SparseNumberedGraph<SensibleCGNode> getFullLifeCycleGraph() {
