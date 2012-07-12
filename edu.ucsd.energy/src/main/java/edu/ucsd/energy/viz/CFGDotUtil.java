@@ -97,7 +97,6 @@ public class CFGDotUtil {
       throw new IllegalArgumentException("g is null");
     }
     File f = CFGDotUtil.writeDotFile(g, labels, title, dotFile);
-    System.out.println("Dumped dot file");
     if (exportPDF) {
       spawnDot(dotExe, outputFile, f);    
     }
@@ -165,9 +164,7 @@ public class CFGDotUtil {
   }
 
   public static <T> File writeDotFile(SSACFG g, NodeDecorator labels, String title, String dotfile) throws WalaException {
-
     cfg = g;
-    
     if (g == null) {
       throw new IllegalArgumentException("g is null");
     }

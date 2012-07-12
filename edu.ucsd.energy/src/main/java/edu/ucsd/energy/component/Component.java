@@ -19,17 +19,20 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.collections.HashSetMultiMap;
+import com.ibm.wala.util.collections.Iterator2Set;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.graph.GraphUtil;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.intset.OrdinalSet;
 
+import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.LifecycleGraph;
 import edu.ucsd.energy.interproc.LifecycleGraph.SensibleCGNode;
 import edu.ucsd.energy.interproc.SingleContextCFG;
+import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.results.ContextSummary;
 import edu.ucsd.energy.results.IViolationKey;
@@ -44,8 +47,26 @@ public abstract class Component extends AbstractContext implements IViolationKey
 
 	protected IClass klass;
 
-	//These are the ACTUAL callbacks that get resolved
-	private Map<Selector, CallBack> 	mActualCallback;
+	/**
+	 * These are the roots of the component's callgraph
+	 * Not exaclty callbacks
+	 */
+	private Map<Selector, CallBack> 	mRoots;
+	
+	/**	
+	 * 
+	 * TODO: 
+	 * 
+	 * 
+	 * These are the true callbacks of the component. They can be:
+	 * - Roots in the application and component callgraph
+	 * - Roots in the component callgraph and have a predecessor in 
+	 * the application's callgraph 
+	 */
+	private Map<Selector, CallBack> 	mTrueCallbacks;
+	
+	
+	
 
 	//Nodes that belong to the class that created this component
 	//Call Graph construction might bring in more nodes.
@@ -73,11 +94,11 @@ public abstract class Component extends AbstractContext implements IViolationKey
 
 
 	public boolean isCallBack(CGNode n) {
-		return mActualCallback.containsValue(CallBack.findOrCreateCallBack(n));	  
+		return mRoots.containsValue(CallBack.findOrCreateCallBack(n));	  
 	}
 
 	public boolean isCallBack(Selector s) {
-		return mActualCallback.containsKey(s);	  
+		return mRoots.containsKey(s);	  
 	}
 
 	protected Component(IClass c) {
@@ -156,26 +177,40 @@ public abstract class Component extends AbstractContext implements IViolationKey
 		return getKlass().isAbstract();
 	}
 
-	private void requiresCallBacks() {
-		if (mActualCallback == null) {
-			mActualCallback = new HashMap<Selector, CallBack>();
+	private void requiresRoots() {
+		if (mRoots == null) {
+			mRoots = new HashMap<Selector, CallBack>();
 			for (CGNode node : GraphUtil.inferRoots(getContextCallGraph())) {
 				Selector selector = node.getMethod().getSelector();
 				CallBack callback = CallBack.findOrCreateCallBack(node);
-				mActualCallback.put(selector, callback);
+				mRoots.put(selector, callback);
 			}
 		}
 	}
 
-	public Collection<CallBack> getCallbacks() {
-		requiresCallBacks();
-		return mActualCallback.values();
+	public Collection<CallBack> getRoots() {
+		requiresRoots();
+		return mRoots.values();
 	}
 
-	public CallBack getCallBack(Selector sel) {
-		requiresCallBacks();
-		return mActualCallback.get(sel);
+	/**
+	 * Returns the root/callback corresponding to a selector based on the 
+	 * components call graph - not the whole application's one. Note
+	 * that there might be a method that is a callback in the component
+	 * and not in the whole application.
+	 * @param sel
+	 * @return
+	 */
+	public CallBack getRoot(Selector sel) {
+		requiresRoots();
+		return mRoots.get(sel);
 	}
+	
+	public boolean isRoot(Selector sel) {
+		requiresRoots();
+		return mRoots.containsKey(sel);
+	}
+	
 
 	/**
 	 * Return the callback that corresponds to this selector or a
@@ -196,11 +231,30 @@ public abstract class Component extends AbstractContext implements IViolationKey
 		if (DEBUG > 0) {
 			System.out.println("CallBack or predecessors for: " + selector.toString());
 		}
+		Set<CallBack> returnSet = new HashSet<CallBack>();
+		
+		/*
+		//First try to see if the requested callback is present (overriden)
+		//If that's true, we don't need to search harder
+		CallBack callBack = getRoot(selector);
+		if (callBack != null) {
+			if (DEBUG > 0) {
+				System.out.println("gotCallBack: " + callBack);
+			}
+			AppCallGraph appCallGraph = GlobalManager.get().getAppCallGraph();
+			//If it is called by the system then it is _possibly_ a 
+			//callback, so we treat it as one.
+			//TODO
+			return returnSet;	
+		}
+		*/
+		
+		//If we haven't found anything so far this means that the method 
+		//is probably not overridden. 
 		//Keep a worklist with all the callbacks that need to be
 		//checked for predecessors
 		Queue<SensibleCGNode> worklist = new LinkedList<SensibleCGNode>();
 		Set<SensibleCGNode> visited = new HashSet<SensibleCGNode>();
-		Set<CallBack> returnSet = new HashSet<CallBack>();
 
 		SensibleCGNode initNode = getLifecycleGraph().find(selector);
 
@@ -351,7 +405,7 @@ public abstract class Component extends AbstractContext implements IViolationKey
 
 	public Set<Violation> assembleReport() {
 		ContextSummary ctxSum = new ContextSummary(this);
-		for(Iterator<CallBack> it = getCallbacks().iterator() ; it.hasNext(); ) {
+		for(Iterator<CallBack> it = getRoots().iterator() ; it.hasNext(); ) {
 			CallBack cb = it.next();
 			CompoundLockState exitState = getReturnState(cb.getNode());
 			if (exitState != null) {	//for the case of native methods 

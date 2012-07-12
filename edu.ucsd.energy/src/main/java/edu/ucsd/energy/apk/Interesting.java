@@ -47,15 +47,11 @@ public class Interesting {
 	public static Set<Selector> intentServiceEntryMethods = new HashSet<Selector>();
 	public static Set<Selector> intentServiceExitMethods = new HashSet<Selector>();
 	
-	
-	
 	public static Set<Selector> runnableCallbackMethods = new HashSet<Selector>();
-	
 	public static Set<Selector> runnableEntryMethods = new HashSet<Selector>();
 	public static Set<Selector> runnableExitMethods = new HashSet<Selector>();
 	
 	public static Set<Selector> callableCallbackMethods = new HashSet<Selector>();
-	
 	
 	public static Set<Selector> ignoreIntentSelectors = new HashSet<Selector>();
 	
@@ -65,6 +61,12 @@ public class Interesting {
 	
 	public static Set<Selector> applicationEntryMethods = new HashSet<Selector>();
 	public static Set<Selector> applicationExitMethods = new HashSet<Selector>();
+	
+	public static Set<Selector> asyncTaskCallbackMethods = new HashSet<Selector>();
+	public static Set<Selector> asyncTaskEntryMethods = new HashSet<Selector>();
+	public static Set<Selector> asyncTaskExitMethods = new HashSet<Selector>();
+	
+	
 	
 	public static Map<Selector, Pair<Integer, Set<Selector>>> mRunnableMethods = new HashMap<Selector, Pair<Integer, Set<Selector>>>();
 
@@ -125,6 +127,11 @@ public class Interesting {
 	
 	public static final Selector SendBroadcast = Selector.make("sendBroadcast(Landroid/content/Intent;)V");
 	
+	//AsyncTask calls
+	public static final Selector AsyncTaskOnPreExecute = Selector.make("onPreExecute()V");
+	public static final Selector AsyncTaskDoInBackground = Selector.make("doInBackground([Ljava/lang/Object;)Ljava/lang/Object;");
+	public static final Selector AsyncTaskOnProgessUpdate = Selector.make("onProgressUpdate([Ljava/lang/Object;)V");
+	public static final Selector AsyncTaskOnPostExecute = Selector.make("onPostExecute(Ljava/lang/Object;)V");
 	
 	
 
@@ -262,6 +269,17 @@ public class Interesting {
 		applicationEntryMethods.add(ApplicationOnCreate);
 		applicationExitMethods.add(ApplicationOnTerminate);
 		
+	//AsyncTask
+		asyncTaskCallbackMethods.add(AsyncTaskDoInBackground);
+		asyncTaskCallbackMethods.add(AsyncTaskOnPostExecute);
+		asyncTaskCallbackMethods.add(AsyncTaskOnPreExecute);
+		asyncTaskCallbackMethods.add(AsyncTaskOnProgessUpdate);
+		asyncTaskEntryMethods.add(AsyncTaskOnPreExecute);
+		asyncTaskEntryMethods.add(AsyncTaskDoInBackground);
+		asyncTaskExitMethods.add(AsyncTaskOnPostExecute);
+		
+		
+		
 		/*
 		 * Needed a selector for the Intents because the class appearing in the signature of
 		 * the method is not always in the android namespace  
@@ -286,9 +304,6 @@ public class Interesting {
 		mRunnableMethods.put(Selector.make("start()V"), Pair.make(new Integer(0), runnableEntryMethods));
 		mRunnableMethods.put(Selector.make("postDelayed(Ljava/lang/Runnable;J)Z"), Pair.make(new Integer(1), runnableEntryMethods));
 		//TODO: may have to extend this list with more calls
-		
-		
-		
 		
 	}
 }

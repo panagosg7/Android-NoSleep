@@ -192,12 +192,10 @@ public class CtxSensLocking {
 			}
 			for (BasicBlockInContext<IExplodedBasicBlock> bb : supergraph) {
 				
-				
 				if (Opts.USE_TIMED_ACQUIRE_AS_SEED) {
 					
 					WakeLockInstance timedAcquiredWL = timedAcquire(bb);
 					//Note: We do not add release as a seed. Release will kill the relevant acquire 
-					//
 					if (timedAcquiredWL != null) {
 						if (DEBUG > 0) {
 							System.out.println("Adding timed acquire seed: " + bb.toString());

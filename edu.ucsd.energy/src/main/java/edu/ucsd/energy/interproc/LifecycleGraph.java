@@ -4,11 +4,8 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Properties;
 
-import com.ibm.wala.examples.properties.WalaExamplesProperties;
 import com.ibm.wala.ipa.callgraph.CGNode;
-import com.ibm.wala.properties.WalaProperties;
 import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.collections.Pair;
@@ -35,7 +32,6 @@ public class LifecycleGraph extends SparseNumberedGraph<SensibleCGNode> {
 	private HashMap<Selector, SensibleCGNode> dictionary;
 
 	private Component component;
-
 
 	public class SensibleCGNode extends NodeWithNumber {
 
@@ -187,7 +183,7 @@ public class LifecycleGraph extends SparseNumberedGraph<SensibleCGNode> {
 
 
 	private void addSensibleNode(Selector sel) {
-		CallBack callback = component.getCallBack(sel);
+		CallBack callback = component.getRoot(sel);
 		SensibleCGNode snode = (callback!=null)?(new SensibleCGNode(callback)):(new SensibleCGNode(sel));
 		dictionary.put(sel, snode);	
 		addNode(snode);
@@ -208,12 +204,9 @@ public class LifecycleGraph extends SparseNumberedGraph<SensibleCGNode> {
 	}
 
 	public void outputToDot () {
-		Properties p = WalaExamplesProperties.loadProperties();
 		try {
-			p.putAll(WalaProperties.loadProperties());
 			String className = component.getKlass().getName().toString();        
 			String bareFileName = className.replace('/', '.');
-
 			String folder = SystemUtil.getResultDirectory() + File.separatorChar + "aux";
 			new File(folder).mkdirs();
 			String fileName = folder + File.separatorChar + bareFileName + ".dot";

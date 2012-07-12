@@ -11,11 +11,11 @@ import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.util.Log;
 
 public class ViolationReport implements IReport {
-	
+
 	private HashSetMultiMap<IViolationKey, Violation> violations;
-	
+
 	private boolean hasViolations = false; 
-	
+
 	public ViolationReport() {
 		violations = new HashSetMultiMap<IViolationKey, Violation>();
 	}
@@ -28,7 +28,7 @@ public class ViolationReport implements IReport {
 		return violations;
 	}
 
-	
+
 	public void mergeReport(ViolationReport violation) {
 		if (violation == null) return;
 		for (IViolationKey c : violation.getViolations().keySet()) {
@@ -36,7 +36,7 @@ public class ViolationReport implements IReport {
 			insertViolations(c, vs);
 		}
 	}
-	
+
 	public void insertViolations(IViolationKey c, Set<Violation> vs) {
 		violations.putAll(c, vs);
 		hasViolations = (vs.isEmpty())?hasViolations:true;
@@ -46,8 +46,8 @@ public class ViolationReport implements IReport {
 		violations.put(c, v);
 		hasViolations = true;		//we definitely have a violation here
 	}
-	
-	
+
+
 	public JSONObject toJSON() {
 		JSONObject obj = new JSONObject();
 		for (IViolationKey ctx : violations.keySet()) {
@@ -62,33 +62,32 @@ public class ViolationReport implements IReport {
 		}
 		return obj;
 	}
-	
+
 	public void dump() {
 		System.out.println();
 		if (!hasViolations()) {
 			Log.boldGreen();
 			System.out.println("NO VIOLATIONS");
-      Log.resetColor();
-      return;
+			Log.resetColor();
+			return;
 		}
 		else {
 			Log.boldRed();
-			System.out.println("POLICY VIOLATIONS:");
-      Log.resetColor();
+			System.out.println("POLICY VIOLATIONS");
+			Log.resetColor();
 		}
 		for (IViolationKey r : violations.keySet()) {
 			Set<Violation> set = violations.get(r);
 			for (Violation v : set) {
 				int level = v.getResultType().getLevel();
 				switch (level) {
-				case 0: break;
-				case 1: System.out.print("\033[32m");break;
-				case 2: System.out.print("\033[33m");break;
-				case 3: System.out.print("\033[31m");break;
-				default: System.out.print("\033[31m");
+					case 0: break;
+					case 1: Log.green();break;
+					case 2: Log.yellow();break;
+					default: Log.red();
 				}
-				System.out.println(r.toString() + " :: " + v.toString());
-	      System.out.print("\033[0m");
+				Log.println(r.toString() + " :: " + v.toString());
+				Log.resetColor();
 			}
 		}
 	}

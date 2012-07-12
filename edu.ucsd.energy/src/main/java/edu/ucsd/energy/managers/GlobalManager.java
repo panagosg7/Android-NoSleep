@@ -25,8 +25,7 @@ public class GlobalManager {
 	private SpecialConditions specialConditions; 
 	
 	
-	private static final String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/" +
-			"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";
+	
 	
 	
 	
@@ -51,7 +50,7 @@ public class GlobalManager {
 	public ClassHierarchy getClassHierarchy() {
 		if (ch == null) {
 			try {
-				ch = ClassHierarchyUtils.make(appJar, exclusionFile);
+				ch = ClassHierarchyUtils.make(appJar);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

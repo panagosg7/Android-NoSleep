@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.text.DateFormat;
@@ -67,6 +68,10 @@ public class Main {
 
 	private static ArrayList<String> theSet = new ArrayList<String>();
 	private static Set<String>	skip = new HashSet<String>();
+
+	public static final Object logLock = new Object();
+
+
 
 	public static void runWakeLockAnalysis() 
 			throws IOException, ApkException, RetargetException, WalaException, CancelException, InterruptedException {
@@ -169,13 +174,14 @@ public class Main {
 				String app_name = apk.getName();
 				if (apk.successfullyOptimized()) {
 					try {
-
 						res = apk.analyzeFull();
+						//success
+						SystemUtil.writeToCompleted(apk.getName());
 					} catch(Exception e) {
 						//Any exception should be notified
 						e.printStackTrace();		//XXX: keep this somewhere
 						res = new FailReport(ResultType.ANALYSIS_FAILURE);
-						System.out.println("\n<<< "+ apk.getName()+ " FAILURE");
+						Log.red("\n<<< "+ apk.getName()+ " FAILURE");
 					}
 					catch (UnimplementedError e) {
 						e.printStackTrace();
@@ -196,9 +202,10 @@ public class Main {
 				res = new FailReport(ResultType.IOEXCEPTION_FAILURE);
 			}
 			//Dump the output file in each intermediate step
-			SystemUtil.writeToFile();
-
-			stopTimer();			
+			stopTimer();
+//			apk.clear();
+			System.gc();
+			
 			return res;
 		}
 
@@ -417,18 +424,14 @@ public class Main {
 		String res = String.format("%30s - %15s :: ", apk.getName(), apk.getVersion());
 		sb.append(res);
 		int length = res.length();
-		//System.out.print(res);
 		if (result.size() > 0) {
 			sb.append(result.get(0) + "\n");
-			//System.out.println(result.get(0));
 			for (int i = 1 ; i < result.size(); i++ ) {
 				sb.append(String.format("%" + length + "s", " ") + result.get(i) + "\n");
-				//System.out.println(String.format("%" + length + "s", " ") + result.get(i));					
 			}
 		}
 		else {
 			sb.append("\n");
-			//System.out.println();
 		}
 		return sb.toString();
 	}
@@ -750,6 +753,7 @@ public class Main {
 		options.addOption(new Option("rr", "report-results", true, "report the results that were found in json files in the given directory"));
 		options.addOption(new Option("t", "threads", true, "run the analysis on t threads (works for pattern analysis only)"));
 		options.addOption(new Option("skipN", true, "skip the first N application that are in line for analysis"));
+		options.addOption(new Option("sp", "skip-prev", false, "skip application that are already analyzed"));
 
 		//Some applications may cause our analysis to hang - avoid them by writing them down in 
 		//the properties file as "skip_apps = /home/pvekris/dev/apk_scratch/output/too_big.txt"
@@ -790,7 +794,7 @@ public class Main {
 			//Define the set of apps to run the analysis on
 			if (line.hasOption("small-set")) {
 				/* The applications you specify here need to be in apk_collection !!! */
-				theSet.add("SMS_Control_Center");
+				theSet.add("aLogcat");
 			}
 			else if (line.hasOption("unit")) {
 				theSet.add("Unit_01");
@@ -813,12 +817,13 @@ public class Main {
 				theSet.addAll((Set<String>) acqrel_status.keySet());
 			}
 
+			int c = 1;
 			if (line.hasOption("skipN")) {
 				Integer integer = Integer.parseInt(line.getOptionValue("skipN"));
 				if (integer != null) {
 					for(int i = 0; i < integer.intValue(); i ++) {
 						String removed = theSet.remove(0);
-						System.out.println("Skipping application: " + removed);
+						System.out.println(String.format("%3d. %s", (c++), "Skipping application: " + removed));
 					}
 				}
 			}
@@ -829,12 +834,34 @@ public class Main {
 				String app;
 				System.out.println();
 				while ((app = bufferedReader.readLine()) != null) {
-					skip.add(app);
-					Log.println("Skipping application: " + app);
+					boolean remove = theSet.remove(app);
+					if (remove) {
+						System.out.println(String.format("%3d. %s", (c++), "Skipping big application: " + app));
+					}
 				}
-				theSet.removeAll(skip);
+				System.out.println();
 				bufferedReader.close();
 			}
+
+			if (line.hasOption("skip-prev")) {
+				try {
+					FileReader fileReader = new FileReader(SystemUtil.completedFile);
+					BufferedReader bufferedReader = new BufferedReader(fileReader);
+					String app;
+					System.out.println();
+					while ((app = bufferedReader.readLine()) != null) {
+						boolean remove = theSet.remove(app);
+						if (remove) {
+							System.out.println(String.format("%3d. %s", (c++), "Skipping already analyzed application: " + app));
+						}
+					}
+					bufferedReader.close();
+				} catch(FileNotFoundException e) {
+					//If the file is not there don't do anything
+					System.out.println("No completed application file present.\n");
+				}
+			}
+
 
 			//TODO: Refine this - put it in a method 
 			if (line.hasOption("run-on-failed")) {

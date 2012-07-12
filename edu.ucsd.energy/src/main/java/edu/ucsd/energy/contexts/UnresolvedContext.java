@@ -34,7 +34,7 @@ public class UnresolvedContext extends Component {
 	@Override
 	protected Set<Violation> gatherViolations(ContextSummary summary) {
 		Set<Violation> violations = new HashSet<Violation>();
-		for(CallBack cb : getCallbacks()) {
+		for(CallBack cb : getRoots()) {
 			violations.addAll(super.gatherViolations(summary, 
 					cb.getSelector(), ResultType.UNRESOLVED_CALLBACK));
 		}

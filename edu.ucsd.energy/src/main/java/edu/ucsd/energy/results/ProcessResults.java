@@ -15,12 +15,13 @@ import edu.ucsd.energy.component.SuperComponent;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.managers.ComponentManager;
+import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.util.Log;
 
 public class ProcessResults {
 
-	private static final int DEBUG = 2;
+	private static final int DEBUG = 1;
 
 	
 	public static class LockUsage extends HashMap<WakeLockInstance, SingleLockState> {
@@ -102,9 +103,11 @@ public class ProcessResults {
 
 	public enum ResultType {
 		
-		UNRESOLVED_INTERESTING_CALLBACKS(1),
+		NO_WAKELOCK_CALLS(1),
 		
 		UNRESOLVED_ASYNC_CALLS(2),
+		
+		UNRESOLVED_WAKELOCK_CALLS(2),
 		
 		//Activity
 		ACTIVITY_ONPAUSE(2),
@@ -122,6 +125,8 @@ public class ProcessResults {
 		BROADCAST_RECEIVER_ONRECEIVE(2),		
 		//Application
 		APPLICATION_TERMINATE(2),
+		//AsyncTask
+		ASYNC_TASK_ONPOSTEXECUTE(2),
 		//Unresolved component
 		UNRESOLVED_CALLBACK(2),
 		
@@ -164,15 +169,24 @@ public class ProcessResults {
 		//LockUsageReport usageReport = new LockUsageReport();
 		ViolationReport report = new ViolationReport();
 		
-		//Check that there are no unresolved Intent calls 
-		//performed at high energy state
-		
+		//Check that there are no unresolved Intent calls performed at high energy state
 		HashSetMultiMap<MethodReference, SSAInstruction> criticalUnresolvedAsyncCalls = 
 				componentManager.getCriticalUnresolvedAsyncCalls();
 		
 		if (criticalUnresolvedAsyncCalls.size() > 0) {
 			GeneralViolation generalViolation = new GeneralViolation("General");
 			report.insertViolation(generalViolation, new Violation(ResultType.UNRESOLVED_ASYNC_CALLS));
+		}
+		
+		//Also, check that all wakelock operations were resolved
+		if (GlobalManager.get().getWakeLockManager().hasUnresolvedWakeLockOperations()) {
+			GeneralViolation generalViolation = new GeneralViolation("General");
+			report.insertViolation(generalViolation, new Violation(ResultType.UNRESOLVED_WAKELOCK_CALLS));
+		}
+		//and if there actually are any lock operations
+		if (GlobalManager.get().getWakeLockManager().hasWakeLockOperations()) {
+			GeneralViolation generalViolation = new GeneralViolation("General");
+			report.insertViolation(generalViolation, new Violation(ResultType.NO_WAKELOCK_CALLS));
 		}
 		
 		for (MethodReference mr : criticalUnresolvedAsyncCalls.keySet()) {

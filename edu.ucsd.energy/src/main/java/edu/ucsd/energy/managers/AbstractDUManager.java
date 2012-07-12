@@ -1,6 +1,7 @@
 package edu.ucsd.energy.managers;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -72,6 +73,9 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 	//run() for Runnables, and so on.
 	protected Map<Pair<MethodReference, SSAInstruction>, V> mInstruction2Instance;
 
+	
+	protected Collection<Pair<MethodReference, SSAInvokeInstruction>> unresolvedCallSites;
+	
 	Iterator2List<CGNode> bottomUpList;	//TODO: Compute this once for all managers (make static) 
 
 
@@ -102,7 +106,7 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		sanityCheck();
 	}
 
-	abstract protected void sanityCheck();
+	abstract void sanityCheck();
 
 	protected void firstPass() {
 		for (CGNode n : bottomUpList) {
@@ -141,13 +145,13 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 			V value = e.getValue();
 			System.out.println(key.toString() + " :: " + value.toString());
 		}
-		System.out.println("==========================================\n");
+		System.out.println("------------------------------------------\n");
 		for (Entry<MethodReference, V> e : mMethodReturns.entrySet()) {
 			MethodReference key = e.getKey();
 			V value = e.getValue();
 			System.out.println(key.toString() + " :: " + value.toString());
 		}
-		System.out.println("==========================================\n");		
+		System.out.println("------------------------------------------\n");
 		for (Entry<Pair<MethodReference, SSAInstruction>, V> e : mInstruction2Instance.entrySet()) {
 			Pair<MethodReference, SSAInstruction> key = e.getKey();
 			V value = e.getValue();
@@ -193,9 +197,6 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 			SSAInstruction useInstr = uses.next();
 			if (useInstr instanceof SSAPutInstruction) {
 				FieldReference field = ((SSAPutInstruction) useInstr).getDeclaredField();
-				if (DEBUG > 1) {
-					System.out.println("Try to associate with: " + field.toString());
-				}
 				associate(field,vi);
 				break;		//assume there's just an assignment to a single field
 			}
@@ -254,6 +255,9 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 						Pair<MethodReference, SSAInstruction> p = Pair.make(method.getReference(), instr);
 						mInstruction2Instance.put(p, vi);
 					}
+					else {
+						accountUntraceable(inv);
+					}
 				}
 				catch (ArrayIndexOutOfBoundsException e) {
 					//but if it's not, don't sweat it.
@@ -266,6 +270,8 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		}
 	}
 
+
+	abstract void accountUntraceable(SSAInvokeInstruction inv);
 
 	/**
 	 * Give the opportunity to the specific manager to handle some 
@@ -340,8 +346,9 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		}	
 		if (def instanceof SSAGetInstruction) {
 			SSAGetInstruction get = (SSAGetInstruction) def;
-			V vi = create?findOrCreateInstance(get.getDeclaredField()):
-				findInstance(get.getDeclaredField());
+			FieldReference declaredField = get.getDeclaredField();
+			V vi = create?findOrCreateInstance(declaredField):
+				findInstance(declaredField);
 			return vi;
 		}
 		else if (def instanceof SSAInvokeInstruction) {
@@ -439,7 +446,7 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 
 	protected void associate(FieldReference fr, V vi) {
 		if (DEBUG > 1) {
-			System.out.println("Trying to associate: " + fr.getFieldType().getName().toString() + " with " + interestingTypes.toString());
+			System.out.println("Trying to associate: " + fr.toString() + " with " + interestingTypes.toString());
 		}
 		if (!isInterestingType(fr.getFieldType())) return;	//associate only interesting stuff 
 		if (mFieldRefs == null) {

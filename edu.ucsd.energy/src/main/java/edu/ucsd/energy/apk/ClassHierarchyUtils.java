@@ -20,14 +20,31 @@ import com.ibm.wala.util.graph.impl.SlowSparseNumberedGraph;
 import com.ibm.wala.util.io.FileProvider;
 import com.ibm.wala.viz.DotUtil;
 
+import edu.ucsd.energy.Main;
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.util.SystemUtil;
 
 public class ClassHierarchyUtils {
 
-	public static ClassHierarchy make(String appJar, String exclusionFileName) throws IOException, WalaException {
-		File exclusionFile        = FileProvider.getFile(exclusionFileName);
-		AnalysisScope scope       = AnalysisScopeReader.makeJavaBinaryAnalysisScope(appJar, exclusionFile);
+	
+	private static final String exclusionFileName = "/home/pvekris/dev/workspace/WALA_shared/" +
+			"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";
+	
+	private static File exclusionFile;
+	
+	static {
+		try {
+			exclusionFile = FileProvider.getFile(exclusionFileName);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public static ClassHierarchy make(String appJar) throws IOException, WalaException {		
+		AnalysisScope scope;
+		synchronized(Main.logLock) {
+			 scope = AnalysisScopeReader.makeJavaBinaryAnalysisScope(appJar, exclusionFile);	
+		}
 		ClassHierarchy cha = ClassHierarchy.make(scope);
 		if (Opts.OUTPUT_CLASS_HIERARCHY) {
 			outputClassHierarchy(cha);

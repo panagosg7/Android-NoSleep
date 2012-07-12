@@ -145,4 +145,5 @@ public class RunnableManager extends AbstractRunnableManager<RunnableInstance> {
 	public RunnableInstance newInstance(IMethod m, int v) {
 		return new RunnableInstance(m,v);
 	}
+
 }

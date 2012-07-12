@@ -9,6 +9,7 @@ import net.sf.json.JSONObject;
 
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
+import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.shrikeBT.IBinaryOpInstruction.IOperator;
 import com.ibm.wala.shrikeBT.IBinaryOpInstruction.Operator;
 import com.ibm.wala.ssa.DefUse;
@@ -18,13 +19,16 @@ import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.Selector;
+import com.ibm.wala.types.TypeName;
 import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.apk.Interesting;
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.managers.WakeLockInstance.LockType;
 import edu.ucsd.energy.managers.WakeLockInstance.WakeLockInfo;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ManagerReport;
+import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.SSAProgramPoint;
 
 /**
@@ -43,6 +47,8 @@ public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 		TRUE,
 		FALSE;		
 	}
+
+	private boolean sanityChecked = false;
 
 	public void prepare() {
 		super.prepare();
@@ -199,9 +205,43 @@ public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 		return false;
 	}
 
+
+	protected void sanityCheck() {
+		int unresolved = (unresolvedCallSites != null)?unresolvedCallSites.size():0;
+		if (unresolved == 0) {
+			Log.green();
+		}
+		else {
+			Log.yellow();
+		}
+		int size = mInstruction2Instance.size();
+		Log.println(size + " / " + (size + unresolved) + " " + getTag() +" call sites were resolved successfully.");
+		Log.resetColor();
+		sanityChecked  = true;
+	}
+	
+	
+	
+	public boolean hasUnresolvedWakeLockOperations() {
+		if (!sanityChecked) {
+			prepare();
+		}
+		int unresolved = (unresolvedCallSites != null)?unresolvedCallSites.size():0;
+		return (unresolved > 0);
+	}
+	
+	public boolean hasWakeLockOperations() {
+		if (!sanityChecked) {
+			prepare();
+		}
+		return (mInstruction2Instance.size() > 0);
+	}
+	
+	
+	
 	@Override
 	public String getTag() {
-		return "WakeLocks";
+		return "WakeLock";
 	}
 
 	@Override
@@ -211,11 +251,6 @@ public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 		interestingTypes.add(lookupClass);		
 	}
 
-	@Override
-	protected void sanityCheck() {
-		// TODO Auto-generated method stub
-		
-	}
 
 	@Override
 	protected void handleSpecialCalls(SSAInvokeInstruction inv) {
@@ -226,6 +261,20 @@ public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 	@Override
 	public WakeLockInstance newInstance(IMethod m, int v) {
 		return new WakeLockInstance(m,v);
+	}
+
+
+	@Override
+	void accountUntraceable(SSAInvokeInstruction inv) {
+		Log.flog(getTag() + "operation in method" + method + " was not resolved successfully.");
+		Log.flog("  target instruction: " +	inv.toString());
+		Log.flog("");
+		
+		if (unresolvedCallSites == null) {
+			unresolvedCallSites = new HashSet<Pair<MethodReference,SSAInvokeInstruction>>();
+		}
+		Pair<MethodReference, SSAInvokeInstruction> key = Pair.make(method.getReference(), inv);
+		unresolvedCallSites.add(key);
 	}
 
 }

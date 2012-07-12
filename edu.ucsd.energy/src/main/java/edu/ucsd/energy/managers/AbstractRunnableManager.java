@@ -32,7 +32,6 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 
 	private SparseNumberedGraph<Component> constraintGraph;
 
-	private Collection<Pair<MethodReference, SSAInvokeInstruction>> unresolvedCallSites;
 
 	//We needed a map to keep the "this" object whenever used. 
 	protected Map<IClass, V> mClassRefs;
@@ -226,6 +225,13 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 		Log.resetColor();
 	}
 
+	@Override
+	void accountUntraceable(SSAInvokeInstruction inv) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	
 	
 	private Pair<Integer, Integer> getResolutionStats() {
 		int size = mInstruction2Instance.size();

@@ -681,5 +681,4 @@ public class ApkInstance {
 		return mSmali.traverse();
 	}
 
-	
 }

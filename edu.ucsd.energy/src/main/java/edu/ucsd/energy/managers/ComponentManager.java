@@ -66,15 +66,15 @@ import edu.ucsd.energy.util.Log;
  *  TODO: So we need to find a way to determine if there are classes 
  *  that cannot be resolved, but still are meaningful for Android.
  *  If these are not resolved, this means that there are going to 
- *  be callbacks that are never explored. *  
+ *  be callbacks that are never explored.
  * 
  * @author pvekris
  *
  */
 public class ComponentManager {
 
-	private static final int SOLVE_DEBUG = 0;
-	static final int RESOLVE_DEBUG = 0;
+	private static final int 		SOLVE_DEBUG = 0;
+					static final int	RESOLVE_DEBUG = 0;
 
 	private  HashMap<TypeName, Component> componentMap;
 
@@ -198,33 +198,7 @@ public class ComponentManager {
 				else if (implementsInterface(c, "Ljava/util/concurrent/Callable")) {
 					context = new Callable(c);
 				}
-				/*
-				else if (implementsInterface(c,"ClickListener")) {
-					context = new ClickListener(c);
-				}
-				else if (implementsInterface(c, "Landroid/content/SharedPreferences$OnSharedPreferenceChangeListener")
-						|| implementsInterface(c, "Landroid/preference/Preference$OnPreferenceChangeListener")) {
-					context = new OnSharedPreferenceChangeListener(c);
-				}
-				else if (implementsInterface(c, "Landroid/location/LocationListener")) {
-					context = new LocationListener(c);
-				}
-				else if (implementsInterface(c, "Landroid/widget/")) {
-					context = new Widget(c);
-				}
-				else if (implementsInterface(c, "Landroid/hardware/SensorEventListener")) {
-					context = new SensorEventListener(c);
-				}
-				else if (implementsInterface(c, "Landroid/content/ServiceConnection")) {
-					context = new ServiceConnection(c);
-				}
-				else if (implementsInterface(c, "Landroid/content/DialogInterface")) {
-					context = new DialogInterface(c);
-				}
-				else if (implementsInterface(c, "Landroid/media/MediaPlayer$OnCompletionListener")) {
-					context = new OnCompletionListener(c);
-				}
-				*/
+
 			}
 			
 			
@@ -257,7 +231,7 @@ public class ComponentManager {
 
 				if (RESOLVE_DEBUG > 1) {
 					Log.println("Resolved  : " + context.toString());
-					for(CallBack cb : context.getCallbacks()) {
+					for(CallBack cb : context.getRoots()) {
 						Log.println("  " + cb.toString()); 
 					}
 				}
@@ -478,7 +452,7 @@ public class ComponentManager {
 			};
 			if (component instanceof Component) {
 				Component context = (Component) component;
-				if (!CollectionUtils.exists(context.getCallbacks(), predicate))
+				if (!CollectionUtils.exists(context.getRoots(), predicate))
 					return;
 			}
 		}	//Lock reaching callbacks

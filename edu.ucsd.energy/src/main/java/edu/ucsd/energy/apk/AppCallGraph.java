@@ -19,6 +19,7 @@ import javax.swing.ProgressMonitor;
 
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.classLoader.IClassLoader;
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.examples.drivers.PDFTypeHierarchy;
 import com.ibm.wala.examples.properties.WalaExamplesProperties;
@@ -89,15 +90,16 @@ public class AppCallGraph implements CallGraph {
 	
 	private HashSet<Entrypoint> entrypoints = null;
 	private AnalysisCache cache = null;
-	private CallGraph g = null;
+	private CallGraph delegate = null;
 
 	// WakeLock parameters
 	private Hashtable<String, IClass> targetClassHash;
 	private Hashtable<String, IMethod> targetMethodHash;
 	private Hashtable<String, CGNode> targetCGNodeHash;
 	private ArrayList<String> targetMethods = null;
-	private PointerAnalysis pointerAnalysis;
-
+	
+	private ExplicitCallGraph fullCallGraph;
+	
 
 	public Hashtable<String, IClass> getTargetClassHash() {
 		return targetClassHash;
@@ -114,13 +116,16 @@ public class AppCallGraph implements CallGraph {
 	public AppCallGraph(ClassHierarchy ch) throws IllegalArgumentException, WalaException, CancelException,	IOException {
 		this.cha = ch;
 		
-		g = buildPrunedCallGraph();
+		delegate = buildPrunedCallGraph();
 		
 		if (Opts.OUTPUT_CG_DOT_FILE) {
 			if (DEBUG > 0) {
 				Log.timeln("Outputting callgraphs... ");
 			}
-			outputCallGraphToDot(g);
+			if (DEBUG > 1) {
+				outputCallGraphToDot(fullCallGraph, "fullcg.dot");
+			}
+			outputCallGraphToDot(delegate, DOT_FILE);
 			outputCFGs();
 			if (DEBUG > 0) {
 				Log.timeln("Outputted callgraphs.");
@@ -129,7 +134,7 @@ public class AppCallGraph implements CallGraph {
 		
 	}
 
-	public void outputCallGraphToDot(CallGraph g) {
+	public void outputCallGraphToDot(CallGraph g, String name) {
 		try {
 			Properties p = null;
 			try {
@@ -144,7 +149,7 @@ public class AppCallGraph implements CallGraph {
 				pdfFile = /* p.getProperty(WalaProperties.OUTPUT_DIR) */
 				SystemUtil.getResultDirectory() + File.separatorChar + PDF_FILE;
 			}
-			String dotFile = SystemUtil.getResultDirectory() + File.separatorChar + DOT_FILE;
+			String dotFile = SystemUtil.getResultDirectory() + File.separatorChar + name;
 			String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
 			GraphDotUtil.dotify(g, null, dotFile, pdfFile, dotExe);
 			// String gvExe = p.getProperty(WalaExamplesProperties.PDFVIEW_EXE);
@@ -187,19 +192,21 @@ public class AppCallGraph implements CallGraph {
 			Log.timeln("Builder making WALA callgraph ... ");
 		}
 		//This is the bottleneck...
-		ExplicitCallGraph cg = (ExplicitCallGraph) builder.makeCallGraph(options, null);
+		fullCallGraph = (ExplicitCallGraph) builder.makeCallGraph(options, null);
+		
 		if (DEBUG > 0) {
+			Log.timeln("Fullgraph has: " + fullCallGraph.getNumberOfNodes());
 			Log.timeln("Builder made WALA callgraph.");
 		}
 
 		//Add wakelock methods and their call-sites to the call graph
-		insertTargetMethodsToCG(cg);
+		insertTargetMethodsToCG(fullCallGraph);
 
 		if (!Opts.KEEP_PRIMORDIAL) {
-			return prunePrimordialNodes(cg);
+			return prunePrimordialNodes(fullCallGraph);
 		}
 		
-		return cg;
+		return fullCallGraph;
 	}
 
 	private PartialCallGraph prunePrimordialNodes(ExplicitCallGraph cg) {
@@ -606,11 +613,11 @@ public class AppCallGraph implements CallGraph {
 	}
 
 	public Iterator<CGNode> iterator() {
-		return g.iterator();
+		return delegate.iterator();
 	}
 
 	public int getNumberOfNodes() {
-		return g.getNumberOfNodes();
+		return delegate.getNumberOfNodes();
 	}
 
 	public void addNode(CGNode n) {
@@ -624,23 +631,23 @@ public class AppCallGraph implements CallGraph {
 	}
 
 	public boolean containsNode(CGNode n) {
-		return g.containsNode(n);
+		return delegate.containsNode(n);
 	}
 
 	public Iterator<CGNode> getPredNodes(CGNode n) {
-		return g.getPredNodes(n);
+		return delegate.getPredNodes(n);
 	}
 
 	public int getPredNodeCount(CGNode n) {
-		return g.getPredNodeCount(n);
+		return delegate.getPredNodeCount(n);
 	}
 
 	public Iterator<CGNode> getSuccNodes(CGNode n) {
-		return g.getSuccNodes(n);
+		return delegate.getSuccNodes(n);
 	}
 
 	public int getSuccNodeCount(CGNode N) {
-		return g.getSuccNodeCount(N);
+		return delegate.getSuccNodeCount(N);
 	}
 
 	public void addEdge(CGNode src, CGNode dst) {
@@ -668,31 +675,31 @@ public class AppCallGraph implements CallGraph {
 	}
 
 	public boolean hasEdge(CGNode src, CGNode dst) {
-		return g.hasEdge(src, dst);
+		return delegate.hasEdge(src, dst);
 	}
 
 	public int getNumber(CGNode N) {
-		return g.getNumber(N);
+		return delegate.getNumber(N);
 	}
 
 	public CGNode getNode(int number) {
-		return g.getNode(number);
+		return delegate.getNode(number);
 	}
 
 	public int getMaxNumber() {
-		return g.getMaxNumber();
+		return delegate.getMaxNumber();
 	}
 
 	public Iterator<CGNode> iterateNodes(IntSet s) {
-		return g.iterateNodes(s);
+		return delegate.iterateNodes(s);
 	}
 
 	public IntSet getSuccNodeNumbers(CGNode node) {
-		return g.getSuccNodeNumbers(node);
+		return delegate.getSuccNodeNumbers(node);
 	}
 
 	public IntSet getPredNodeNumbers(CGNode node) {
-		return g.getPredNodeNumbers(node);
+		return delegate.getPredNodeNumbers(node);
 	}
 
 	public CGNode getFakeRootNode() {
@@ -700,27 +707,27 @@ public class AppCallGraph implements CallGraph {
 	}
 
 	public Collection<CGNode> getEntrypointNodes() {
-		return g.getEntrypointNodes();
+		return delegate.getEntrypointNodes();
 	}
 
 	public CGNode getNode(IMethod method, Context C) {
-		return g.getNode(method, C);
+		return delegate.getNode(method, C);
 	}
 
 	public Set<CGNode> getNodes(MethodReference m) {
-		return g.getNodes(m);
+		return delegate.getNodes(m);
 	}
 
 	public IClassHierarchy getClassHierarchy() {
-		return g.getClassHierarchy();
+		return delegate.getClassHierarchy();
 	}
 
 	public int getNumberOfTargets(CGNode node, CallSiteReference site) {
-		return g.getNumberOfTargets(node, site);
+		return delegate.getNumberOfTargets(node, site);
 	}
 
 	public Iterator<CallSiteReference> getPossibleSites(CGNode src,CGNode target) {
-		return g.getPossibleSites(src, target);
+		return delegate.getPossibleSites(src, target);
 	}
 
 	public boolean isTargetMethod(CGNode root) {
@@ -728,11 +735,13 @@ public class AppCallGraph implements CallGraph {
 	}
 
 	public Set<CGNode> getPossibleTargets(CGNode node, CallSiteReference site) {
-		return g.getPossibleTargets(node, site);
+		return delegate.getPossibleTargets(node, site);
 	}
 	
 
-	//Cache reachability - it can be very slow otherwise
+	/**
+	 * Cache reachability - it can be very slow otherwise
+	 */
 	private GraphReachability<CGNode> reachability;
 	
 	public GraphReachability<CGNode> getReachability() {
@@ -747,6 +756,6 @@ public class AppCallGraph implements CallGraph {
 		}
 		return reachability;
 	}
-
+	
 	
 }

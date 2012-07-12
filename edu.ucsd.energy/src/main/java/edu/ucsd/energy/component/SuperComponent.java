@@ -41,7 +41,7 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 		if (sCallBack == null) {
 			sCallBack = new HashSet<CallBack>();
 			for (Component c : sComponent) {
-				sCallBack.addAll(c.getCallbacks());
+				sCallBack.addAll(c.getRoots());
 			}
 		}
 		return sCallBack;
