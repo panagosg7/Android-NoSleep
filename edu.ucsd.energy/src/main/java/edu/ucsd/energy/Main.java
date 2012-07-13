@@ -50,9 +50,9 @@ import edu.ucsd.energy.apk.ApkInstance;
 import edu.ucsd.energy.apk.ConfigurationException;
 import edu.ucsd.energy.results.FailReport;
 import edu.ucsd.energy.results.IReport;
-import edu.ucsd.energy.results.ProcessResults.ResultType;
 import edu.ucsd.energy.results.ResultReporter;
 import edu.ucsd.energy.results.Violation;
+import edu.ucsd.energy.results.Warning.WarningType;
 import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.SystemUtil;
 
@@ -180,17 +180,17 @@ public class Main {
 					} catch(Exception e) {
 						//Any exception should be notified
 						e.printStackTrace();		//XXX: keep this somewhere
-						res = new FailReport(ResultType.ANALYSIS_FAILURE);
+						res = new FailReport(WarningType.ANALYSIS_FAILURE);
 						Log.red("\n<<< "+ apk.getName()+ " FAILURE");
 					}
 					catch (UnimplementedError e) {
 						e.printStackTrace();
 						LOGGER.warning(e.getMessage());
-						res = new FailReport(ResultType.UNIMPLEMENTED_FAILURE);
+						res = new FailReport(WarningType.UNIMPLEMENTED_FAILURE);
 					}								
 				} else {
 					LOGGER.warning("Optimization failed: " + app_name);
-					res = new FailReport(ResultType.OPTIMIZATION_FAILURE);
+					res = new FailReport(WarningType.OPTIMIZATION_FAILURE);
 				}
 
 				JSONObject json = res.toJSON();
@@ -199,7 +199,7 @@ public class Main {
 
 			} catch (IOException e) {
 				e.printStackTrace();
-				res = new FailReport(ResultType.IOEXCEPTION_FAILURE);
+				res = new FailReport(WarningType.IOEXCEPTION_FAILURE);
 			}
 			//Dump the output file in each intermediate step
 			stopTimer();
@@ -234,16 +234,16 @@ public class Main {
 					} catch(Exception e) {
 						//Any exception should be notified
 						e.printStackTrace();		//XXX: keep this somewhere
-						res = new FailReport(ResultType.ANALYSIS_FAILURE);
+						res = new FailReport(WarningType.ANALYSIS_FAILURE);
 					}
 					catch (UnimplementedError e) {
 						e.printStackTrace();
 						LOGGER.warning(e.getMessage());
-						res = new FailReport(ResultType.UNIMPLEMENTED_FAILURE);
+						res = new FailReport(WarningType.UNIMPLEMENTED_FAILURE);
 					}								
 				} else {
 					LOGGER.warning("Optimization failed: " + app_name);
-					res = new FailReport(ResultType.OPTIMIZATION_FAILURE);
+					res = new FailReport(WarningType.OPTIMIZATION_FAILURE);
 				}
 				JSONObject json = res.toJSON();
 				json.put("version", apk.getVersion());
@@ -279,16 +279,16 @@ public class Main {
 							json = wakelockAnalyze.toJSON();
 						}
 					} catch(Exception e) {
-						json.put("result", ResultType.ANALYSIS_FAILURE.toString());
+						json.put("result", WarningType.ANALYSIS_FAILURE.toString());
 						System.err.println(apk.getName());
 						e.printStackTrace();
 					}
 					catch (UnimplementedError e) {
 						LOGGER.warning(e.getMessage());
-						json.put("result", ResultType.UNIMPLEMENTED_FAILURE.toString());
+						json.put("result", WarningType.UNIMPLEMENTED_FAILURE.toString());
 					}								
 				} else {
-					json.put("result", ResultType.OPTIMIZATION_FAILURE.toString());
+					json.put("result", WarningType.OPTIMIZATION_FAILURE.toString());
 				}
 			} catch (IOException e) {
 				e.printStackTrace();

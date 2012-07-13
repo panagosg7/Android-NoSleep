@@ -16,16 +16,11 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.MethodReference;
-import com.ibm.wala.util.CancelException;
-import com.ibm.wala.util.collections.Filter;
-import com.ibm.wala.util.collections.IndiscriminateFilter;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
-import com.ibm.wala.util.graph.GraphReachability;
 import com.ibm.wala.util.graph.impl.NodeWithNumber;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
-import com.ibm.wala.util.intset.OrdinalSet;
 
 import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.interproc.AbstractContextCFG;
@@ -37,7 +32,6 @@ import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.util.Log;
-import edu.ucsd.energy.util.Util;
 
 public abstract class AbstractContext extends NodeWithNumber implements IContext {
 
@@ -117,6 +111,11 @@ public abstract class AbstractContext extends NodeWithNumber implements IContext
 	private HashMap<BasicBlockInContext<IExplodedBasicBlock>, CompoundLockState> mBBICState;
 
 	private boolean solved = false;
+	
+	public boolean solved() {
+		return solved;
+	}
+	
 
 	private void cacheStates() {
 		mInstrState = new HashMap<SSAInstruction, CompoundLockState>();

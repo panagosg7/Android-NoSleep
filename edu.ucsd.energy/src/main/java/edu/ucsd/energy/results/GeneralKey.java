@@ -6,16 +6,16 @@ package edu.ucsd.energy.results;
  * @author pvekris
  *
  */
-public class GeneralViolation implements IViolationKey {
+public class GeneralKey implements IReportKey {
 
 	private String description;
 	
-	public GeneralViolation(String str) {
+	public GeneralKey(String str) {
 		description = str;
 	}
 	
 	public String toString() {
-		return description;
+		return "-";
 	}
 
 }

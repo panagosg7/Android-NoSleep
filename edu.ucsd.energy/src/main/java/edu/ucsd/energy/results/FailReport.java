@@ -2,13 +2,12 @@ package edu.ucsd.energy.results;
 
 
 import net.sf.json.JSONObject;
-import edu.ucsd.energy.results.ProcessResults.ResultType;
 
 public class FailReport implements IReport {
 
-	ResultType message;
+	IType message;
 	
-	public FailReport(ResultType didNotProcess) {
+	public FailReport(IType didNotProcess) {
 		message = didNotProcess;
 	}
 	
@@ -19,11 +18,16 @@ public class FailReport implements IReport {
 	}
 
 	public String getTag() {
-		return "Fail";
+		return "Fail Report";
 	}
 
 	public String toShortDescription() {
 		return "";
+	}
+
+	public void dump() {
+		// TODO Auto-generated method stub
+		
 	}
 
 	

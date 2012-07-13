@@ -22,6 +22,11 @@ public class ManagerReport<V extends AbstractDUManager<?>> implements IReport {
 
 	public String toShortDescription() {
 		return "";
+	}
+
+	public void dump() {
+		// TODO Auto-generated method stub
+		
 	};
 	
 }

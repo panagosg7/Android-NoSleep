@@ -11,8 +11,8 @@ import com.ibm.wala.util.collections.Pair;
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.results.ContextSummary;
-import edu.ucsd.energy.results.ProcessResults.ResultType;
 import edu.ucsd.energy.results.Violation;
+import edu.ucsd.energy.results.Violation.ViolationType;
 
 public class Activity extends Component {
 	
@@ -65,9 +65,15 @@ public class Activity extends Component {
 	 */
 	protected Set<Violation> gatherViolations(ContextSummary summary) {
 		Set<Violation> violations = new HashSet<Violation>();
-		violations.addAll(super.gatherViolations(summary, Interesting.ActivityOnPause, ResultType.ACTIVITY_ONPAUSE));
-		violations.addAll(super.gatherViolations(summary, Interesting.ActivityOnStop, ResultType.ACTIVITY_ONSTOP));
+		violations.addAll(super.gatherViolations(summary, Interesting.ActivityOnPause, ViolationType.ACTIVITY_ONPAUSE));
+		violations.addAll(super.gatherViolations(summary, Interesting.ActivityOnStop, ViolationType.ACTIVITY_ONSTOP));
 		return violations;
 	}
+	
+
+	public boolean extendsAndroid() {
+		return true;
+	}
+	
 
 }

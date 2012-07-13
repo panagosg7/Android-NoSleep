@@ -13,7 +13,6 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Predicate;
 
 import com.ibm.wala.classLoader.IClass;
-import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.ssa.SSAInstruction;
@@ -49,8 +48,8 @@ import edu.ucsd.energy.contexts.IntentService;
 import edu.ucsd.energy.contexts.RunnableThread;
 import edu.ucsd.energy.contexts.Service;
 import edu.ucsd.energy.contexts.UnresolvedContext;
+import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ProcessResults;
-import edu.ucsd.energy.results.ViolationReport;
 import edu.ucsd.energy.util.GraphUtils;
 import edu.ucsd.energy.util.Log;
 
@@ -73,8 +72,8 @@ import edu.ucsd.energy.util.Log;
  */
 public class ComponentManager {
 
-	private static final int 		SOLVE_DEBUG = 0;
-					static final int	RESOLVE_DEBUG = 0;
+	private static	final int 		SOLVE_DEBUG = 0;
+	static 					final int		RESOLVE_DEBUG = 0;
 
 	private  HashMap<TypeName, Component> componentMap;
 
@@ -139,118 +138,107 @@ public class ComponentManager {
 
 		//Keep the nodes that belong to some context
 		Set<CGNode> sNodes = new HashSet<CGNode>();
-		int counter = 0;
-		for(IClass c : ch) {
 
-			//Avoid primordial (system) classes
-			if(c.getClassLoader().getReference().equals(ClassLoaderReference.Primordial)) {
+		for(IClass c : ch) {
+			//Avoid primordial (java language classes) and extension (android.jar) classes
+			if(c.getClassLoader().getReference().equals(ClassLoaderReference.Primordial) || 
+					c.getClassLoader().getReference().equals(ClassLoaderReference.Extension)) {
 				continue;
 			}
 
 			TypeName type = c.getName();
 			//This is probably going to fail
-			Component context = componentMap.get(type);
-			if (context == null) {
+			Component component = componentMap.get(type);
+			if (component == null) {
 				// A class can only extend one class so order does not matter
 				ArrayList<IClass> classAncestors = ClassHierarchyUtils.getClassAncestors(c);
 				for (IClass anc : classAncestors) {
 					String ancName = anc.getName().toString();
-					
+
 					if (ancName.equals("Landroid/app/Activity")) {
-						context = new Activity(c);
+						component = new Activity(c);
 						break;
 					}
 					if (ancName.equals("Landroid/app/IntentService")) {
-						context = new IntentService(c);
+						component = new IntentService(c);
 						break;
 					}					
 					if (ancName.equals("Landroid/app/Service")) {
-						context = new Service(c);
+						component = new Service(c);
 						break;
 					}
 					//Some time, we might need to include this case
-//					if (ancName.equals("Landroid/content/ContentProvider")) {
-//						context = new ContentProvider(c);
-//						break;
-//					}
+					//					if (ancName.equals("Landroid/content/ContentProvider")) {
+					//						context = new ContentProvider(c);
+					//						break;
+					//					}
 					if (ancName.equals("Landroid/content/BroadcastReceiver")) {
-						context = new BroadcastReceiver(c);
+						component = new BroadcastReceiver(c);
 						break;
 					}
 					if (ancName.equals("Landroid/os/AsyncTask")) {
-						context = new AsyncTask(c);
+						component = new AsyncTask(c);
 						break;
 					}
 					if (ancName.equals("Landroid/app/Application")) {
-						context = new Application(c);
+						component = new Application(c);
 						break;
 					}
 				}
 			}
 
-			if (context == null) {
+			if (component == null) {
 				//Since a class can implement multiple interfaces we should keep an order of 
 				//in which to decide on which one should be used. The only restriction at 
 				//this moment is Runnable, which should be tested on first. 
 				if (implementsInterface(c, "Ljava/lang/Runnable")) {
-					context = new RunnableThread(c);
+					component = new RunnableThread(c);
 				}
 				else if (implementsInterface(c, "Ljava/util/concurrent/Callable")) {
-					context = new Callable(c);
-				}
-
-			}
-			
-			
-			//If all else fails register the class as an unresolved context
-			if (context == null) {
-				context = new UnresolvedContext(c);
-				unresolvedClasses++;
-				if (RESOLVE_DEBUG > 1) {
-					Log.yellow();
-					Log.println("Unresolved: " + c.getName().toString());
-					if (RESOLVE_DEBUG > 1) {
-						outputUnresolvedInfo(c);
-					}
-					Log.resetColor();
+					component = new Callable(c);
 				}
 			}
 
-			if (context != null) {
-				//Add the methods declared by this class or any of its super-classes to the 
-				//relevant component. This takes care of the previous bug, where methods 
-				//inherited from super-classes, were missing from the child components
-				for (IMethod m : c.getAllMethods()) {
-					Set<CGNode> nodes = originalCG.getNodes(m.getReference());
-					context.addNodes(nodes);
-				}
-				
-				sNodes.addAll(Iterator2Collection.toSet(context.getContextCallGraph().iterator()));
-				registerComponent(c.getReference(), context);
+			//If it has been resolved till now - it's one of the known categories
+			if (component != null) {
 				resolvedClasses++;
-
 				if (RESOLVE_DEBUG > 1) {
-					Log.println("Resolved  : " + context.toString());
-					for(CallBack cb : context.getRoots()) {
-						Log.println("  " + cb.toString()); 
+					Log.println("Resolved: " + component.toString() +	" interacts with Android: " + component.extendsAndroid());
+					if (RESOLVE_DEBUG > 2) {
+						for(CallBack cb : component.getRoots()) {
+							Log.println("  " + cb.toString()); 
+						}
 					}
 				}
 			}
-			else {	//This will not be executed when using unresolved contexts
+
+			//If all else fails register the class as an unresolved context
+			if (component == null) {
+				component = new UnresolvedContext(c);
+				unresolvedClasses++;
+			}
+			//Done resolving this class --
+
+			//This might not be needed
+			sNodes.addAll(Iterator2Collection.toSet(component.getAllReachableNodes()));
+			registerComponent(c.getReference(), component);
+
+
+			if (component instanceof UnresolvedContext) {
 				if (RESOLVE_DEBUG > 1) {
 					Log.yellow();
-					Log.println("Unresolved: " + c.getName().toString());
+					Log.println("Unresolved: " + c.getName().toString() + 
+							" interacts with Android: " + component.extendsAndroid());
 					if (RESOLVE_DEBUG > 1) {
-						outputUnresolvedInfo(c);
+						component.outputParentInfo();
 					}
 
 					Log.resetColor();
 				}
-				
 			}
 		} // for IClass c
-		
-		
+
+
 		//Find the dangling nodes - these nodes might actually not be reachable at all ...
 		Collection<CGNode> allNodes = Iterator2Collection.toSet(global.getAppCallGraph().iterator());
 		for (CGNode n : allNodes ) {
@@ -265,7 +253,7 @@ public class ComponentManager {
 			Log.green("No dangling methods.");
 		}
 
-		
+
 		resolutionStats();
 
 	}
@@ -335,17 +323,6 @@ public class ComponentManager {
 	}
 
 
-	private  void outputUnresolvedInfo(IClass c) {
-		Collection<IClass> allImplementedInterfaces = c.getAllImplementedInterfaces();
-		for (IClass anc :  ClassHierarchyUtils.getClassAncestors(c)) {
-			Log.println("#### CL: " + anc.getName().toString());
-		}
-		for (IClass intf : allImplementedInterfaces) {
-			Log.println("#### IF: " + intf.getName().toString());
-		}
-	}
-
-
 
 	public boolean implementsInterface(IClass klass, String string) {
 		for (IClass iI : klass.getAllImplementedInterfaces()) {
@@ -403,7 +380,6 @@ public class ComponentManager {
 				printer.outputSupergraph();
 				superComponents.add(superComponent);			
 				solveComponent(superComponent);
-
 			}
 			componentSet = getSuperComponents();
 		}
@@ -414,12 +390,13 @@ public class ComponentManager {
 		mUnresIntents = new HashSetMultiMap<MethodReference, SSAInstruction>();
 		Collection<Pair<MethodReference, SSAInvokeInstruction>> unresolvedInstructions = 
 				new HashSet<Pair<MethodReference,SSAInvokeInstruction>>(); 
-		
+
 		unresolvedInstructions.addAll(global.getIntentManager().getUnresolvedCallSites());
 		unresolvedInstructions.addAll(global.getRunnableManager().getUnresolvedCallSites());
 
 		//Warning: Be careful to use the correct set of contexts (super or regular)	
 		for (AbstractContext c : componentSet) {
+			if (!c.solved()) continue;
 			for (Pair<MethodReference, SSAInvokeInstruction> p :
 				c.getHightStateUnresolvedIntents(unresolvedInstructions)) {
 				mUnresIntents.put(p.fst, p.snd);
@@ -430,17 +407,11 @@ public class ComponentManager {
 	}
 
 
-	private <T extends AbstractContext> void solveComponent(T component) {
-
-		if (SOLVE_DEBUG > 0) {
-			Log.println("Solving: " + component.toString());
-		}
-
-		ComponentPrinter<T> componentPrinter = new ComponentPrinter<T>(component);
+	private <T extends AbstractContext> void solveComponent(T c) {
+		ComponentPrinter<T> componentPrinter = new ComponentPrinter<T>(c);
 		if (Opts.OUTPUT_COMPONENT_CALLGRAPH) {			
 			componentPrinter.outputNormalCallGraph();
 		}
-
 		if (Opts.ONLY_ANALYSE_LOCK_REACHING_CALLBACKS) {
 			/* Use reachability results to see if we can actually get to a 
 			 * wifi/wake lock call from here */
@@ -450,21 +421,35 @@ public class ComponentManager {
 					return (getGraphReachability().getReachableSet(n).size() > 0);    
 				}
 			};
-			if (component instanceof Component) {
-				Component context = (Component) component;
+			if (c instanceof Component) {
+				Component context = (Component) c;
 				if (!CollectionUtils.exists(context.getRoots(), predicate))
 					return;
 			}
 		}	//Lock reaching callbacks
-		
-		if (!component.callsInteresting()) {
+
+		//This (super)component does not interact with the Android system,
+		//so it cannot be called by Android and therefore it can only be 
+		//called by another (super)component, which we have already 
+		//accounted for.
+		if (!c.extendsAndroid()) {
 			if (SOLVE_DEBUG > 0) {
-				Log.grey(component.toString() + " does not deal with resource management. Moving on ...");
+				Log.grey(c.toString() + " does not extend Android API. Moving on ...");
+			}
+			return;
+		}
+
+		if (!c.callsInteresting()) {
+			if (SOLVE_DEBUG > 0) {
+				Log.grey(c.toString() + " does not deal with resource management. Moving on ...");
 			}
 			return;
 		}
 		
-		component.solve();
+		if (SOLVE_DEBUG > 0) {
+			Log.println("Solving: " + c.toString());
+		}
+		c.solve();
 
 		if(Opts.OUTPUT_COLOR_CFG_DOT) {
 			componentPrinter.outputColoredCFGs();
@@ -483,9 +468,9 @@ public class ComponentManager {
 		}
 		return mUnresIntents;
 	}
-	
 
-	public ViolationReport getAnalysisResults() {
+
+	public IReport getAnalysisResults() {
 		return new ProcessResults(this).processExitStates();
 	}
 
@@ -493,7 +478,7 @@ public class ComponentManager {
 	public List<SuperComponent> getSuperComponents() {
 		return superComponents;
 	}
-	
+
 	public void setGraphReachability(GraphReachability<CGNode> graphReachability) {
 		this.graphReachability = graphReachability;
 	}

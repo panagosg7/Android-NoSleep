@@ -4,13 +4,14 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.Selector;
 
 import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.results.ContextSummary;
-import edu.ucsd.energy.results.ProcessResults.ResultType;
 import edu.ucsd.energy.results.Violation;
+import edu.ucsd.energy.results.Violation.ViolationType;
 
 /**
  * This is a generic component class used whenever a component/context 
@@ -36,7 +37,7 @@ public class UnresolvedContext extends Component {
 		Set<Violation> violations = new HashSet<Violation>();
 		for(CallBack cb : getRoots()) {
 			violations.addAll(super.gatherViolations(summary, 
-					cb.getSelector(), ResultType.UNRESOLVED_CALLBACK));
+					cb.getSelector(), ViolationType.UNRESOLVED_CALLBACK_LOCKED));
 		}
 		return violations;
 	}
@@ -55,4 +56,8 @@ public class UnresolvedContext extends Component {
 		return new HashSet<Selector>();
 	}
 
+	public boolean extendsAndroid() {
+		return extendsSystem(ClassLoaderReference.Extension, extendsAndroid);
+	}
+	
 }

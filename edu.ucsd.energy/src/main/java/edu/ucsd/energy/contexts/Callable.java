@@ -10,8 +10,8 @@ import com.ibm.wala.types.Selector;
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.results.ContextSummary;
-import edu.ucsd.energy.results.ProcessResults.ResultType;
 import edu.ucsd.energy.results.Violation;
+import edu.ucsd.energy.results.Violation.ViolationType;
 
 /**
  * This is not really a component, but i decided to treat it as one because 
@@ -31,7 +31,7 @@ public class Callable extends Component {
 	@Override
 	protected Set<Violation> gatherViolations(ContextSummary summary) {
 		Set<Violation> violations = new HashSet<Violation>();
-		violations.addAll(super.gatherViolations(summary, Interesting.ThreadCall, ResultType.CALLABLE_CALL));
+		violations.addAll(super.gatherViolations(summary, Interesting.ThreadCall, ViolationType.CALLABLE_CALL));
 		return violations;
 	}
 
@@ -45,4 +45,8 @@ public class Callable extends Component {
 		return Interesting.callableCallbackMethods;
 	}    
 
+
+	public boolean extendsAndroid() {
+		return true;
+	}
 }

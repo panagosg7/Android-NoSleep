@@ -16,10 +16,10 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.impl.PartialCallGraph;
 import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.collections.HashSetMultiMap;
-import com.ibm.wala.util.collections.Iterator2Set;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.graph.GraphUtil;
@@ -27,6 +27,7 @@ import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.intset.OrdinalSet;
 
 import edu.ucsd.energy.apk.AppCallGraph;
+import edu.ucsd.energy.apk.ClassHierarchyUtils;
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.LifecycleGraph;
@@ -35,15 +36,16 @@ import edu.ucsd.energy.interproc.SingleContextCFG;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.results.ContextSummary;
-import edu.ucsd.energy.results.IViolationKey;
-import edu.ucsd.energy.results.Violation;
+import edu.ucsd.energy.results.IReportKey;
 import edu.ucsd.energy.results.ProcessResults.LockUsage;
-import edu.ucsd.energy.results.ProcessResults.ResultType;
+import edu.ucsd.energy.results.Violation;
+import edu.ucsd.energy.results.Violation.ViolationType;
+import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.Util;
 
-public abstract class Component extends AbstractContext implements IViolationKey {
+public abstract class Component extends AbstractContext implements IReportKey {
 
-	private static final int DEBUG = 0;
+	private static final int DEBUG =0;
 
 	protected IClass klass;
 
@@ -52,20 +54,6 @@ public abstract class Component extends AbstractContext implements IViolationKey
 	 * Not exaclty callbacks
 	 */
 	private Map<Selector, CallBack> 	mRoots;
-	
-	/**	
-	 * 
-	 * TODO: 
-	 * 
-	 * 
-	 * These are the true callbacks of the component. They can be:
-	 * - Roots in the application and component callgraph
-	 * - Roots in the component callgraph and have a predecessor in 
-	 * the application's callgraph 
-	 */
-	private Map<Selector, CallBack> 	mTrueCallbacks;
-	
-	
 	
 
 	//Nodes that belong to the class that created this component
@@ -81,17 +69,21 @@ public abstract class Component extends AbstractContext implements IViolationKey
 	private Boolean callsInteresting = null;
 
 
-	/**
-	 * Add a set of nodes to this context
-	 * @param nodes
-	 */
-	public void addNodes(Set<CGNode> nodes) {
+	public Set<CGNode> getClassNodes() {
 		if(sNode == null) {
-			sNode = new HashSet<CGNode>();
+			sNode = new HashSet<CGNode>();			
+			//Add the methods declared by this class or any of its super-classes to the 
+			//relevant component. This takes care of the previous bug, where methods 
+			//inherited from super-classes, were missing from the child components
+			for (IMethod m : getKlass().getAllMethods()) {
+				Set<CGNode> nodes = GlobalManager.get().getAppCallGraph().getNodes(m.getReference());
+				sNode.addAll(nodes);
+			}
 		}
-		sNode.addAll(nodes);
+		return sNode;
 	}
-
+	
+	
 
 	public boolean isCallBack(CGNode n) {
 		return mRoots.containsValue(CallBack.findOrCreateCallBack(n));	  
@@ -112,14 +104,14 @@ public abstract class Component extends AbstractContext implements IViolationKey
 	public CallGraph getContextCallGraph() {
 		if (componentCallgraph == null) {
 			HashSet<CGNode> set = new HashSet<CGNode>();    
-			for (CGNode node : sNode ) {    	
+			for (CGNode node : getClassNodes()) {    	
 				OrdinalSet<CGNode> reachableSet = originalCallgraph.getReachability().getReachableSet(node);
 				Set<CGNode> desc = Util.iteratorToSet(reachableSet.iterator());
 				set.addAll(desc);
 			}    
 			//sNode is not really the root set, but this should work,
 			//cause they should work as entry points
-			componentCallgraph = PartialCallGraph.make(originalCallgraph, sNode, set);
+			componentCallgraph = PartialCallGraph.make(originalCallgraph, getClassNodes(), set);
 		}
 		return componentCallgraph;
 	}
@@ -233,21 +225,22 @@ public abstract class Component extends AbstractContext implements IViolationKey
 		}
 		Set<CallBack> returnSet = new HashSet<CallBack>();
 		
-		/*
+		
 		//First try to see if the requested callback is present (overriden)
 		//If that's true, we don't need to search harder
 		CallBack callBack = getRoot(selector);
 		if (callBack != null) {
+			
 			if (DEBUG > 0) {
-				System.out.println("gotCallBack: " + callBack);
+				System.out.println("Got exact CallBack: " + callBack);
 			}
 			AppCallGraph appCallGraph = GlobalManager.get().getAppCallGraph();
 			//If it is called by the system then it is _possibly_ a 
 			//callback, so we treat it as one.
-			//TODO
+			returnSet.add(callBack);
 			return returnSet;	
 		}
-		*/
+		
 		
 		//If we haven't found anything so far this means that the method 
 		//is probably not overridden. 
@@ -346,6 +339,14 @@ public abstract class Component extends AbstractContext implements IViolationKey
 
 	private SuperComponent containingSuperComponent;
 
+	private Collection<IClass> implementedInterfaces;
+
+	private Collection<IClass> classAncestors;
+
+	protected Boolean extendsAndroid;
+
+	private Boolean extendsJava;
+
 	public void addSeed(Component c, SSAInstruction instr) {
 		if (sSeed == null) {
 			sSeed = new HashSetMultiMap<Component, SSAInstruction>();
@@ -364,7 +365,7 @@ public abstract class Component extends AbstractContext implements IViolationKey
 	}
 
 
-	public Iterator<CGNode> getNodes() {
+	public Iterator<CGNode> getAllReachableNodes() {
 		return getContextCallGraph().iterator();
 	}
 
@@ -435,7 +436,7 @@ public abstract class Component extends AbstractContext implements IViolationKey
 
 
 
-	public Set<Violation> gatherViolations(ContextSummary summary, Selector sel, ResultType res) {
+	public Set<Violation> gatherViolations(ContextSummary summary, Selector sel, ViolationType res) {
 		Set<LockUsage> stateForSelector = summary.getCallBackState(sel);
 		if (DEBUG > 0) {
 			System.out.println("States for :" + sel.toString());
@@ -477,6 +478,68 @@ public abstract class Component extends AbstractContext implements IViolationKey
 	}
 
 
+	public Collection<IClass> getImplementedInterfaces() {
+		if (implementedInterfaces == null) {
+			implementedInterfaces = getKlass().getAllImplementedInterfaces();
+		}
+		return implementedInterfaces;
+	}
 
+	public Collection<IClass> getClassAncestors() {
+		if (classAncestors == null) {
+			classAncestors = ClassHierarchyUtils.getClassAncestors(getKlass());
+		}
+		return classAncestors;
+	}
 
+	
+	/**
+	 * Is this component a class extending one of Java's or Android's 
+	 * API's or is it just a helper class in the application?
+	 * @return
+	 */
+	protected boolean extendsSystem(ClassLoaderReference clr, Boolean extendsBoolean) {
+		if (extendsBoolean == null) {
+			for(IClass c : getClassAncestors()) {
+				if (c.getClassLoader().equals(clr)) {
+					extendsBoolean = new Boolean(true);
+					return true;
+				}
+			}
+			for(IClass i : getImplementedInterfaces()) {
+				if (i.getClassLoader().equals(clr)) {
+					extendsBoolean = new Boolean(true);
+					return true;
+				}
+			}
+			extendsBoolean = new Boolean(false);
+		}
+		return extendsBoolean.booleanValue();
+	}
+
+	//Not used, but similar to extendsAndroid.
+	public boolean extendsJava() {
+		return extendsSystem(ClassLoaderReference.Primordial, extendsJava);
+	}
+	
+	
+	
+	public void outputParentInfo() {
+		for (IClass anc : getClassAncestors()) {
+			Log.println("#### CL: " + anc.getName().toString() + "\t" +
+					((anc.getClassLoader().getReference().equals(ClassLoaderReference.Primordial) &&
+					 (anc.getSuperclass() != null))?"Primordial":"") + 
+					((anc.getClassLoader().getReference().equals(ClassLoaderReference.Extension) &&
+					 (anc.getSuperclass() != null))?"ANDROID":""));
+		}
+		for (IClass intf : getImplementedInterfaces()) {
+			Log.println("#### IF: " + intf.getName().toString() + "\t" + 
+					((intf.getClassLoader().getReference().equals(ClassLoaderReference.Primordial) &&
+					 (intf.getSuperclass() != null))?"Primordial":"") + 
+					((intf.getClassLoader().getReference().equals(ClassLoaderReference.Extension) &&
+					 (intf.getSuperclass() != null))?"ANDROID":""));
+		}
+	}
+	
+	
 }

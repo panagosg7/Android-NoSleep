@@ -10,4 +10,6 @@ public interface IReport {
 
 	public String toShortDescription();
 	
+	public void dump();
+	
 }

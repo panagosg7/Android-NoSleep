@@ -3,6 +3,8 @@ package edu.ucsd.energy.results;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.ucsd.energy.util.Log;
+
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 
@@ -29,7 +31,7 @@ public class CompoundReport implements IReport {
 	}
 
 	public String getTag() {
-		return "Compound";
+		return "Compound Report";
 	}
 
 	public String toShortDescription() {
@@ -38,6 +40,13 @@ public class CompoundReport implements IReport {
 			sb.append(r.toShortDescription());
 		}
 		return sb.toString();
+	}
+
+	public void dump() {
+		for (IReport i : list ) {
+			Log.println("Dumping: " + i.getTag());
+			i.dump();			
+		}
 	}
 
 }

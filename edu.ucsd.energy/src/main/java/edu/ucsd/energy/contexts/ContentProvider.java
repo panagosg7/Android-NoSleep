@@ -48,4 +48,8 @@ public class ContentProvider extends Component {
 		return null;
 	}
   
+
+	public boolean extendsAndroid() {
+		return true;
+	}
 }

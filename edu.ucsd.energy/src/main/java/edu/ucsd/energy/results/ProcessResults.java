@@ -17,6 +17,7 @@ import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.managers.ComponentManager;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
+import edu.ucsd.energy.results.Warning.WarningType;
 import edu.ucsd.energy.util.Log;
 
 public class ProcessResults {
@@ -101,55 +102,6 @@ public class ProcessResults {
 		UNKNOWN; //Error state
 	}
 
-	public enum ResultType {
-		
-		NO_WAKELOCK_CALLS(1),
-		
-		UNRESOLVED_ASYNC_CALLS(2),
-		
-		UNRESOLVED_WAKELOCK_CALLS(2),
-		
-		//Activity
-		ACTIVITY_ONPAUSE(2),
-		ACTIVITY_ONSTOP(3),
-		//Service
-		SERVICE_ONSTART(2),
-		SERVICE_ONDESTORY(3),
-		SERVICE_ONUNBIND(2),
-		INTENTSERVICE_ONHANDLEINTENT(2),
-		//Runnable
-		RUNNABLE_RUN(2),
-		//Callable
-		CALLABLE_CALL(2),
-		//BoradcaseReceiver
-		BROADCAST_RECEIVER_ONRECEIVE(2),		
-		//Application
-		APPLICATION_TERMINATE(2),
-		//AsyncTask
-		ASYNC_TASK_ONPOSTEXECUTE(2),
-		//Unresolved component
-		UNRESOLVED_CALLBACK(2),
-		
-		
-		//Analysis results
-		OPTIMIZATION_FAILURE(2),
-		ANALYSIS_FAILURE(2),
-		UNIMPLEMENTED_FAILURE(2), 
-		 
-		IOEXCEPTION_FAILURE(2);
-		
-		int level;		//the level of seriousness of the condition
-		
-		private ResultType(int a) {
-			level = a;
-		}
-
-		public int getLevel() {
-			return level;			
-		}
-	}
-
-
 	/**
 	 * Main structures that hold the analysis results for every component
 	 */
@@ -161,32 +113,35 @@ public class ProcessResults {
 	}
 
 
-	public ViolationReport processExitStates() {
+	public IReport processExitStates() {
 		if(DEBUG > 0) {
 			Log.println();	
 		}
 		
 		//LockUsageReport usageReport = new LockUsageReport();
-		ViolationReport report = new ViolationReport();
+		ViolationReport vReport = new ViolationReport();
+		WarningReport 	wReport = new WarningReport();
 		
 		//Check that there are no unresolved Intent calls performed at high energy state
 		HashSetMultiMap<MethodReference, SSAInstruction> criticalUnresolvedAsyncCalls = 
 				componentManager.getCriticalUnresolvedAsyncCalls();
 		
 		if (criticalUnresolvedAsyncCalls.size() > 0) {
-			GeneralViolation generalViolation = new GeneralViolation("General");
-			report.insertViolation(generalViolation, new Violation(ResultType.UNRESOLVED_ASYNC_CALLS));
+			GeneralKey key = new GeneralKey("General");
+			wReport.insertElement(new Warning(WarningType.UNRESOLVED_ASYNC_CALLS));
 		}
 		
 		//Also, check that all wakelock operations were resolved
 		if (GlobalManager.get().getWakeLockManager().hasUnresolvedWakeLockOperations()) {
-			GeneralViolation generalViolation = new GeneralViolation("General");
-			report.insertViolation(generalViolation, new Violation(ResultType.UNRESOLVED_WAKELOCK_CALLS));
+			GeneralKey key = new GeneralKey("General");
+			wReport.insertElement(new Warning(WarningType.UNRESOLVED_WAKELOCK_CALLS));
 		}
 		//and if there actually are any lock operations
-		if (GlobalManager.get().getWakeLockManager().hasWakeLockOperations()) {
-			GeneralViolation generalViolation = new GeneralViolation("General");
-			report.insertViolation(generalViolation, new Violation(ResultType.NO_WAKELOCK_CALLS));
+		if (!GlobalManager.get().getWakeLockManager().hasWakeLockOperations()) {
+			
+			//TODO : maybe not needed: General...
+			GeneralKey key = new GeneralKey("General");
+			wReport.insertElement(new Warning(WarningType.NO_WAKELOCK_CALLS));
 		}
 		
 		for (MethodReference mr : criticalUnresolvedAsyncCalls.keySet()) {
@@ -203,10 +158,11 @@ public class ProcessResults {
 		}
 		
 		for (SuperComponent superComponent : componentManager.getSuperComponents()) {
-			
-			if (!superComponent.callsInteresting()) {
+
+			if (!superComponent.solved()) {
+			//This will include cases of uninteresting and non-Android interacting components
 				Log.grey();
-				Log.println("Skipping uninteresting: "+ superComponent.toString());
+				Log.println("Skipping unsolved: "+ superComponent.toString());
 				Log.resetColor();
 				continue;
 			}
@@ -225,7 +181,7 @@ public class ProcessResults {
 				}
 				
 				Set<Violation> assembleReport = component.assembleReport();
-				report.insertViolations(component, assembleReport);
+				vReport.insertViolations(component, assembleReport);
 				if (DEBUG > 0) {
 					if (assembleReport.size() > 0) {
 						Log.yellow();
@@ -235,8 +191,13 @@ public class ProcessResults {
 				}
 			}
 		}
-    report.dump();
-		return report;
+    vReport.dump();
+    wReport.dump();
+    CompoundReport compoundReport = new CompoundReport();
+    compoundReport.register(vReport);
+    compoundReport.register(wReport);
+		return compoundReport;
+		
 	}
 
 

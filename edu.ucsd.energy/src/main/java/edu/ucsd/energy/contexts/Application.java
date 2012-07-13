@@ -10,8 +10,8 @@ import com.ibm.wala.util.collections.Pair;
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.results.ContextSummary;
-import edu.ucsd.energy.results.ProcessResults.ResultType;
 import edu.ucsd.energy.results.Violation;
+import edu.ucsd.energy.results.Violation.ViolationType;
 
 
 /**
@@ -46,7 +46,7 @@ public class Application extends Component {
 		@Override
 		protected Set<Violation> gatherViolations(ContextSummary summary) {
 			Set<Violation> violations = new HashSet<Violation>();
-			violations.addAll(super.gatherViolations(summary, Interesting.ApplicationOnTerminate, ResultType.APPLICATION_TERMINATE));
+			violations.addAll(super.gatherViolations(summary, Interesting.ApplicationOnTerminate, ViolationType.APPLICATION_TERMINATE));
 			return violations;
 		}
 
@@ -60,4 +60,7 @@ public class Application extends Component {
 			return Interesting.applicationExitMethods;
 		}
 
+		public boolean extendsAndroid() {
+			return true;
+		}
 }

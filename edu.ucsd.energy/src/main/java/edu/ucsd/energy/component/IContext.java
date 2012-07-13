@@ -16,6 +16,8 @@ public interface IContext {
 	
 	public void solve();
 	
+	public boolean solved();
+	
 	public CompoundLockState getReturnState(CGNode cgNode);
 	
 	public CompoundLockState getState(IExplodedBasicBlock i);
@@ -25,6 +27,8 @@ public interface IContext {
 	public String toFileName();
 
 	public boolean callsInteresting();
+	
+	public boolean extendsAndroid();
 
 	
 }

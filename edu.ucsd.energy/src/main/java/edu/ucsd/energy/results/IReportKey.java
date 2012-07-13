@@ -1,6 +1,6 @@
 package edu.ucsd.energy.results;
 
-public interface IViolationKey {
+public interface IReportKey {
 
 	
 }

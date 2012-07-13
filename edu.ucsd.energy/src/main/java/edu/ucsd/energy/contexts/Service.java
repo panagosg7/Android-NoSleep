@@ -11,8 +11,8 @@ import com.ibm.wala.util.collections.Pair;
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.results.ContextSummary;
-import edu.ucsd.energy.results.ProcessResults.ResultType;
 import edu.ucsd.energy.results.Violation;
+import edu.ucsd.energy.results.Violation.ViolationType;
 
 public class Service extends Component {
 
@@ -88,13 +88,16 @@ public class Service extends Component {
 		//What should be done is check all the possible call-sites of this service and 
 		//check if it is started or bound. But this is definitely a good indicator.
 		if (isCallBack(Interesting.ServiceOnStartCommand) || isCallBack(Interesting.ServiceOnStartCommand)) {
-			violations.addAll(super.gatherViolations(summary, Interesting.ServiceOnStartCommand, ResultType.SERVICE_ONSTART));	
+			violations.addAll(super.gatherViolations(summary, Interesting.ServiceOnStartCommand, ViolationType.SERVICE_ONSTART));	
 		}
 		if (isCallBack(Interesting.ServiceOnBind)) {
-			violations.addAll(super.gatherViolations(summary, Interesting.ServiceOnUnbind, ResultType.SERVICE_ONUNBIND));
+			violations.addAll(super.gatherViolations(summary, Interesting.ServiceOnUnbind, ViolationType.SERVICE_ONUNBIND));
 		}
 		return violations;
 	}
 
+	public boolean extendsAndroid() {
+		return true;
+	}
 }
 

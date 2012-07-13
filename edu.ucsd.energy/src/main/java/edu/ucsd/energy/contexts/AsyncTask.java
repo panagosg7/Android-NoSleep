@@ -10,7 +10,7 @@ import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.results.ContextSummary;
 import edu.ucsd.energy.results.Violation;
-import edu.ucsd.energy.results.ProcessResults.ResultType;
+import edu.ucsd.energy.results.Violation.ViolationType;
 
 /**
  * Life-cycle info from:
@@ -27,7 +27,7 @@ public class AsyncTask extends Component {
 	@Override
 	protected Set<Violation> gatherViolations(ContextSummary summary) {
 		Set<Violation> violations = new HashSet<Violation>();
-		violations.addAll(super.gatherViolations(summary, Interesting.AsyncTaskOnPostExecute, ResultType.ASYNC_TASK_ONPOSTEXECUTE));
+		violations.addAll(super.gatherViolations(summary, Interesting.AsyncTaskOnPostExecute, ViolationType.ASYNC_TASK_ONPOSTEXECUTE));
 		return violations;
 	}
 
@@ -39,5 +39,10 @@ public class AsyncTask extends Component {
 	@Override
 	public Set<Selector> getExitPoints(Selector callSelector) {
 		return Interesting.asyncTaskExitMethods;
+	}
+
+
+	public boolean extendsAndroid() {
+		return true;
 	}
 }

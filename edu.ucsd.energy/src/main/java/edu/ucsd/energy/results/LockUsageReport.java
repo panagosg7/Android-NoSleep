@@ -17,7 +17,7 @@ public class LockUsageReport implements IReport {
 	private Map<Component, ContextState> mComponent;
 	
 	public String getTag() {
-		return "Lock Usage";
+		return "Lock Usage Report";
 	}
 
 	public JSONObject toJSON() {
@@ -42,6 +42,11 @@ public class LockUsageReport implements IReport {
 	public void insert(Component component, ContextSummary cSummary) {
 		//ContextState callBackUsage = cSummary.getCallBackStates();
 		//mComponent.put(component, callBackUsage);
+	}
+
+	public void dump() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 	

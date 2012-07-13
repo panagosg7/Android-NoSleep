@@ -9,7 +9,6 @@ import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.apk.ClassHierarchyUtils;
 import edu.ucsd.energy.conditions.SpecialConditions;
 import edu.ucsd.energy.results.IReport;
-import edu.ucsd.energy.results.ViolationReport;
 import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.SystemUtil;
 
@@ -112,7 +111,7 @@ public class GlobalManager {
 		return intentManager.getReport();
 	}
 
-	public ViolationReport getAnalysisReport() {
+	public IReport getAnalysisReport() {
 		return cm.getAnalysisResults();
 	}
 

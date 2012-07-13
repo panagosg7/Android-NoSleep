@@ -71,7 +71,8 @@ public class AnalysisScope {
   public static final Atom APPLICATION = Atom.findOrCreateUnicodeAtom("Application");
 
   public static final Atom SYNTHETIC = Atom.findOrCreateUnicodeAtom("Synthetic");
-
+  
+  
   /**
    * Create an analysis scope initialized for analysis of Java
    */
@@ -111,6 +112,7 @@ public class AnalysisScope {
     loadersByName.put(SYNTHETIC, synthetic);
   }
 
+  
   /**
    * A set of classes to exclude from the analysis entirely.
    */

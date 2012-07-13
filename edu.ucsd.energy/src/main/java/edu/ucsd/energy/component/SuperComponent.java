@@ -93,7 +93,7 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 		SeedMap mSeeds = new SeedMap();
 		for (Component c : sComponent) {
 			// Gather nodes
-			Iterator<CGNode> nItr = c.getNodes();
+			Iterator<CGNode> nItr = c.getAllReachableNodes();
 			while (nItr.hasNext()) {
 				nodeSet.add(nItr.next());	//duplicates are omitted
 			}
@@ -196,7 +196,7 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 			for (Component c : sComponent) {
 				c.setContainingSuperComponent(this);
 				// Gather nodes
-				Iterator<CGNode> nItr = c.getNodes();
+				Iterator<CGNode> nItr = c.getAllReachableNodes();
 				while (nItr.hasNext()) {
 					nodeSet.add(nItr.next());
 				}
@@ -208,6 +208,8 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 
 
 	private Boolean callsInteresting = null;
+
+	private Boolean extendsAndroid;
 
 	public boolean callsInteresting() {
 		if (callsInteresting == null) {
@@ -235,7 +237,19 @@ public class SuperComponent extends AbstractContext implements INodeWithNumber {
 		}
 		return hashSet;
 	}
-	
+
+	public boolean extendsAndroid() {
+		if (extendsAndroid == null) {
+			for (Component c :getContexts()) {
+				if (c.extendsAndroid()) {
+					extendsAndroid = new Boolean(true);
+					return true;
+				}
+			}
+			extendsAndroid = new Boolean(false);
+		}
+		return extendsAndroid.booleanValue();
+	}
 
 	
 }

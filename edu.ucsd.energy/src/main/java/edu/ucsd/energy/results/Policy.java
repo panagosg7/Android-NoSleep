@@ -24,7 +24,7 @@ abstract public class Policy<T extends Component> {
 	
 	protected HashSet<WakeLockInstance> instances = new HashSet<WakeLockInstance>();
 	
-	private ArrayList<Violation> violations = new ArrayList<Violation>();
+	private ArrayList<T> violations = new ArrayList<T>();
 
 	public Policy(T c) {
 		component = c;
@@ -41,7 +41,7 @@ abstract public class Policy<T extends Component> {
 	
 	public JSONArray toJSON() {
 		JSONArray jsonArray = new JSONArray();
-		for (Violation a : violations) {
+		for (T a : violations) {
 			jsonArray.add(a.toString());
 		}
 		return jsonArray;
@@ -52,7 +52,7 @@ abstract public class Policy<T extends Component> {
 		return violations.isEmpty();
 	}
 	
-	protected void trackResult(Violation result) {
+	protected void trackResult(T result) {
 		this.violations.add(result);
 	}
 	
