@@ -10,7 +10,7 @@ import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
-import edu.ucsd.energy.results.ContextSummary;
+import edu.ucsd.energy.results.ComponentSummary;
 import edu.ucsd.energy.results.Violation;
 import edu.ucsd.energy.results.Violation.ViolationType;
 
@@ -58,7 +58,7 @@ public class IntentService extends Component {
 	}
 
 	
-	public Set<Violation> gatherViolations(ContextSummary summary) {
+	public Set<Violation> gatherViolations(ComponentSummary summary) {
 		Set<Violation> violations = new HashSet<Violation>();
 		violations.addAll(super.gatherViolations(summary, Interesting.ServiceOnHandleIntent, ViolationType.INTENTSERVICE_ONHANDLEINTENT));
 		return violations;

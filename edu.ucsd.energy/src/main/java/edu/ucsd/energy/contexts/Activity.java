@@ -10,7 +10,7 @@ import com.ibm.wala.util.collections.Pair;
 
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
-import edu.ucsd.energy.results.ContextSummary;
+import edu.ucsd.energy.results.ComponentSummary;
 import edu.ucsd.energy.results.Violation;
 import edu.ucsd.energy.results.Violation.ViolationType;
 
@@ -63,7 +63,7 @@ public class Activity extends Component {
 	/**
 	 * Determine the policies for Activities:
 	 */
-	protected Set<Violation> gatherViolations(ContextSummary summary) {
+	protected Set<Violation> gatherViolations(ComponentSummary summary) {
 		Set<Violation> violations = new HashSet<Violation>();
 		violations.addAll(super.gatherViolations(summary, Interesting.ActivityOnPause, ViolationType.ACTIVITY_ONPAUSE));
 		violations.addAll(super.gatherViolations(summary, Interesting.ActivityOnStop, ViolationType.ACTIVITY_ONSTOP));

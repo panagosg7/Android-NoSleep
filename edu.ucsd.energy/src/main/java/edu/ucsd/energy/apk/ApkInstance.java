@@ -119,7 +119,10 @@ public class ApkInstance {
 		mDex2JarTranslation = new Translation(new D2jConverter(mPaths), new SootD2jOptimize(mPaths, fetchAndroidVersion));
 
 		/*
-		 * Try ded translation first and if it fails it then does d2j
+		 * Try ded translation first and if it fails it then does d2j,
+		 * but if ded fails d2j will be run the next time we run the 
+		 * program on this app.
+		 * 
 		 */
 		if (mDedTranslation.mOptimize.attempted() && !mDedTranslation.mOptimize.success()) {
 			mPreferredTranslation = mDex2JarTranslation;
@@ -263,6 +266,16 @@ public class ApkInstance {
 	public File getDedOptimizedErrLogTarget() {
 		return mPreferredTranslation.mOptimize.getErrTarget();
 	}
+	
+	public File getOptimizedJar() {
+		return mPreferredTranslation.mOptimize.getJarTarget();	
+	}
+	
+	public File getRetargetedJar() throws IOException, RetargetException {
+		requiresRetargetedJar();
+		return mPreferredTranslation.mConverter.getJarTarget();
+	}
+	
 	
 	public static final String canonicalize(String smaliCall) {
 		int parenIndex = smaliCall.indexOf('(');
@@ -443,7 +456,6 @@ public class ApkInstance {
 	public void cleanOptimizations() {
 		mDedTranslation.mOptimize.clean();
 		mDex2JarTranslation.mOptimize.clean();
-		
 	}
 	
 	private String getException(File log) {

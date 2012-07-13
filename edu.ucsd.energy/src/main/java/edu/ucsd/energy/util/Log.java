@@ -192,5 +192,9 @@ public class Log {
 		resetColor();
 	}
 
+	public static void boldYellow() {
+		System.out.print("\033[1;33m");		
+	}
+
 
 }

@@ -35,7 +35,7 @@ import edu.ucsd.energy.interproc.LifecycleGraph.SensibleCGNode;
 import edu.ucsd.energy.interproc.SingleContextCFG;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
-import edu.ucsd.energy.results.ContextSummary;
+import edu.ucsd.energy.results.ComponentSummary;
 import edu.ucsd.energy.results.IReportKey;
 import edu.ucsd.energy.results.ProcessResults.LockUsage;
 import edu.ucsd.energy.results.Violation;
@@ -402,10 +402,8 @@ public abstract class Component extends AbstractContext implements IReportKey {
 	/***
 	 * Stuff imported by old Component
 	 */
-
-
 	public Set<Violation> assembleReport() {
-		ContextSummary ctxSum = new ContextSummary(this);
+		ComponentSummary ctxSum = new ComponentSummary(this);
 		for(Iterator<CallBack> it = getRoots().iterator() ; it.hasNext(); ) {
 			CallBack cb = it.next();
 			CompoundLockState exitState = getReturnState(cb.getNode());
@@ -421,7 +419,7 @@ public abstract class Component extends AbstractContext implements IReportKey {
 		return gatherViolations(ctxSum);
 	}
 
-	abstract protected Set<Violation> gatherViolations(ContextSummary ctx);
+	abstract protected Set<Violation> gatherViolations(ComponentSummary ctx);
 
 	protected boolean relevant(LockUsage st) {
 		return st.relevant(this);
@@ -436,7 +434,7 @@ public abstract class Component extends AbstractContext implements IReportKey {
 
 
 
-	public Set<Violation> gatherViolations(ContextSummary summary, Selector sel, ViolationType res) {
+	public Set<Violation> gatherViolations(ComponentSummary summary, Selector sel, ViolationType res) {
 		Set<LockUsage> stateForSelector = summary.getCallBackState(sel);
 		if (DEBUG > 0) {
 			System.out.println("States for :" + sel.toString());

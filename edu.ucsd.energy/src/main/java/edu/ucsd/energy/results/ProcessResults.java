@@ -180,12 +180,14 @@ public class ProcessResults {
 					continue;
 				}
 				
-				Set<Violation> assembleReport = component.assembleReport();
-				vReport.insertViolations(component, assembleReport);
-				if (DEBUG > 0) {
-					if (assembleReport.size() > 0) {
-						Log.yellow();
+				Set<Violation> rep = component.assembleReport();
+				if (rep != null && (!rep.isEmpty())) {
+					vReport.insertViolations(component, rep);
+					if (DEBUG > 0) {
+							Log.yellow();
 					}
+				}
+				if (DEBUG > 0) {
 					Log.println(" - Checking violatios for: " + component.toString());
 					Log.resetColor();
 				}

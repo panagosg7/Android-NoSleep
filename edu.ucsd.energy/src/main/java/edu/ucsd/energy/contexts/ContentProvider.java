@@ -6,7 +6,7 @@ import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.types.Selector;
 
 import edu.ucsd.energy.component.Component;
-import edu.ucsd.energy.results.ContextSummary;
+import edu.ucsd.energy.results.ComponentSummary;
 import edu.ucsd.energy.results.Violation;
 
 
@@ -31,7 +31,7 @@ public class ContentProvider extends Component {
   }
 
 	@Override
-	protected Set<Violation> gatherViolations(ContextSummary ctx) {
+	protected Set<Violation> gatherViolations(ComponentSummary ctx) {
 		// TODO Auto-generated method stub
 		return null;
 	}

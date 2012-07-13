@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -25,6 +26,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.logging.Logger;
 
 import net.sf.json.JSONObject;
@@ -192,20 +195,18 @@ public class Main {
 					LOGGER.warning("Optimization failed: " + app_name);
 					res = new FailReport(WarningType.OPTIMIZATION_FAILURE);
 				}
-
-				JSONObject json = res.toJSON();
+				JSONObject json = (JSONObject) res.toJSON();
 				json.put("version", apk.getVersion());
 				SystemUtil.commitReport(apk.getName(), json);
-
 			} catch (IOException e) {
 				e.printStackTrace();
 				res = new FailReport(WarningType.IOEXCEPTION_FAILURE);
 			}
 			//Dump the output file in each intermediate step
 			stopTimer();
-//			apk.clear();
+			//Hint to garbage collector
 			System.gc();
-			
+
 			return res;
 		}
 
@@ -245,7 +246,7 @@ public class Main {
 					LOGGER.warning("Optimization failed: " + app_name);
 					res = new FailReport(WarningType.OPTIMIZATION_FAILURE);
 				}
-				JSONObject json = res.toJSON();
+				JSONObject json = (JSONObject) res.toJSON();
 				json.put("version", apk.getVersion());
 				//SystemUtil.commitReport(apk.getName(), json);
 			} catch (IOException e) {
@@ -276,7 +277,7 @@ public class Main {
 					try {
 						IReport wakelockAnalyze = apk.wakelockAnalyze();
 						if (wakelockAnalyze != null) {
-							json = wakelockAnalyze.toJSON();
+							json = (JSONObject) wakelockAnalyze.toJSON();
 						}
 					} catch(Exception e) {
 						json.put("result", WarningType.ANALYSIS_FAILURE.toString());
@@ -500,10 +501,18 @@ public class Main {
 		}
 	}
 
+	/**
+	 * Delete all the optimized files if there are phantom classes
+	 * @param phantom
+	 * @throws ApkException
+	 * @throws IOException
+	 * @throws RetargetException
+	 * @throws WalaException
+	 * @throws CancelException
+	 */
 	public static void flushPhantom(String phantom) throws ApkException, IOException, RetargetException, WalaException, CancelException {
 		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
 		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
-
 		for (Object key: acqrel_status.keySet()) {
 			String app_name = ApkCollection.cleanApkName((String)key);
 			ApkInstance apk = collection.getApplication(app_name).getPreferred();
@@ -512,6 +521,53 @@ public class Main {
 				apk.cleanOptimizations();
 			}
 		}
+	}
+
+
+	private static void findDiscrepancies() throws IOException, RetargetException {
+		FileInputStream is = new FileInputStream(acqrelDatabaseFile);
+		JSONObject acqrel_status = (JSONObject) JSONSerializer.toJSON(IOUtils.toString(is));
+		JSONObject successfullyOptimized = new JSONObject();
+		int good = 0;
+		int bad = 0;
+		for (Object key: acqrel_status.keySet()) {
+			String app_name = ApkCollection.cleanApkName((String)key);
+			ApkInstance apk = collection.getApplication(app_name).getPreferred();
+			if (apk.isSuccessfullyOptimized()) {
+				int r = enumerateClasses(apk.getRetargetedJar());
+				int o = enumerateClasses(apk.getOptimizedJar());
+				if (r == o) {
+					Log.green();
+					good++;
+					successfullyOptimized.put(app_name, "");
+				}
+				else {
+					Log.red();
+					bad++;
+				}
+				System.out.println(String.format("%40s %30s\t%4d vs %4d", apk.getName(), apk.getVersion(), r, o));
+				Log.resetColor();
+			}
+		}
+		System.out.println(String.format("Good: %d, Bad: %d Total: %d",good, bad, (good+bad)));
+
+		//This will write by default to output.out
+		SystemUtil.writeToFile(successfullyOptimized.toString());
+
+	}
+
+
+	private static int enumerateClasses(File file) throws IOException {
+		Enumeration<JarEntry> entries = new JarFile(file.toString()).entries();
+		int count = 0;
+		while(entries.hasMoreElements()) {
+			JarEntry nextElement = entries.nextElement();
+			String string = nextElement.toString();
+			if (string.endsWith(".class")) {
+				count ++;
+			}
+		}
+		return count;
 	}
 
 	public static void dumpExceptions() throws ApkException, IOException, RetargetException, WalaException, CancelException {
@@ -741,6 +797,7 @@ public class Main {
 		options.addOption(new Option("pc", "phantom-counts", false, "list phantom counts per app"));
 		options.addOption(new Option("e", "opt-exceptions", false, "list histogram of optimization exception types"));
 		options.addOption(new Option("f", "failed", false, "list failed conversions"));
+		options.addOption(new Option("fm", "find-missing", false, "find apps that are missing classes when optimized"));
 		options.addOption(new Option("r", "optimize", false, "optimize unoptimized versions"));
 		options.addOption(new Option("c", "collect-optimized", false, "collect optimized apps"));
 		options.addOption(new Option("r", "reoptimize", false, "re-optimize failed conversions"));
@@ -881,8 +938,9 @@ public class Main {
 					catch(Exception e) { }
 				}
 			}
-
-			if (line.hasOption("flush-phantoms")) {
+			if (line.hasOption("find-missing")) {
+				findDiscrepancies();
+			} else if  (line.hasOption("flush-phantoms")) {
 				flushPhantom(line.getOptionValue("flush-phantoms"));
 			} else if (line.hasOption("phantoms")) {
 				dumpPhantoms();

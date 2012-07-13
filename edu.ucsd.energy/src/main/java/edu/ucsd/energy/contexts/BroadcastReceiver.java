@@ -8,7 +8,7 @@ import com.ibm.wala.types.Selector;
 
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.Component;
-import edu.ucsd.energy.results.ContextSummary;
+import edu.ucsd.energy.results.ComponentSummary;
 import edu.ucsd.energy.results.Violation;
 import edu.ucsd.energy.results.Violation.ViolationType;
 
@@ -24,7 +24,7 @@ public class BroadcastReceiver extends Component {
 	}
 
 	
-	public Set<Violation> gatherViolations(ContextSummary summary) {
+	public Set<Violation> gatherViolations(ComponentSummary summary) {
 		Set<Violation> violations = new HashSet<Violation>();
 		violations.addAll(super.gatherViolations(summary, Interesting.BroadcastReceiverOnReceive, ViolationType.BROADCAST_RECEIVER_ONRECEIVE));
 		return violations;

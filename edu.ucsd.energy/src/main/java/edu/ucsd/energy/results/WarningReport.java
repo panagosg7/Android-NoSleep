@@ -3,7 +3,9 @@ package edu.ucsd.energy.results;
 import java.util.HashSet;
 import java.util.Set;
 
-import net.sf.json.JSONObject;
+import edu.ucsd.energy.util.Log;
+
+import net.sf.json.JSONArray;
 
 public class WarningReport implements IReport {
 
@@ -17,8 +19,12 @@ public class WarningReport implements IReport {
 		return "Warning Report";
 	}
 
-	public JSONObject toJSON() {
-		return null;
+	public Object toJSON() {
+		JSONArray arr = new JSONArray();
+		for (Warning w : sWarning) {
+			arr.add(w.toString());
+		}
+		return arr;
 	}
 
 	
@@ -28,15 +34,28 @@ public class WarningReport implements IReport {
 	}
 
 	public void dump() {
-		// TODO Auto-generated method stub
-		
+		System.out.println();
+		if (hasMessages()) {
+			Log.boldYellow();
+			System.out.println("WARNINGS");
+			Log.resetColor();
+		}
+		else {
+			Log.boldGreen();
+			System.out.println("NO WARNINGS");
+			Log.resetColor();
+		}
+		for (Warning w : sWarning) {
+			System.out.println(w.toString());
+		}
 	}
-	
-	
+
+	private boolean hasMessages() {
+		return !sWarning.isEmpty();
+	}
 
 	public void insertElement(Warning warning) {
-		// TODO Auto-generated method stub
-		
+		sWarning.add(warning);
 	}
 
 }

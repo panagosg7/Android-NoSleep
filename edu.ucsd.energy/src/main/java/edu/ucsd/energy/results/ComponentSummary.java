@@ -17,7 +17,7 @@ import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.results.ProcessResults.LockUsage;
 
-public class ContextSummary {
+public class ComponentSummary {
 	
 	private static final int DEBUG = 0;
 	
@@ -55,7 +55,7 @@ public class ContextSummary {
 	private Component delegatingContext;
 	
 
-	public ContextSummary(Component component) {
+	public ComponentSummary(Component component) {
 		callBackExitStates = new ContextState();
 		instances = new HashSet<WakeLockInstance>();
 		delegatingContext = component;

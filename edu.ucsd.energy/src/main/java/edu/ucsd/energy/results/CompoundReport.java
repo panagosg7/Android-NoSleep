@@ -25,7 +25,7 @@ public class CompoundReport implements IReport {
 		for (IReport r : list) {
 			result.put(
 					r.getTag(), 
-					r.toJSON());	
+					r.toJSON());
 		}
 		return result;
 	}

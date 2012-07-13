@@ -36,6 +36,10 @@ public class Warning extends Message {
 		warning = w;
 	}
 
+	public String toString() {
+		return warning.toString();
+	}
+	
 
 	public void logColor() {
 		//Just use default color - do nothing

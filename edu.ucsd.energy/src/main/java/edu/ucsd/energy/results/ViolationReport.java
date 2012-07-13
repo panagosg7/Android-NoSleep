@@ -11,17 +11,17 @@ import edu.ucsd.energy.util.Log;
 
 public class ViolationReport implements IReport {
 
-	private HashSetMultiMap<IReportKey, Violation> violations;
+	private HashSetMultiMap<Component, Violation> violations;
 
 	public String getTag() {
 		return "Violation Report";
 	}
 
 	public ViolationReport() {
-		violations = new HashSetMultiMap<IReportKey, Violation>();
+		violations = new HashSetMultiMap<Component, Violation>();
 	}
-	
-	
+
+
 	public String toShortDescription() {
 		// TODO Auto-generated method stub
 		return null;
@@ -39,14 +39,14 @@ public class ViolationReport implements IReport {
 			Log.boldRed();
 			System.out.println("POLICY VIOLATIONS");
 			Log.resetColor();
-		}
-		for (IReportKey r : violations.keySet()) {
-			Set<Violation> set = violations.get(r);
-			for (Violation v : set) {
-				
-				v.logColor();
-				Log.println(r.toString() + " :: " + v.toString());
-				Log.resetColor();
+			for (Component r : violations.keySet()) {
+				Set<Violation> set = violations.get(r);
+				for (Violation v : set) {
+
+					v.logColor();
+					Log.println(r.toString() + " :: " + v.toString());
+					Log.resetColor();
+				}
 			}
 		}
 	}
@@ -57,7 +57,7 @@ public class ViolationReport implements IReport {
 
 	public JSONObject toJSON() {
 		JSONObject obj = new JSONObject();
-		for (IReportKey ctx : violations.keySet()) {
+		for (Component ctx : violations.keySet()) {
 			Set<Violation> set = violations.get(ctx);
 			JSONArray arr = new JSONArray();
 			for (Violation v : set) {
@@ -73,7 +73,7 @@ public class ViolationReport implements IReport {
 	public void insertViolations(Component component, Set<Violation> sViolations) {
 		violations.putAll(component, sViolations);	
 	}
-	
+
 
 
 

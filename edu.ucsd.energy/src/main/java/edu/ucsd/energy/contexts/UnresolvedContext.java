@@ -9,7 +9,7 @@ import com.ibm.wala.types.Selector;
 
 import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.component.Component;
-import edu.ucsd.energy.results.ContextSummary;
+import edu.ucsd.energy.results.ComponentSummary;
 import edu.ucsd.energy.results.Violation;
 import edu.ucsd.energy.results.Violation.ViolationType;
 
@@ -33,7 +33,7 @@ public class UnresolvedContext extends Component {
 	 * Gather violations for all possible callbacks in unresolved components
 	 */
 	@Override
-	protected Set<Violation> gatherViolations(ContextSummary summary) {
+	protected Set<Violation> gatherViolations(ComponentSummary summary) {
 		Set<Violation> violations = new HashSet<Violation>();
 		for(CallBack cb : getRoots()) {
 			violations.addAll(super.gatherViolations(summary, 

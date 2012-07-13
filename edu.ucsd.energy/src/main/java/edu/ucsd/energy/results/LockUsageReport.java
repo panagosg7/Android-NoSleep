@@ -6,7 +6,7 @@ import java.util.Map.Entry;
 
 import net.sf.json.JSONObject;
 import edu.ucsd.energy.component.Component;
-import edu.ucsd.energy.results.ContextSummary.ContextState;
+import edu.ucsd.energy.results.ComponentSummary.ContextState;
 
 public class LockUsageReport implements IReport {
 
@@ -39,7 +39,7 @@ public class LockUsageReport implements IReport {
 	}
 
 	//TODO: fix this
-	public void insert(Component component, ContextSummary cSummary) {
+	public void insert(Component component, ComponentSummary cSummary) {
 		//ContextState callBackUsage = cSummary.getCallBackStates();
 		//mComponent.put(component, callBackUsage);
 	}
