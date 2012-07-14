@@ -48,6 +48,7 @@ import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.debug.UnimplementedError;
 
 import edu.ucsd.energy.ApkCollection.ApkApplication;
+import edu.ucsd.energy.analysis.AndroidJar;
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.apk.ApkInstance;
 import edu.ucsd.energy.apk.ConfigurationException;
@@ -645,6 +646,23 @@ public class Main {
 
 
 	/**
+	 * Dump/inspect Android entries
+	 * 
+	 * @param optionValue
+	 * @throws IOException 
+	 * @throws ConfigurationException 
+	 */
+	private static void dumpAndroid(String optionValue) throws ConfigurationException, IOException {
+		int version = Integer.parseInt(optionValue);
+//		AndroidJar androidJar = AndroidJar.getAndroidCH(version);
+//		androidJar.dumpJar();
+		
+		
+	}
+	
+	
+
+	/**
 	 * Check to see how many apps have been successfully optimized
 	 * Output a json file containing them
 	 */
@@ -811,6 +829,8 @@ public class Main {
 		options.addOption(new Option("t", "threads", true, "run the analysis on t threads (works for pattern analysis only)"));
 		options.addOption(new Option("skipN", true, "skip the first N application that are in line for analysis"));
 		options.addOption(new Option("sp", "skip-prev", false, "skip application that are already analyzed"));
+		
+		options.addOption(new Option("dumpAndroid", true, "dump entries in the android.jar. Gets version as parameter."));
 
 		//Some applications may cause our analysis to hang - avoid them by writing them down in 
 		//the properties file as "skip_apps = /home/pvekris/dev/apk_scratch/output/too_big.txt"
@@ -942,6 +962,8 @@ public class Main {
 				findDiscrepancies();
 			} else if  (line.hasOption("flush-phantoms")) {
 				flushPhantom(line.getOptionValue("flush-phantoms"));
+			} else if  (line.hasOption("dumpAndroid")) {
+				dumpAndroid(line.getOptionValue("dumpAndroid"));
 			} else if (line.hasOption("phantoms")) {
 				dumpPhantoms();
 			} else if (line.hasOption("phantom-counts")) {
@@ -986,6 +1008,7 @@ public class Main {
 			e.printStackTrace();
 		}
 	}
+
 
 }
 

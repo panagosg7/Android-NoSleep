@@ -24,10 +24,6 @@ public class GlobalManager {
 	private SpecialConditions specialConditions; 
 	
 	
-	
-	
-	
-	
 	private static ThreadLocal<GlobalManager> threadGM = new ThreadLocal<GlobalManager>();
 	
 	public static GlobalManager get() {

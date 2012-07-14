@@ -4,7 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.ibm.wala.classLoader.IClass;
-import com.ibm.wala.types.ClassLoaderReference;
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.types.Selector;
 
 import edu.ucsd.energy.component.CallBack;
@@ -12,20 +12,22 @@ import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.results.ComponentSummary;
 import edu.ucsd.energy.results.Violation;
 import edu.ucsd.energy.results.Violation.ViolationType;
+import edu.ucsd.energy.util.Log;
 
 /**
  * This is a generic component class used whenever a component/context 
- * (not sure atm if we should be using both) cannot be resolved due to 
- * insufficient input data. 
+ * cannot be resolved due to insufficient input data. 
  * We do not need to fill up sTypicalCallback and callbackEdges, since we
  * cannot know this kind of information beforehand
  * 
  * @author pvekris
  *
  */
-public class UnresolvedContext extends Component {
+public class UnresolvedComponent extends Component {
 
-	public UnresolvedContext(IClass c) {
+	private static final int DEBUG = 1;
+
+	public UnresolvedComponent(IClass c) {
 		super(c);
 	}
 
@@ -36,8 +38,12 @@ public class UnresolvedContext extends Component {
 	protected Set<Violation> gatherViolations(ComponentSummary summary) {
 		Set<Violation> violations = new HashSet<Violation>();
 		for(CallBack cb : getRoots()) {
-			violations.addAll(super.gatherViolations(summary, 
-					cb.getSelector(), ViolationType.UNRESOLVED_CALLBACK_LOCKED));
+			
+			if (DEBUG > 0) {
+				Log.println("Examining callback: " + cb.toString() + " :: " + isSystemCall(cb.getSelector()));
+			}
+			
+			violations.addAll(super.gatherViolations(summary,cb.getSelector(), ViolationType.UNRESOLVED_CALLBACK_LOCKED));
 		}
 		return violations;
 	}
@@ -56,8 +62,25 @@ public class UnresolvedContext extends Component {
 		return new HashSet<Selector>();
 	}
 
-	public boolean extendsAndroid() {
-		return extendsSystem(ClassLoaderReference.Extension, extendsAndroid);
+
+
+	public boolean isSystemCall(Selector sel) {
+		//TODO: figure out why this doesn't work...
+//		if(extendsAndroid()) {
+			HashSet<IClass> relevant = new HashSet<IClass>();
+			relevant.addAll(getClassAncestors());
+			relevant.addAll(getImplementedInterfaces());
+			for (IClass r : relevant) {
+				System.out.println("Checking: " + r.toString());
+				IMethod resolvedMethod = r.getMethod(sel);
+				if (resolvedMethod != null) {
+					System.out.println("OVERRIDES: " + toString() + ", sel: " + sel);
+					return true;					
+				}
+			}
+//		}
+		return false;
 	}
-	
+
+
 }

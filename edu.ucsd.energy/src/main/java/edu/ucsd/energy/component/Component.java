@@ -345,7 +345,6 @@ public abstract class Component extends AbstractContext implements IReportKey {
 
 	protected Boolean extendsAndroid;
 
-	private Boolean extendsJava;
 
 	public void addSeed(Component c, SSAInstruction instr) {
 		if (sSeed == null) {
@@ -463,7 +462,7 @@ public abstract class Component extends AbstractContext implements IReportKey {
 							System.out.println("Adding violation: " + wli.toShortString());
 							System.out.println();
 						}
-						violations.add(new Violation(res));
+						violations.add(new Violation(res, sel.toString()));
 					}	
 				}
 			}
@@ -496,29 +495,28 @@ public abstract class Component extends AbstractContext implements IReportKey {
 	 * API's or is it just a helper class in the application?
 	 * @return
 	 */
-	protected boolean extendsSystem(ClassLoaderReference clr, Boolean extendsBoolean) {
-		if (extendsBoolean == null) {
+	public boolean extendsAndroid() {
+		ClassLoaderReference clr = ClassLoaderReference.Extension;
+		if (extendsAndroid == null) {
 			for(IClass c : getClassAncestors()) {
 				if (c.getClassLoader().equals(clr)) {
-					extendsBoolean = new Boolean(true);
+					extendsAndroid = new Boolean(true);
 					return true;
 				}
 			}
 			for(IClass i : getImplementedInterfaces()) {
 				if (i.getClassLoader().equals(clr)) {
-					extendsBoolean = new Boolean(true);
+					extendsAndroid = new Boolean(true);
 					return true;
 				}
 			}
-			extendsBoolean = new Boolean(false);
+			extendsAndroid = new Boolean(false);
 		}
-		return extendsBoolean.booleanValue();
+		return extendsAndroid.booleanValue();
 	}
-
-	//Not used, but similar to extendsAndroid.
-	public boolean extendsJava() {
-		return extendsSystem(ClassLoaderReference.Primordial, extendsJava);
-	}
+	
+	
+	
 	
 	
 	

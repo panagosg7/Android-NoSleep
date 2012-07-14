@@ -42,7 +42,6 @@ public class ViolationReport implements IReport {
 			for (Component r : violations.keySet()) {
 				Set<Violation> set = violations.get(r);
 				for (Violation v : set) {
-
 					v.logColor();
 					Log.println(r.toString() + " :: " + v.toString());
 					Log.resetColor();

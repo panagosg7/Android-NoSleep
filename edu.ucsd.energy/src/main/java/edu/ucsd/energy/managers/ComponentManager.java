@@ -47,7 +47,7 @@ import edu.ucsd.energy.contexts.Callable;
 import edu.ucsd.energy.contexts.IntentService;
 import edu.ucsd.energy.contexts.RunnableThread;
 import edu.ucsd.energy.contexts.Service;
-import edu.ucsd.energy.contexts.UnresolvedContext;
+import edu.ucsd.energy.contexts.UnresolvedComponent;
 import edu.ucsd.energy.results.IReport;
 import edu.ucsd.energy.results.ProcessResults;
 import edu.ucsd.energy.util.GraphUtils;
@@ -214,7 +214,7 @@ public class ComponentManager {
 
 			//If all else fails register the class as an unresolved context
 			if (component == null) {
-				component = new UnresolvedContext(c);
+				component = new UnresolvedComponent(c);
 				unresolvedClasses++;
 			}
 			//Done resolving this class --
@@ -224,12 +224,12 @@ public class ComponentManager {
 			registerComponent(c.getReference(), component);
 
 
-			if (component instanceof UnresolvedContext) {
-				if (RESOLVE_DEBUG > 1) {
+			if (component instanceof UnresolvedComponent) {
+				if (RESOLVE_DEBUG > 0) {
 					Log.yellow();
 					Log.println("Unresolved: " + c.getName().toString() + 
 							" interacts with Android: " + component.extendsAndroid());
-					if (RESOLVE_DEBUG > 1) {
+					if (RESOLVE_DEBUG > 0) {
 						component.outputParentInfo();
 					}
 
