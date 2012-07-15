@@ -75,6 +75,8 @@ public class Main {
 
 	public static final Object logLock = new Object();
 
+	public static boolean AVOID_OPT_CHECK = false;
+
 
 
 	public static void runWakeLockAnalysis() 
@@ -85,9 +87,7 @@ public class Main {
 		runAnalysis(jobPool);
 	}
 
-	public static void runVerifyAnalysis() 
-			throws ApkException, IOException, RetargetException, 
-			WalaException, CancelException, InterruptedException {
+	public static void runVerifyAnalysis() throws ApkException, IOException, RetargetException,	WalaException, CancelException, InterruptedException {
 		JobPool<VerifyTask> jobPool = new JobPool<VerifyTask>() {
 			protected VerifyTask newTask(ApkInstance apk) {
 				return new VerifyTask(apk); 
@@ -174,9 +174,8 @@ public class Main {
 			IReport res;
 			startTimer();
 			try {
-				//LOGGER.info("Starting: " + apk.getName());
 				String app_name = apk.getName();
-				if (apk.successfullyOptimized()) {
+				if (AVOID_OPT_CHECK || apk.successfullyOptimized()) {
 					try {
 						res = apk.analyzeFull();
 						//success
@@ -645,22 +644,6 @@ public class Main {
 	}
 
 
-	/**
-	 * Dump/inspect Android entries
-	 * 
-	 * @param optionValue
-	 * @throws IOException 
-	 * @throws ConfigurationException 
-	 */
-	private static void dumpAndroid(String optionValue) throws ConfigurationException, IOException {
-		int version = Integer.parseInt(optionValue);
-//		AndroidJar androidJar = AndroidJar.getAndroidCH(version);
-//		androidJar.dumpJar();
-		
-		
-	}
-	
-	
 
 	/**
 	 * Check to see how many apps have been successfully optimized
@@ -830,8 +813,8 @@ public class Main {
 		options.addOption(new Option("skipN", true, "skip the first N application that are in line for analysis"));
 		options.addOption(new Option("sp", "skip-prev", false, "skip application that are already analyzed"));
 		
-		options.addOption(new Option("dumpAndroid", true, "dump entries in the android.jar. Gets version as parameter."));
-
+		options.addOption(new Option("ao", "avoid-opt", false, "avoid checking and if app is optimized (use with care)"));
+		
 		//Some applications may cause our analysis to hang - avoid them by writing them down in 
 		//the properties file as "skip_apps = /home/pvekris/dev/apk_scratch/output/too_big.txt"
 		options.addOption(new Option("sb", "skip-big", false, "skip the applications that are known to make the analysis hang"));
@@ -858,6 +841,11 @@ public class Main {
 			if (line.hasOption("output")) {
 				setOutputFile(line.getOptionValue("output"));
 			}
+			
+			if (line.hasOption("avoid-opt")) {
+				AVOID_OPT_CHECK = true;
+			}
+			
 			if (line.hasOption("input")) {
 				setInputJSONFile(line.getOptionValue("input"));
 			}
@@ -962,8 +950,6 @@ public class Main {
 				findDiscrepancies();
 			} else if  (line.hasOption("flush-phantoms")) {
 				flushPhantom(line.getOptionValue("flush-phantoms"));
-			} else if  (line.hasOption("dumpAndroid")) {
-				dumpAndroid(line.getOptionValue("dumpAndroid"));
 			} else if (line.hasOption("phantoms")) {
 				dumpPhantoms();
 			} else if (line.hasOption("phantom-counts")) {
