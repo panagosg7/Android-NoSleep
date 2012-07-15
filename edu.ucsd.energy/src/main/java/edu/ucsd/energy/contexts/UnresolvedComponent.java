@@ -32,18 +32,22 @@ public class UnresolvedComponent extends Component {
 	}
 
 	/**
-	 * Gather violations for all possible callbacks in unresolved components
+	 * Gather violations for all possible call-backs in unresolved components
+	 * This includes just the call-backs that can be called by the Android OS,
+	 * not arbitrary method calls.
 	 */
 	@Override
 	protected Set<Violation> gatherViolations(ComponentSummary summary) {
 		Set<Violation> violations = new HashSet<Violation>();
 		for(CallBack cb : getRoots()) {
-			
-			if (DEBUG > 0) {
-				Log.println("Examining callback: " + cb.toString() + " :: " + isSystemCall(cb.getSelector()));
+			if(isSystemCall(cb.getSelector())) {
+				if (DEBUG > 0) {
+					Log.println();
+					Log.println("Examining callback: " + cb.toString());
+				}
+				violations.addAll(super.gatherViolations(summary,cb.getSelector(), 
+						ViolationType.UNRESOLVED_CALLBACK_LOCKED));
 			}
-			
-			violations.addAll(super.gatherViolations(summary,cb.getSelector(), ViolationType.UNRESOLVED_CALLBACK_LOCKED));
 		}
 		return violations;
 	}
@@ -65,20 +69,19 @@ public class UnresolvedComponent extends Component {
 
 
 	public boolean isSystemCall(Selector sel) {
-		//TODO: figure out why this doesn't work...
-//		if(extendsAndroid()) {
+		if(extendsAndroid()) {
 			HashSet<IClass> relevant = new HashSet<IClass>();
 			relevant.addAll(getClassAncestors());
 			relevant.addAll(getImplementedInterfaces());
 			for (IClass r : relevant) {
-				System.out.println("Checking: " + r.toString());
+				//System.out.println("Checking: " + r.toString());
 				IMethod resolvedMethod = r.getMethod(sel);
 				if (resolvedMethod != null) {
-					System.out.println("OVERRIDES: " + toString() + ", sel: " + sel);
+					//System.out.println("OVERRIDES: " + toString() + ", sel: " + sel);
 					return true;					
 				}
 			}
-//		}
+		}
 		return false;
 	}
 

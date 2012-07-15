@@ -343,7 +343,7 @@ public abstract class Component extends AbstractContext implements IReportKey {
 
 	private Collection<IClass> classAncestors;
 
-	protected Boolean extendsAndroid;
+	protected Boolean extendsAndroid = null;
 
 
 	public void addSeed(Component c, SSAInstruction instr) {
@@ -496,16 +496,15 @@ public abstract class Component extends AbstractContext implements IReportKey {
 	 * @return
 	 */
 	public boolean extendsAndroid() {
-		ClassLoaderReference clr = ClassLoaderReference.Extension;
 		if (extendsAndroid == null) {
 			for(IClass c : getClassAncestors()) {
-				if (c.getClassLoader().equals(clr)) {
+				if (c.getClassLoader().toString().equals("Extension")) {	//should be ok...
 					extendsAndroid = new Boolean(true);
 					return true;
 				}
 			}
 			for(IClass i : getImplementedInterfaces()) {
-				if (i.getClassLoader().equals(clr)) {
+				if (i.getClassLoader().toString().equals("Extension")) {	//should be ok...
 					extendsAndroid = new Boolean(true);
 					return true;
 				}
