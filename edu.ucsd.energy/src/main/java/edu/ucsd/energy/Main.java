@@ -125,9 +125,9 @@ public class Main {
 		private static Integer counter = new Integer(0);
 		
 		protected InheritableThreadLocal<ApkInstance> apk = new InheritableThreadLocal<ApkInstance>();
-		private ThreadLocal<Integer> myCounter = new ThreadLocal<Integer>();
-		private ThreadLocal<Date> startTime 	 = new ThreadLocal<Date>();
-		private ThreadLocal<Date> stopTime		 = new ThreadLocal<Date>();
+		private InheritableThreadLocal<Integer> myCounter = new InheritableThreadLocal<Integer>();
+		private InheritableThreadLocal<Date> startTime 	 = new InheritableThreadLocal<Date>();
+		private InheritableThreadLocal<Date> stopTime		 = new InheritableThreadLocal<Date>();
 
 		CallableTask(ApkInstance a) {
 			apk.set(a);
@@ -145,21 +145,23 @@ public class Main {
 			System.out.println(sb.toString());
 		}
 
-		protected synchronized void stopTimer() {
+		protected synchronized String stopTimer() {
 			Date date = new Date();
 			stopTime.set(date);
 			ApkInstance a = apk.get();
 			long diff = stopTime.get().getTime() - startTime.get().getTime();
 			double diffSeconds = (double) diff / 1000 % 60;  
 			long diffMinutes = diff / (60 * 1000) % 60;
-			System.out.println("\n<<< "+ dateFormat.format(date));						
+			System.out.println("\n<<< "+ dateFormat.format(date));
+			String elapsed = diffMinutes + "m" + String.format("%.2f", diffSeconds) + "s";
 			System.out.println("<<< " + myCounter.get() + ". " +  a.getName() + " version: " + 
-					a.getVersion() + " (elapsed: " + diffMinutes + "m" + String.format("%.2f", diffSeconds) + "s)\n");
+					a.getVersion() + " (elapsed: " + elapsed + ")\n");
 			//release threadlocals!
 			apk.remove();
 			myCounter.remove();
 			startTime.remove();
 			stopTime.remove();			
+			return elapsed;
 		}
 
 	}
@@ -199,17 +201,23 @@ public class Main {
 					LOGGER.warning("Optimization failed: " + app_name);
 					res = new FailReport(WarningType.OPTIMIZATION_FAILURE);
 				}
-				JSONObject json = new JSONObject();
-				res.appendTo(json);
-				json.put("version", a.getVersion());
-				SystemUtil.commitReport(a.getName(), json);
+				
 			} catch (IOException e) {
 				e.printStackTrace();
 				res = new FailReport(WarningType.IOEXCEPTION_FAILURE);
 			}
+			
+			JSONObject json = new JSONObject();
+			res.appendTo(json);
+			json.put("version", a.getVersion());
+			json.put("elapsed", stopTimer());
+			
+			//Commit to the general json file
+			SystemUtil.commitReport(a.getName(), json);
+			
 			//Dump the output file in each intermediate step
 			SystemUtil.writeToFile();
-			stopTimer();
+			
 			//Hint to garbage collector
 			System.gc();
 

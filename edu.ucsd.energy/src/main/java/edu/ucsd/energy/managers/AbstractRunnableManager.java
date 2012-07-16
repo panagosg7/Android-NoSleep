@@ -213,7 +213,6 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 				}
 			}
 		}
-	
 		int size = mInstruction2Instance.size();
 		if (unresolvedCallSites.size() == 0) {
 			Log.green();
@@ -221,7 +220,8 @@ public abstract class AbstractRunnableManager<V extends AbstractRunnableInstance
 		else {
 			Log.yellow();
 		}
-		Log.println((size - unresolvedCallSites.size()) + " / " + size + " " + getTag() +" call sites were resolved successfully.");
+		Log.println((size - unresolvedCallSites.size()) + " / " + size + " " + getTag() +
+				" call sites were resolved successfully.");
 		Log.resetColor();
 	}
 

@@ -599,7 +599,8 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		IClass fieldClass = gm.getClassHierarchy().lookupClass(fieldType);
 		if (fieldClass == null) return false;
 		for (IClass interClass : interestingTypes) {
-			Assertions.productionAssertion(interClass != null && fieldClass != null, "AAA" );
+			Assertions.productionAssertion(interClass != null, "AAA" );
+			Assertions.productionAssertion(fieldClass != null, "BBB" );
 			if (gm.getClassHierarchy().isSubclassOf(fieldClass, interClass)) {
 				return true;
 			}

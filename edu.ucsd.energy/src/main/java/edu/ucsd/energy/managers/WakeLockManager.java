@@ -248,6 +248,13 @@ public class WakeLockManager extends AbstractDUManager<WakeLockInstance> {
 	protected void setInterestingType() {
 		interestingTypes = new HashSet<IClass>();
 		IClass lookupClass = gm.getClassHierarchy().lookupClass(Interesting.WakeLockTypeRef);
+		if (lookupClass == null) {
+			System.out.println("Setting null interesting");
+		}
+		IClass lookupClass1 = gm.getClassHierarchy().lookupClass(Interesting.WakeLockTypeRefExt);
+		if (lookupClass1 == null) {
+			System.out.println("Setting null interesting extension");
+		}
 		interestingTypes.add(lookupClass);		
 	}
 

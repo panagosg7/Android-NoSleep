@@ -43,9 +43,7 @@ public class CompoundReport implements IReport {
 	public JSONObject toJSON() throws JSONException {
 		JSONObject result = new JSONObject();
 		for (IReport r : list) {
-			result.put(
-					r.getTag(), 
-					r.toJSON());
+			result.put(r.getTag(), r.toJSON());
 		}
 		return result;
 	}

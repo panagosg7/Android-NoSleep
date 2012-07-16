@@ -74,6 +74,8 @@ public class Interesting {
 	public final static TypeName WakeLockType = TypeName.string2TypeName("Landroid/os/PowerManager$WakeLock");
 	public  final static TypeReference WakeLockTypeRef = TypeReference.findOrCreate(ClassLoaderReference.Application, WakeLockType);
 	
+	public  final static TypeReference WakeLockTypeRefExt = TypeReference.findOrCreate(ClassLoaderReference.Extension, WakeLockType);
+	
 	public final static TypeName PowerManagerName = TypeName.string2TypeName("Landroid/os/PowerManager");
 
 	public  final static TypeName IntentType = TypeName.string2TypeName("Landroid/content/Intent");
