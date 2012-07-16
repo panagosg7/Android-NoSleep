@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import junit.framework.Assert;
+
 import net.sf.json.JSONObject;
 
 import com.ibm.wala.classLoader.IClass;
@@ -29,6 +31,7 @@ import com.ibm.wala.types.Selector;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.Iterator2List;
 import com.ibm.wala.util.collections.Pair;
+import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.intset.MutableSparseIntSet;
 
 import edu.ucsd.energy.apk.AppCallGraph;
@@ -596,6 +599,7 @@ public abstract class AbstractDUManager<V extends ObjectInstance>  {
 		IClass fieldClass = gm.getClassHierarchy().lookupClass(fieldType);
 		if (fieldClass == null) return false;
 		for (IClass interClass : interestingTypes) {
+			Assertions.productionAssertion(interClass != null && fieldClass != null, "AAA" );
 			if (gm.getClassHierarchy().isSubclassOf(fieldClass, interClass)) {
 				return true;
 			}

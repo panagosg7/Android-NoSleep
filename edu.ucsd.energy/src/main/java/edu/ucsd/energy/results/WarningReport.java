@@ -3,18 +3,18 @@ package edu.ucsd.energy.results;
 import java.util.HashSet;
 import java.util.Set;
 
-import edu.ucsd.energy.util.Log;
-
 import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
+import edu.ucsd.energy.util.Log;
 
 public class WarningReport implements IReport {
 
 	Set<Warning> sWarning;
-	
+
 	WarningReport() {
 		sWarning = new HashSet<Warning>();
 	}
-	
+
 	public String getTag() {
 		return "Warning Report";
 	}
@@ -27,7 +27,7 @@ public class WarningReport implements IReport {
 		return arr;
 	}
 
-	
+
 	public String toShortDescription() {
 		// TODO Auto-generated method stub
 		return null;
@@ -56,6 +56,12 @@ public class WarningReport implements IReport {
 
 	public void insertElement(Warning warning) {
 		sWarning.add(warning);
+	}
+
+	public void appendTo(JSONObject o) {
+		if (o == null) 
+			o = new JSONObject();
+		o.put(getTag(), toJSON());
 	}
 
 }

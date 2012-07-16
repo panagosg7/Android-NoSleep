@@ -145,7 +145,11 @@ public class Log {
 	public static void green() {
 		System.out.print("\033[32m");		
 	}
-
+	
+	public static void lightGreen() {
+		System.out.print("\033[0;32m");		
+	}
+	
 	public static void red() {
 		System.out.print("\033[31m");		
 	}
@@ -158,10 +162,14 @@ public class Log {
 		System.out.print("\033[1;31m");		
 	}
 
+	public static void lightGrey() {
+		System.out.print("\033[37;40m");		
+	}
+
 	public static void grey() {
 		System.out.print("\033[1;30;40m");		
 	}
-
+	
 	public static void red(String string) {
 		red();
 		println(string);
@@ -194,6 +202,18 @@ public class Log {
 
 	public static void boldYellow() {
 		System.out.print("\033[1;33m");		
+	}
+
+	public static void lightGreen(String str) {
+		lightGreen();
+		println(str);
+		resetColor();
+	}
+
+	public static void lightGrey(String str) {
+		lightGrey();
+		println(str);
+		resetColor();		
 	}
 
 
