@@ -515,10 +515,6 @@ public abstract class Component extends AbstractContext implements IReportKey {
 	}
 	
 	
-	
-	
-	
-	
 	public void outputParentInfo() {
 		for (IClass anc : getClassAncestors()) {
 			Log.println("#### CL: " + anc.getName().toString() + "\t" +

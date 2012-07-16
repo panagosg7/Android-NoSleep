@@ -48,9 +48,8 @@ public class Wala {
 		//Perform the data flow
 		gm.solveComponents();
 		CompoundReport report = new CompoundReport();
-		report.register(gm.getIntentReport());
-		report.register(gm.getRunnableReport());
-//		report.register(gm.getWakeLockReport());
+		report.register(gm.getIntentReport());			//report how many resolved intents there are
+		report.register(gm.getRunnableReport());		//report how many resolved threads there are
 		report.register(gm.getAnalysisReport());
 		gm.reset();
 		return report;

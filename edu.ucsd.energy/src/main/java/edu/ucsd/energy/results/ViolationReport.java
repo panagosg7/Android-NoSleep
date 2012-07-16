@@ -73,7 +73,19 @@ public class ViolationReport implements IReport {
 		violations.putAll(component, sViolations);	
 	}
 
-
-
+	public void appendTo(JSONObject o) {
+		if (o == null) 
+			o = new JSONObject();
+		for (Component ctx : violations.keySet()) {
+			Set<Violation> set = violations.get(ctx);
+			JSONArray arr = new JSONArray();
+			for (Violation v : set) {
+				arr.add(v.toJSON());
+			}
+			if (!arr.isEmpty()) {
+				o.put(ctx.toString(), arr);
+			}
+		}
+	}
 
 }

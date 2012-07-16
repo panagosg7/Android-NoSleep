@@ -48,7 +48,6 @@ import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.debug.UnimplementedError;
 
 import edu.ucsd.energy.ApkCollection.ApkApplication;
-import edu.ucsd.energy.analysis.AndroidJar;
 import edu.ucsd.energy.analysis.Opts;
 import edu.ucsd.energy.apk.ApkInstance;
 import edu.ucsd.energy.apk.ConfigurationException;
@@ -71,12 +70,10 @@ public class Main {
 	private static ApkCollection collection;
 
 	private static ArrayList<String> theSet = new ArrayList<String>();
-	private static Set<String>	skip = new HashSet<String>();
-
+	
 	public static final Object logLock = new Object();
 
-	public static boolean AVOID_OPT_CHECK = false;
-
+	public static boolean AVOID_APK_CHECK = false;
 
 
 	public static void runWakeLockAnalysis() 
@@ -121,42 +118,48 @@ public class Main {
 	}
 
 	private static abstract class CallableTask implements Callable<IReport> {
-
-		protected ApkInstance apk;
-
+		
 		private static DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-
+		
+		//Common among threads - but must synchronize
 		private static Integer counter = new Integer(0);
+		
+		protected InheritableThreadLocal<ApkInstance> apk = new InheritableThreadLocal<ApkInstance>();
+		private ThreadLocal<Integer> myCounter = new ThreadLocal<Integer>();
+		private ThreadLocal<Date> startTime 	 = new ThreadLocal<Date>();
+		private ThreadLocal<Date> stopTime		 = new ThreadLocal<Date>();
 
-		private Integer myCounter;
-
-		private Date startTime;
-		private Date stopTime;
-
-		CallableTask(ApkInstance apk) {
-			this.apk = apk;
+		CallableTask(ApkInstance a) {
+			apk.set(a);
 		}
 
 		protected synchronized void startTimer() {
-			startTime = new Date();
+			Date date = new Date();
+			startTime.set(date);
 			counter++;
-			myCounter = new Integer(counter.intValue());
-			Date date = new Date();				
+			myCounter.set(new Integer(counter.intValue()));
 			StringBuffer sb = new StringBuffer();
+			ApkInstance a = apk.get();
 			sb.append("\n>>> " + dateFormat.format(date) + "\n");						
-			sb.append(">>> " + myCounter + ". " +  apk.getName() + " version: " + apk.getVersion() + "\n");
+			sb.append(">>> " + myCounter.get() + ". " +  a.getName() + " version: " + a.getVersion() + "\n");
 			System.out.println(sb.toString());
 		}
 
 		protected synchronized void stopTimer() {
-			stopTime = new Date();
-			long diff = stopTime.getTime() - startTime.getTime();
+			Date date = new Date();
+			stopTime.set(date);
+			ApkInstance a = apk.get();
+			long diff = stopTime.get().getTime() - startTime.get().getTime();
 			double diffSeconds = (double) diff / 1000 % 60;  
 			long diffMinutes = diff / (60 * 1000) % 60;
-			Date date = new Date();
 			System.out.println("\n<<< "+ dateFormat.format(date));						
-			System.out.println("<<< " + myCounter + ". " +  apk.getName() + " version: " + 
-					apk.getVersion() + " (elapsed: " + diffMinutes + "m" + String.format("%.2f", diffSeconds) + "s)\n");
+			System.out.println("<<< " + myCounter.get() + ". " +  a.getName() + " version: " + 
+					a.getVersion() + " (elapsed: " + diffMinutes + "m" + String.format("%.2f", diffSeconds) + "s)\n");
+			//release threadlocals!
+			apk.remove();
+			myCounter.remove();
+			startTime.remove();
+			stopTime.remove();			
 		}
 
 	}
@@ -166,25 +169,26 @@ public class Main {
 	// --verify
 	private static class VerifyTask extends CallableTask {
 
-		VerifyTask(ApkInstance apk) {
-			super(apk);
+		VerifyTask(ApkInstance a) {
+			super(a);
 		}
 
-		public IReport call() throws Exception {
+		public IReport call()  {
+			ApkInstance a = apk.get();
 			IReport res;
 			startTimer();
 			try {
-				String app_name = apk.getName();
-				if (AVOID_OPT_CHECK || apk.successfullyOptimized()) {
+				String app_name = a.getName();
+				if (AVOID_APK_CHECK || a.successfullyOptimized()) {
 					try {
-						res = apk.analyzeFull();
+						res = a.analyzeFull();
 						//success
-						SystemUtil.writeToCompleted(apk.getName());
+						SystemUtil.writeToCompleted(a.getName());
 					} catch(Exception e) {
 						//Any exception should be notified
 						e.printStackTrace();		//XXX: keep this somewhere
 						res = new FailReport(WarningType.ANALYSIS_FAILURE);
-						Log.red("\n<<< "+ apk.getName()+ " FAILURE");
+						Log.red("\n<<< "+ a.getName()+ " FAILURE");
 					}
 					catch (UnimplementedError e) {
 						e.printStackTrace();
@@ -195,14 +199,16 @@ public class Main {
 					LOGGER.warning("Optimization failed: " + app_name);
 					res = new FailReport(WarningType.OPTIMIZATION_FAILURE);
 				}
-				JSONObject json = (JSONObject) res.toJSON();
-				json.put("version", apk.getVersion());
-				SystemUtil.commitReport(apk.getName(), json);
+				JSONObject json = new JSONObject();
+				res.appendTo(json);
+				json.put("version", a.getVersion());
+				SystemUtil.commitReport(a.getName(), json);
 			} catch (IOException e) {
 				e.printStackTrace();
 				res = new FailReport(WarningType.IOEXCEPTION_FAILURE);
 			}
 			//Dump the output file in each intermediate step
+			SystemUtil.writeToFile();
 			stopTimer();
 			//Hint to garbage collector
 			System.gc();
@@ -316,11 +322,18 @@ public class Main {
 				for (String cat: catsArray) {
 					cats.add(cat);
 				}					
+				System.err.println("Adding: " + app_name + " to pool.");
 				final ApkApplication application = collection.getApplication(app_name);
-				ApkInstance apk = application.getPreferred();
-				T task = newTask(apk);
-				pool.add(task);
-			}
+				if (application != null) {
+					ApkInstance apk = application.getPreferred();
+					T task = newTask(apk);
+					pool.add(task);
+				}
+				else{
+					System.err.println(app_name + " was not found in the collection.");
+				}
+			}// for theSet
+			System.err.println("Added a total of: " + pool.size() + " apps in the pool.");
 		}
 
 		public Set<T> getPool() {
@@ -375,7 +388,10 @@ public class Main {
 		ThreadPoolExecutor tPoolExec = new ThreadPoolExecutor(numberOfThreads, numberOfThreads, keepAliveTime, unit, workQueue);
 		Set<? extends CallableTask> tasks = jobPool.getPool();
 		//we can get this result...
+		
 		tPoolExec.invokeAll(tasks);
+		System.out.println(tPoolExec.getTaskCount());
+
 
 		tPoolExec.shutdown();
 		tPoolExec.awaitTermination(20, TimeUnit.HOURS);
@@ -813,7 +829,7 @@ public class Main {
 		options.addOption(new Option("skipN", true, "skip the first N application that are in line for analysis"));
 		options.addOption(new Option("sp", "skip-prev", false, "skip application that are already analyzed"));
 		
-		options.addOption(new Option("ao", "avoid-opt", false, "avoid checking and if app is optimized (use with care)"));
+		options.addOption(new Option("ao", "avoid-apk-check", false, "avoid checking and if the apk is there (use with care as it will not be able to be retargeted)"));
 		
 		//Some applications may cause our analysis to hang - avoid them by writing them down in 
 		//the properties file as "skip_apps = /home/pvekris/dev/apk_scratch/output/too_big.txt"
@@ -842,8 +858,8 @@ public class Main {
 				setOutputFile(line.getOptionValue("output"));
 			}
 			
-			if (line.hasOption("avoid-opt")) {
-				AVOID_OPT_CHECK = true;
+			if (line.hasOption("avoid-apk-check")) {
+				AVOID_APK_CHECK = true;
 			}
 			
 			if (line.hasOption("input")) {

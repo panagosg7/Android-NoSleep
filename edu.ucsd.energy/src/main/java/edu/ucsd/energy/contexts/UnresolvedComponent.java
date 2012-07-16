@@ -42,11 +42,13 @@ public class UnresolvedComponent extends Component {
 		for(CallBack cb : getRoots()) {
 			if(isSystemCall(cb.getSelector())) {
 				if (DEBUG > 0) {
-					Log.println();
-					Log.println("Examining callback: " + cb.toString());
+					Log.lightGreen("\tExamining callback: " + cb.toString());
 				}
 				violations.addAll(super.gatherViolations(summary,cb.getSelector(), 
 						ViolationType.UNRESOLVED_CALLBACK_LOCKED));
+			}
+			else {
+				Log.lightGrey("\tOmmitting callback: " + cb.toString());				
 			}
 		}
 		return violations;
@@ -74,10 +76,8 @@ public class UnresolvedComponent extends Component {
 			relevant.addAll(getClassAncestors());
 			relevant.addAll(getImplementedInterfaces());
 			for (IClass r : relevant) {
-				//System.out.println("Checking: " + r.toString());
 				IMethod resolvedMethod = r.getMethod(sel);
 				if (resolvedMethod != null) {
-					//System.out.println("OVERRIDES: " + toString() + ", sel: " + sel);
 					return true;					
 				}
 			}

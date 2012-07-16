@@ -30,6 +30,11 @@ public class FailReport implements IReport {
 		
 	}
 
-	
-	
+	public void appendTo(JSONObject o) {
+		if (o == null) 
+			o = new JSONObject();
+		o.put(getTag(), message.toString());
+		
+	}
+
 }

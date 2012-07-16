@@ -238,6 +238,10 @@ public class ApkCollection {
 			ApkApplication apkApplication = new ApkApplication(f);
 			return apkApplication;
 		} else {			
+			if (Main.AVOID_APK_CHECK) {
+				ApkApplication apkApplication = new ApkApplication(f);
+				return apkApplication;
+			}
 			return null;
 		}
 	}

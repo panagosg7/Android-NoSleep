@@ -48,6 +48,12 @@ public class LockUsageReport implements IReport {
 		// TODO Auto-generated method stub
 		
 	}
+
+	public void appendTo(JSONObject o) {
+		if (o == null) 
+			o = new JSONObject();
+		o.put(getTag(), toJSON());
+	}
 	
 	
 }
