@@ -39,7 +39,7 @@ public class ResultReporter {
 	private static Logger logger = Logger.getLogger("Result Logger");
 
 	//Look for this kind of files in the result directory
-	private static Pattern filePattern = Pattern.compile(".*results.*");
+	private static Pattern filePattern = Pattern.compile("0.*results.*");
 
 	File result_directoy;
 
@@ -99,6 +99,13 @@ public class ResultReporter {
 	}
 
 
+	public void listApps() {
+		readJSONFiles();
+		for (Entry<String, JSONObject> e : apps.entrySet()) {
+			System.out.println(e.getKey());
+		}
+	}
+	
 	public void fullResults() {
 		readJSONFiles();
 		for (Entry<String, JSONObject> e : apps.entrySet()) {

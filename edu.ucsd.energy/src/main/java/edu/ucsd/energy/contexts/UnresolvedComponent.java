@@ -25,7 +25,7 @@ import edu.ucsd.energy.util.Log;
  */
 public class UnresolvedComponent extends Component {
 
-	private static final int DEBUG = 1;
+	private static final int DEBUG = 0;
 
 	public UnresolvedComponent(IClass c) {
 		super(c);
@@ -48,7 +48,9 @@ public class UnresolvedComponent extends Component {
 						ViolationType.UNRESOLVED_CALLBACK_LOCKED));
 			}
 			else {
-				Log.lightGrey("\tOmmitting callback: " + cb.toString());				
+				if (DEBUG > 0) {
+					Log.lightGrey("\tOmmitting callback: " + cb.toString());				
+				}
 			}
 		}
 		return violations;

@@ -37,7 +37,7 @@ import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.results.ComponentSummary;
 import edu.ucsd.energy.results.IReportKey;
-import edu.ucsd.energy.results.ProcessResults.LockUsage;
+import edu.ucsd.energy.results.LockUsage;
 import edu.ucsd.energy.results.Violation;
 import edu.ucsd.energy.results.Violation.ViolationType;
 import edu.ucsd.energy.util.Log;
@@ -45,7 +45,7 @@ import edu.ucsd.energy.util.Util;
 
 public abstract class Component extends AbstractContext implements IReportKey {
 
-	private static final int DEBUG =0;
+	private static final int DEBUG = 0;
 
 	protected IClass klass;
 

@@ -381,7 +381,7 @@ public class Main {
 	 * analyzed.
 	 * @param jobPool
 	 */
-	public static void callAnalysis(JobPool<? extends CallableTask> jobPool) 
+	public static void callAnalysis(JobPool<? extends CallableTask> jobPool)
 			throws ApkException, IOException, RetargetException, WalaException, CancelException, InterruptedException {
 		System.out.println("==========================================");
 		System.out.println("Thread pool size          :  " + numberOfThreads) ;
@@ -807,7 +807,9 @@ public class Main {
 
 	private static void reportResults(String[] optionValues) {
 		ResultReporter resultReporter = new ResultReporter(optionValues[0]);
-		resultReporter.fullResults();		
+		//TODO: fix this
+		//resultReporter.fullResults();		
+		resultReporter.listApps();
 
 	}
 

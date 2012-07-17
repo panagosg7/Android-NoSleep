@@ -15,7 +15,6 @@ import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.managers.WakeLockInstance;
-import edu.ucsd.energy.results.ProcessResults.LockUsage;
 
 public class ComponentSummary {
 	
@@ -119,8 +118,7 @@ public class ComponentSummary {
 		Set<CallBack> cbs = delegatingContext.getNextCallBack(selector, false);
 		Set<LockUsage> result = new HashSet<LockUsage>();
 		for (CallBack cb : cbs) {
-			new LockUsage(delegatingContext.getReturnState(cb.getNode()));
-			
+			//new LockUsage(delegatingContext.getReturnState(cb.getNode()));
 			Selector s = cb.getNode().getMethod().getSelector();
 			LockUsage lockUsage = callBackExitStates.get(s);
 			if (lockUsage != null) {
