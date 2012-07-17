@@ -807,9 +807,8 @@ public class Main {
 
 	private static void reportResults(String[] optionValues) {
 		ResultReporter resultReporter = new ResultReporter(optionValues[0]);
-		//TODO: fix this
-		//resultReporter.fullResults();		
-		resultReporter.listApps();
+		resultReporter.fullResults();		
+//		resultReporter.listApps();
 
 	}
 

@@ -45,11 +45,20 @@ public class ResultReporter {
 
 	private Map<String, JSONObject> apps = new HashMap<String, JSONObject>();
 
-	Map<String, Integer> histogram = new HashMap<String, Integer>();
+	Map<String, Integer> violation_histogram = new HashMap<String, Integer>();
+	Map<String, Integer> warning_histogram = new HashMap<String, Integer>();
 
 	private static int ANALYSIS_FAILURES	= 0;
 	private static int VERIFIED 					= 0;
 	private static int FAILED		 					= 0;
+
+	private static int RESOLVED_INTENTS			= 0;
+	private static int TOTAL_INTENTS				= 0;
+	private static int RESOLVED_RUNNABLES		= 0;
+	private static int TOTAL_RUNNABLES			= 0;
+
+  Pattern elapsedPattern = Pattern.compile("(\\d+)m([^s]*)s");
+
 
 	public ResultReporter(String dir) {
 		result_directoy = new File(dir);
@@ -64,7 +73,7 @@ public class ResultReporter {
 				String name = file.getName();
 				Matcher matcher = filePattern.matcher(name);
 				if (matcher.find()) {
-					System.out.println(name);
+					System.out.println("Reading file: " + name);
 					InputStream is;
 					try {
 						is = new FileInputStream(file);
@@ -72,7 +81,11 @@ public class ResultReporter {
 						JSONObject json = (JSONObject) JSONSerializer.toJSON( jsonTxt );
 						for (String key : (Set<String>) json.keySet()) {
 							JSONObject appObj = (JSONObject) json.get(key);
-							apps.put(key, appObj);
+							
+							if (appObj.containsKey("Violation Report")) {		//this means that the analysis did not fail
+								apps.put(key, appObj);	
+							}
+							
 						}
 					} catch (FileNotFoundException e) {
 						e.printStackTrace();
@@ -85,35 +98,65 @@ public class ResultReporter {
 		else {
 			Assertions.UNREACHABLE(result_directoy + " is not a directoy.");
 		}
+		System.out.println();
 	}
 
 
-	private void updateTags(Set<String> tags) {
+	private void updateViolationTags(Set<String> tags) {
 		for (String e : tags) {
-			Integer integer = histogram.get(e);
+			Integer integer = violation_histogram.get(e);
 			if (integer == null) {
-				histogram.put(e, new Integer(0));
+				violation_histogram.put(e, new Integer(0));
 			}
-			histogram.put(e, histogram.get(e) + 1);
+			violation_histogram.put(e, violation_histogram.get(e) + 1);
 		}
+	}
+
+	private void updateWarningTags(String e) {
+		Integer integer = warning_histogram.get(e);
+		if (integer == null) {
+			warning_histogram.put(e, new Integer(0));
+		}
+		warning_histogram.put(e, warning_histogram.get(e) + 1);
 	}
 
 
 	public void listApps() {
 		readJSONFiles();
+		Set<String> tags = new HashSet<String>();
 		for (Entry<String, JSONObject> e : apps.entrySet()) {
-			System.out.println(e.getKey());
+			tags.add(e.getKey());
 		}
+		for (String t : tags) {
+			System.out.println(t);
+		}
+		System.out.println("Total: " + tags.size());
 	}
-	
+
 	public void fullResults() {
+		
 		readJSONFiles();
-		for (Entry<String, JSONObject> e : apps.entrySet()) {
+		
+		float[] elapsedTimes  = new float[apps.size()];
+		int ind = 0;
+
+		for (Entry<String, JSONObject> e : apps.entrySet()) {	//for every app
+			
 			StringBuffer sb = new StringBuffer();
+
 			String name = e.getKey();
+
 			JSONObject appObj = e.getValue();
-			String version = (String) appObj.get("version");
-			JSONObject violation = (JSONObject) appObj.get("Violation ");
+
+			String 			version 	= (String) appObj.get("version");
+			JSONObject 	violation = (JSONObject) appObj.get("Violation Report");
+			JSONArray 	warning		= (JSONArray) appObj.get("Warning Report");
+			JSONObject 	intent 		= (JSONObject) appObj.get("Intent");
+			JSONObject 	runnable	= (JSONObject) appObj.get("Runnable");
+
+			String 			elapsed		= (String) appObj.get("elapsed");
+
+		//Violations
 			if (violation != null) {
 				if (violation.size() == 0) {					
 					VERIFIED++;
@@ -121,7 +164,7 @@ public class ResultReporter {
 				}
 				else {
 					Log.yellow();
-					Set<String> tags = new HashSet<String>();
+					Set<String> violation_tags = new HashSet<String>();
 					//Forall components
 					for(String comp : (Set<String>) violation.keySet()) {
 						//sb.append(new Formatter().format("   %s", comp).toString() +  "\n");
@@ -130,25 +173,74 @@ public class ResultReporter {
 						for (Iterator it = arr.iterator(); it.hasNext(); ) {
 							JSONObject obj = (JSONObject) it.next();
 							for (String k : (Set<String>) obj.keySet()) {
-								tags.add(k);
+								violation_tags.add(k);
 							}
 						}
 					}//forall components
-					for (String t : tags) {
+					for (String t : violation_tags) {
 						sb.append(new Formatter().format("  %s", t).toString() +  "\n");
 					}
 					FAILED++;
-					updateTags(tags);
+					updateViolationTags(violation_tags);
 				}
 			}
 			else {
-				Log.red();
-				sb.append(appObj);
+				Assertions.UNREACHABLE();
 				ANALYSIS_FAILURES++;
 			}
+			
+		//Warnings	
+			if (warning != null) {
+				for (Iterator it = warning.iterator(); it.hasNext(); ) {
+					String s = (String) it.next();
+					updateWarningTags(s);
+				}
+			}
+			else {
 
-			System.out.println(new Formatter().format("%-50s (%s)", name, version).toString());
+			}
+			
+		//Intents
+			if (intent != null) {
+				RESOLVED_INTENTS += Integer.parseInt((String) intent.get("successfully_resolved_calls"));
+				TOTAL_INTENTS += Integer.parseInt((String) intent.get("total_calls"));
+				
+			}
+			else {
+
+			}
+			
+			
+		//Runnables
+			if (runnable != null) {
+				RESOLVED_RUNNABLES += Integer.parseInt((String) runnable.get("successfully_resolved_calls"));
+				TOTAL_RUNNABLES += Integer.parseInt((String) runnable.get("total_calls"));
+				
+			}
+			else {
+
+			}
+			
+		//Elapsed
+			if (elapsed != null) {
+				
+	      Matcher m = elapsedPattern.matcher(elapsed);
+	      if (m.find( )) {
+	         float secs = Integer.parseInt(m.group(1)) * 60 + Float.parseFloat(m.group(2));
+	         elapsedTimes[ind] = secs;
+	      } else {
+	         System.out.println("NO MATCH");
+	      }
+
+			}
+
+
+			System.out.println(new Formatter().format("%-50s (%s)", name, 
+					(version.length()>10)?version.subSequence(0, 10):version).toString());
+
 			System.out.println(sb.toString());
+			
+			ind ++;
 			Log.resetColor();
 
 		}
@@ -167,12 +259,28 @@ public class ResultReporter {
 		System.out.println(String.format("VIOLATED POLICIES"));
 		System.out.println(String.format("----------------------------------------------------"));		
 		ArrayList<String> list = new ArrayList<String>();
-		list.addAll(histogram.keySet());
+		list.addAll(violation_histogram.keySet());
 		Collections.sort(list);
 		for(String k : list) {
-			Integer integer = histogram.get(k);
+			Integer integer = violation_histogram.get(k);
 			System.out.println(String.format("%-35s: %4d (%7.2f%%)", k, integer, 100 * (double)integer/(double)total));
 		}
+		System.out.println(String.format("===================================================="));
+		System.out.println(String.format("WARNINGS"));
+		System.out.println(String.format("----------------------------------------------------"));		
+		list = new ArrayList<String>();
+		list.addAll(warning_histogram.keySet());
+		Collections.sort(list);
+		for(String k : list) {
+			Integer integer = warning_histogram.get(k);
+			System.out.println(String.format("%-35s: %4d (%7.2f%%)", k, integer, 100 * (double)integer/(double)total));
+		}
+		System.out.println(String.format("===================================================="));
+		System.out.println(String.format("ASYNC CALL RESOLUTION"));
+		System.out.println(String.format("----------------------------------------------------"));		
+		System.out.println(String.format("%-35s: %6d /%6d (%7.2f%%)", "Intents", RESOLVED_INTENTS, TOTAL_INTENTS, 100 * (double)RESOLVED_INTENTS/(double)TOTAL_INTENTS));
+		System.out.println(String.format("%-35s: %6d /%6d (%7.2f%%)", "Runnables", RESOLVED_RUNNABLES, TOTAL_RUNNABLES, 100 * (double)RESOLVED_RUNNABLES/(double)TOTAL_RUNNABLES));
+		
 		System.out.println(String.format("===================================================="));
 		System.out.println();
 	}
