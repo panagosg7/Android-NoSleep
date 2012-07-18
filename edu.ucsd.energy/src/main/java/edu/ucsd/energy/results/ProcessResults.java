@@ -7,6 +7,7 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.collections.HashSetMultiMap;
 
+import edu.ucsd.energy.analysis.Options;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.component.SuperComponent;
 import edu.ucsd.energy.managers.ComponentManager;
@@ -18,7 +19,7 @@ public class ProcessResults {
 
 	private static final int DEBUG = 0;
 
-	
+
 	public enum SingleLockUsage {
 		ACQUIRED,
 		RELEASED,
@@ -44,33 +45,29 @@ public class ProcessResults {
 		if(DEBUG > 0) {
 			Log.println();	
 		}
-		
+
 		//LockUsageReport usageReport = new LockUsageReport();
 		ViolationReport vReport = new ViolationReport();
 		WarningReport 	wReport = new WarningReport();
-		
+
 		//Check that there are no unresolved Intent calls performed at high energy state
 		HashSetMultiMap<MethodReference, SSAInstruction> criticalUnresolvedAsyncCalls = 
 				componentManager.getCriticalUnresolvedAsyncCalls();
-		
+
 		if (criticalUnresolvedAsyncCalls.size() > 0) {
 			GeneralKey key = new GeneralKey("General");
 			wReport.insertElement(new Warning(WarningType.UNRESOLVED_ASYNC_CALLS));
 		}
-		
+
 		//Also, check that all wakelock operations were resolved
 		if (GlobalManager.get().getWakeLockManager().hasUnresolvedWakeLockOperations()) {
-			GeneralKey key = new GeneralKey("General");
 			wReport.insertElement(new Warning(WarningType.UNRESOLVED_WAKELOCK_CALLS));
 		}
 		//and if there actually are any lock operations
 		if (!GlobalManager.get().getWakeLockManager().hasWakeLockOperations()) {
-			
-			//TODO : maybe not needed: General...
-			GeneralKey key = new GeneralKey("General");
 			wReport.insertElement(new Warning(WarningType.NO_WAKELOCK_CALLS));
 		}
-		
+
 		for (MethodReference mr : criticalUnresolvedAsyncCalls.keySet()) {
 			Set<SSAInstruction> is = criticalUnresolvedAsyncCalls.get(mr);
 			Log.red();
@@ -83,24 +80,65 @@ public class ProcessResults {
 			Log.println();
 			Log.resetColor();
 		}
-		
-		for (SuperComponent superComponent : componentManager.getSuperComponents()) {
 
-			if (!superComponent.solved()) {
-			//This will include cases of uninteresting and non-Android interacting components
-				if (DEBUG > 0) {
-					Log.grey();
-					Log.println("Skipping unsolved: "+ superComponent.toString());
-					Log.resetColor();
+		if (Options.ANALYZE_SUPERCOMPONENTS) {
+
+			for (SuperComponent superComponent : componentManager.getSuperComponents()) {
+
+				if (!superComponent.solved()) {
+					//This will include cases of uninteresting and non-Android interacting components
+					if (DEBUG > 0) {
+						Log.grey();
+						Log.println("Skipping unsolved: "+ superComponent.toString());
+						Log.resetColor();
+					}
+					continue;
 				}
-				continue;
+				if (DEBUG > 0) {
+					Log.println("Checking: "+ superComponent.toString());
+				}
+
+				//Each context should belong to exactly one SuperComponent
+				for (Component component : superComponent.getContexts()) {
+					//Do not analyze abstract classes (they will have to be 
+					//extended in order to be used)
+					if (component.isAbstract()) {
+						if (DEBUG > 0) {
+							Log.grey("Skipping abstract: " + component.toString() );
+						}
+						continue;
+					}
+
+					Set<Violation> rep = component.assembleReport();
+					if (rep != null && (!rep.isEmpty())) {
+						vReport.insertViolations(component, rep);
+						if (DEBUG > 0) {
+							Log.yellow();
+						}
+					}
+					if (DEBUG > 0) {
+						Log.println(" - Checking violatios for: " + component.toString());
+						Log.resetColor();
+					}
+				}
 			}
-			if (DEBUG > 0) {
-				Log.println("Checking: "+ superComponent.toString());
-			}
-			
-			//Each context should belong to exactly one SuperComponent
-			for (Component component : superComponent.getContexts()) {
+		}
+		else {
+			//DO NOT ANALYZE INTER-COMPONENT COMMUNICATION	
+			for (Component component : componentManager.getComponents()) {
+				if (!component.solved()) {
+					//This will include cases of uninteresting and non-Android interacting components
+					if (DEBUG > 0) {
+						Log.grey();
+						Log.println("Skipping unsolved: "+ component.toString());
+						Log.resetColor();
+					}
+					continue;
+				}
+				if (DEBUG > 0) {
+					Log.println("Checking: "+ component.toString());
+				}
+
 				//Do not analyze abstract classes (they will have to be 
 				//extended in order to be used)
 				if (component.isAbstract()) {
@@ -109,12 +147,11 @@ public class ProcessResults {
 					}
 					continue;
 				}
-				
 				Set<Violation> rep = component.assembleReport();
 				if (rep != null && (!rep.isEmpty())) {
 					vReport.insertViolations(component, rep);
 					if (DEBUG > 0) {
-							Log.yellow();
+						Log.yellow();
 					}
 				}
 				if (DEBUG > 0) {
@@ -123,13 +160,14 @@ public class ProcessResults {
 				}
 			}
 		}
-    vReport.dump();
-    wReport.dump();
-    CompoundReport compoundReport = new CompoundReport();
-    compoundReport.register(vReport);
-    compoundReport.register(wReport);
+
+		vReport.dump();
+		wReport.dump();
+		CompoundReport compoundReport = new CompoundReport();
+		compoundReport.register(vReport);
+		compoundReport.register(wReport);
 		return compoundReport;
-		
+
 	}
 
 

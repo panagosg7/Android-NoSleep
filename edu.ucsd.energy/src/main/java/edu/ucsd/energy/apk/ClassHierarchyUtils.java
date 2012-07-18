@@ -21,7 +21,7 @@ import com.ibm.wala.util.io.FileProvider;
 import com.ibm.wala.viz.DotUtil;
 
 import edu.ucsd.energy.Main;
-import edu.ucsd.energy.analysis.Opts;
+import edu.ucsd.energy.analysis.Options;
 import edu.ucsd.energy.util.SystemUtil;
 
 public class ClassHierarchyUtils {
@@ -45,7 +45,7 @@ public class ClassHierarchyUtils {
 			scope = AnalysisScopeReader.makeJavaBinaryAnalysisScope(appJar, exclusionFile);	
 		}
 		ClassHierarchy cha = ClassHierarchy.make(scope);
-		if (Opts.OUTPUT_CLASS_HIERARCHY) {
+		if (Options.OUTPUT_CLASS_HIERARCHY) {
 			outputClassHierarchy(cha);
 		}
 		return cha;

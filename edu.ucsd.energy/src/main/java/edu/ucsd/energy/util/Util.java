@@ -8,7 +8,7 @@ import java.util.Set;
 
 import com.ibm.wala.util.intset.IntIterator;
 
-import edu.ucsd.energy.analysis.Opts;
+import edu.ucsd.energy.analysis.Options;
 
 
 public class Util {

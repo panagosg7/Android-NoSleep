@@ -8,7 +8,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
-import edu.ucsd.energy.analysis.Opts;
+import edu.ucsd.energy.analysis.Options;
 
 public class Log {
 	private static final int MAX_METHOD_NAME = 40;  
@@ -23,10 +23,10 @@ public class Log {
 	 */
 	public static void plog(int i, String f, String out) {
 		if (i<=DEBUG_LEVEL) {
-			if(!Opts.RUN_IN_PARALLEL) {
+			if(!Options.RUN_IN_PARALLEL) {
 				System.out.println(out);
 			}
-			if (Opts.LOG_RESULTS) {
+			if (Options.LOG_RESULTS) {
 				flog(out);
 			}
 		}
@@ -104,32 +104,32 @@ public class Log {
 	}
 	
 	public static void println(String string) {
-		if (!Opts.RUN_IN_PARALLEL) {
+		if (!Options.RUN_IN_PARALLEL) {
 			System.out.println(string);
 		}
 	}
 
 	public static void println() {
-		if (!Opts.RUN_IN_PARALLEL) {
+		if (!Options.RUN_IN_PARALLEL) {
 			System.out.println();
 		}
 	}
 
 	public static void print(String format) {
-		if (!Opts.RUN_IN_PARALLEL) {
+		if (!Options.RUN_IN_PARALLEL) {
 			System.out.print(format);
 		}		
 	}
 
 	public static void time() {
-		if (!Opts.RUN_IN_PARALLEL) {
+		if (!Options.RUN_IN_PARALLEL) {
 			System.out.println(dateFormat.format(new Date()));
 		}		
 	}
 	
 
 	public static void time(String str) {
-		if (!Opts.RUN_IN_PARALLEL) {
+		if (!Options.RUN_IN_PARALLEL) {
 			System.out.print("[" + dateFormat.format(new Date()) + "] "+ str);
 		}		
 	}
@@ -189,7 +189,7 @@ public class Log {
 	}
 
 	public static void timeln(String string) {
-		if (!Opts.RUN_IN_PARALLEL) {
+		if (!Options.RUN_IN_PARALLEL) {
 			System.out.println("[" + dateFormat.format(new Date()) + "] "+ string);
 		}
 	}

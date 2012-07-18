@@ -3,7 +3,7 @@ package edu.ucsd.energy.analysis;
 import java.util.Arrays;
 import java.util.HashSet;
 
-public class Opts {
+public class Options {
 
   /*******************************************
    * Class Hierarchy Options
@@ -164,7 +164,7 @@ public class Opts {
    * Do you want the analysis to be run on the supercomponents 
    * (true) or just the components (false)? 
    */
-	public static final boolean ANALYZE_SUPERCOMPONENTS = true;
+	public static final boolean ANALYZE_SUPERCOMPONENTS = false;
 
 
 	/**

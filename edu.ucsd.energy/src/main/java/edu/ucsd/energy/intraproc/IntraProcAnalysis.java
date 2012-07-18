@@ -26,7 +26,7 @@ import com.ibm.wala.util.graph.Path;
 import com.ibm.wala.util.graph.dominators.Dominators;
 import com.ibm.wala.util.graph.impl.InvertedGraph;
 
-import edu.ucsd.energy.analysis.Opts;
+import edu.ucsd.energy.analysis.Options;
 import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.conditions.CompoundCondition;
 import edu.ucsd.energy.conditions.ConditionManager;
@@ -123,7 +123,7 @@ public class IntraProcAnalysis {
      
     /* Prune the CFG of all the exception edges that lead to the exit of this method,
        TODO: need to treat case of keeping the exceptional edges */ 
-    if (Opts.PRUNE_EXCEPTION_EDGES_IN_GFG) {
+    if (Options.PRUNE_EXCEPTION_EDGES_IN_GFG) {
       exceptionPrunnedCFG = ExceptionPrunedCFG.make(currCFG);
       /*
        * In case the CFG has no nodes left because the only control dependencies

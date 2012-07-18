@@ -252,7 +252,7 @@ public class ResultReporter {
 		System.out.println(String.format("----------------------------------------------------"));
 		System.out.println(String.format("%-35s: %4d (%7.2f%%)", "Verified", 				VERIFIED, 100 * (double)VERIFIED/(double)total));
 		System.out.println(String.format("%-35s: %4d (%7.2f%%)", "Not verified",		FAILED, 100 * (double)FAILED/(double)total));
-		System.out.println(String.format("%-35s: %4d (%7.2f%%)", "Analysis failed", ANALYSIS_FAILURES, 100 * (double)ANALYSIS_FAILURES/(double)total));
+//		System.out.println(String.format("%-35s: %4d (%7.2f%%)", "Analysis failed", ANALYSIS_FAILURES, 100 * (double)ANALYSIS_FAILURES/(double)total));
 		System.out.println(String.format("----------------------------------------------------"));
 		System.out.println(String.format("%-35s: %4d (%7.2f%%)", "Total", 					total, 100 * (double)total/(double)total));
 		System.out.println(String.format("===================================================="));
@@ -275,13 +275,13 @@ public class ResultReporter {
 			Integer integer = warning_histogram.get(k);
 			System.out.println(String.format("%-35s: %4d (%7.2f%%)", k, integer, 100 * (double)integer/(double)total));
 		}
-		System.out.println(String.format("===================================================="));
+		System.out.println(String.format("=============================================================="));
 		System.out.println(String.format("ASYNC CALL RESOLUTION"));
-		System.out.println(String.format("----------------------------------------------------"));		
+		System.out.println(String.format("--------------------------------------------------------------"));		
 		System.out.println(String.format("%-35s: %6d /%6d (%7.2f%%)", "Intents", RESOLVED_INTENTS, TOTAL_INTENTS, 100 * (double)RESOLVED_INTENTS/(double)TOTAL_INTENTS));
 		System.out.println(String.format("%-35s: %6d /%6d (%7.2f%%)", "Runnables", RESOLVED_RUNNABLES, TOTAL_RUNNABLES, 100 * (double)RESOLVED_RUNNABLES/(double)TOTAL_RUNNABLES));
 		
-		System.out.println(String.format("===================================================="));
+		System.out.println(String.format("=============================================================="));
 		System.out.println();
 	}
 

@@ -57,8 +57,6 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 	
 	abstract public boolean isContextExit(BasicBlockInContext<IExplodedBasicBlock> a);
 	
-	
-	
 
 	/**
 	 * The adjacent nodes to the packed edges are the interesting callbacks.

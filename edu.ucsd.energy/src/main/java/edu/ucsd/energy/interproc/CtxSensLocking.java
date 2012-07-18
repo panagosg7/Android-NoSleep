@@ -26,7 +26,7 @@ import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 
-import edu.ucsd.energy.analysis.Opts;
+import edu.ucsd.energy.analysis.Options;
 import edu.ucsd.energy.apk.Interesting;
 import edu.ucsd.energy.component.AbstractContext;
 import edu.ucsd.energy.component.Component;
@@ -192,7 +192,7 @@ public class CtxSensLocking {
 			}
 			for (BasicBlockInContext<IExplodedBasicBlock> bb : supergraph) {
 				
-				if (Opts.USE_TIMED_ACQUIRE_AS_SEED) {
+				if (Options.USE_TIMED_ACQUIRE_AS_SEED) {
 					
 					WakeLockInstance timedAcquiredWL = timedAcquire(bb);
 					//Note: We do not add release as a seed. Release will kill the relevant acquire 

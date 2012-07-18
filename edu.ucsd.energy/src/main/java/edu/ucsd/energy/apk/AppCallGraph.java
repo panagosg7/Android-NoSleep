@@ -67,7 +67,7 @@ import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.util.io.FileProvider;
 import com.ibm.wala.viz.NodeDecorator;
 
-import edu.ucsd.energy.analysis.Opts;
+import edu.ucsd.energy.analysis.Options;
 import edu.ucsd.energy.managers.IntentManager;
 import edu.ucsd.energy.managers.WakeLockManager;
 import edu.ucsd.energy.util.Log;
@@ -118,7 +118,7 @@ public class AppCallGraph implements CallGraph {
 		
 		delegate = buildPrunedCallGraph();
 		
-		if (Opts.OUTPUT_CG_DOT_FILE) {
+		if (Options.OUTPUT_CG_DOT_FILE) {
 			if (DEBUG > 0) {
 				Log.timeln("Outputting callgraphs... ");
 			}
@@ -145,7 +145,7 @@ public class AppCallGraph implements CallGraph {
 				Assertions.UNREACHABLE();
 			}
 			String pdfFile = null;
-			if (Opts.OUTPUT_CALLGRAPH_PDF) {
+			if (Options.OUTPUT_CALLGRAPH_PDF) {
 				pdfFile = /* p.getProperty(WalaProperties.OUTPUT_DIR) */
 				SystemUtil.getResultDirectory() + File.separatorChar + PDF_FILE;
 			}
@@ -202,7 +202,7 @@ public class AppCallGraph implements CallGraph {
 		//Add wakelock methods and their call-sites to the call graph
 		insertTargetMethodsToCG(fullCallGraph);
 
-		if (!Opts.KEEP_PRIMORDIAL) {
+		if (!Options.KEEP_PRIMORDIAL) {
 			return prunePrimordialNodes(fullCallGraph);
 		}
 		
@@ -261,7 +261,7 @@ public class AppCallGraph implements CallGraph {
 				Iterator<CGNode> pnIter = cg.getPredNodes(n);
 				while (pnIter.hasNext()) {
 					CGNode pn = pnIter.next();
-					if (Opts.KEEP_PRIMORDIAL || isAppNode(pn)) {
+					if (Options.KEEP_PRIMORDIAL || isAppNode(pn)) {
 						q.add(pn);
 					}
 				}
@@ -331,7 +331,7 @@ public class AppCallGraph implements CallGraph {
 	private  CallGraph getBoundedGraph(CallGraph pcg) {
 		HashSet<CGNode> nearSet = new HashSet<CGNode>();
 
-		if (Opts.MAX_HOPS_FROM_TARGET < 0) {
+		if (Options.MAX_HOPS_FROM_TARGET < 0) {
 			return pcg;
 		}
 
@@ -346,7 +346,7 @@ public class AppCallGraph implements CallGraph {
 			 */
 			Graph<CGNode> invPCG = new InvertedGraph<CGNode>(pcg);
 			BoundedBFSIterator<CGNode> bBFSIter = new BoundedBFSIterator<CGNode>(
-					invPCG, root, Opts.MAX_HOPS_FROM_TARGET);
+					invPCG, root, Options.MAX_HOPS_FROM_TARGET);
 
 			while (bBFSIter.hasNext()) {
 				nearSet.add(bBFSIter.next());
@@ -417,7 +417,7 @@ public class AppCallGraph implements CallGraph {
 	private  void insertTargetMethodsToCG(CallGraph cg)
 			throws IOException, CancelException {
 
-		File targetsFile = FileProvider.getFile(Opts.TARGET_FUNCTIONS,
+		File targetsFile = FileProvider.getFile(Options.TARGET_FUNCTIONS,
 				FileProvider.class.getClassLoader());
 		BufferedReader targetBuffer = new BufferedReader(new FileReader(
 				targetsFile));

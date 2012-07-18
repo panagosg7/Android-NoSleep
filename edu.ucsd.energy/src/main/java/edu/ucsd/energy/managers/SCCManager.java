@@ -19,7 +19,7 @@ import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.IntSetUtil;
 import com.ibm.wala.viz.DotUtil;
 
-import edu.ucsd.energy.analysis.Opts;
+import edu.ucsd.energy.analysis.Options;
 import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.util.SystemUtil;
 import edu.ucsd.energy.util.Util;
@@ -340,7 +340,7 @@ public class SCCManager {
   
   private void build() throws WalaException {
     sccGraph = new SSCGraph(cg);
-    if (Opts.OUTPUT_SCC_DOT_FILE) { 
+    if (Options.OUTPUT_SCC_DOT_FILE) { 
       sccGraph.outputCallgraphToDot();
     }
 //    return sccGraph;

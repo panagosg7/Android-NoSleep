@@ -27,7 +27,7 @@ import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.viz.NodeDecorator;
 
-import edu.ucsd.energy.analysis.Opts;
+import edu.ucsd.energy.analysis.Options;
 import edu.ucsd.energy.component.ComponentPrinter.ColorNodeDecorator;
 import edu.ucsd.energy.interproc.SingleLockState.LockStateDescription;
 
@@ -91,11 +91,11 @@ public class GraphDotUtil {
 			throws WalaException {   
 
 		int orig_node_count = g.getNumberOfNodes();
-		if (orig_node_count < Opts.NODE_THRESHOLD) {
+		if (orig_node_count < Options.NODE_THRESHOLD) {
 		}
 		else {   
-			if (orig_node_count < 10 * Opts.NODE_THRESHOLD) {
-				if (Opts.FORCE_LABELS) {
+			if (orig_node_count < 10 * Options.NODE_THRESHOLD) {
+				if (Options.FORCE_LABELS) {
 					numbersAsLabels = false;
 				}
 				else {
@@ -111,8 +111,8 @@ public class GraphDotUtil {
 						c++;
 					}
 				}
-				if (c > 10 * Opts.NODE_THRESHOLD) {
-					if (Opts.FORCE_OUTPUT_GRAPH) {
+				if (c > 10 * Options.NODE_THRESHOLD) {
+					if (Options.FORCE_OUTPUT_GRAPH) {
 						printOnlyApp = true;  
 					}
 					//Graph too big to output
@@ -135,7 +135,7 @@ public class GraphDotUtil {
 			throw new IllegalArgumentException("g is null");
 		}
 		File f = writeDotFile(g, labels, title, dotFile);    
-		if (Opts.OUTPUT_CALLGRAPH_PDF) {
+		if (Options.OUTPUT_CALLGRAPH_PDF) {
 			spawnDot(dotExe, outputFile, f);
 		}
 	}

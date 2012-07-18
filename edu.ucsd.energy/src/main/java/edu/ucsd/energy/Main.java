@@ -37,7 +37,6 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
-import org.apache.commons.cli.Options;
 import org.apache.commons.cli.PosixParser;
 import org.apache.commons.cli.UnrecognizedOptionException;
 import org.apache.commons.io.FilenameUtils;
@@ -48,7 +47,7 @@ import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.debug.UnimplementedError;
 
 import edu.ucsd.energy.ApkCollection.ApkApplication;
-import edu.ucsd.energy.analysis.Opts;
+import edu.ucsd.energy.analysis.Options;
 import edu.ucsd.energy.apk.ApkInstance;
 import edu.ucsd.energy.apk.ConfigurationException;
 import edu.ucsd.energy.results.FailReport;
@@ -123,44 +122,56 @@ public class Main {
 		
 		//Common among threads - but must synchronize
 		private static Integer counter = new Integer(0);
-		
-		protected InheritableThreadLocal<ApkInstance> apk = new InheritableThreadLocal<ApkInstance>();
-		private InheritableThreadLocal<Integer> myCounter = new InheritableThreadLocal<Integer>();
-		private InheritableThreadLocal<Date> startTime 	 = new InheritableThreadLocal<Date>();
-		private InheritableThreadLocal<Date> stopTime		 = new InheritableThreadLocal<Date>();
+		//XXX: trying out the non thread local version
+//		protected InheritableThreadLocal<ApkInstance> apk = new InheritableThreadLocal<ApkInstance>();
+//		private InheritableThreadLocal<Integer> myCounter = new InheritableThreadLocal<Integer>();
+//		private InheritableThreadLocal<Date> startTime 	 = new InheritableThreadLocal<Date>();
+//		private InheritableThreadLocal<Date> stopTime		 = new InheritableThreadLocal<Date>();
+		protected ApkInstance apk ;
+		private Integer myCounter ;
+		private Date startTime 	 ;
+		private Date stopTime		 ;
 
 		CallableTask(ApkInstance a) {
-			apk.set(a);
+//			apk.set(a);
+			apk = a;
 		}
 
 		protected synchronized void startTimer() {
 			Date date = new Date();
-			startTime.set(date);
+//			startTime.set(date);
+			startTime = date;
 			counter++;
-			myCounter.set(new Integer(counter.intValue()));
+//			myCounter.set(new Integer(counter.intValue()));
+			myCounter = new Integer(counter.intValue());
 			StringBuffer sb = new StringBuffer();
-			ApkInstance a = apk.get();
+//			ApkInstance a = apk.get();
+			ApkInstance a = apk;
 			sb.append("\n>>> " + dateFormat.format(date) + "\n");						
-			sb.append(">>> " + myCounter.get() + ". " +  a.getName() + " version: " + a.getVersion() + "\n");
+//			sb.append(">>> " + myCounter.get() + ". " +  a.getName() + " version: " + a.getVersion() + "\n");
+			sb.append(">>> " + myCounter + ". " +  a.getName() + " version: " + a.getVersion() + "\n");
 			System.out.println(sb.toString());
 		}
 
 		protected synchronized String stopTimer() {
 			Date date = new Date();
-			stopTime.set(date);
-			ApkInstance a = apk.get();
-			long diff = stopTime.get().getTime() - startTime.get().getTime();
+//			stopTime.set(date);
+			stopTime = date;
+//			ApkInstance a = apk.get();
+			ApkInstance a = apk;
+//			long diff = stopTime.get().getTime() - startTime.get().getTime();
+			long diff = stopTime.getTime() - startTime.getTime();
 			double diffSeconds = (double) diff / 1000 % 60;  
 			long diffMinutes = diff / (60 * 1000) % 60;
 			System.out.println("\n<<< "+ dateFormat.format(date));
 			String elapsed = diffMinutes + "m" + String.format("%.2f", diffSeconds) + "s";
-			System.out.println("<<< " + myCounter.get() + ". " +  a.getName() + " version: " + 
-					a.getVersion() + " (elapsed: " + elapsed + ")\n");
+//			System.out.println("<<< " + myCounter.get() + ". " +  a.getName() + " version: " + a.getVersion() + " (elapsed: " + elapsed + ")\n");
+			System.out.println("<<< " + myCounter + ". " +  a.getName() + " version: " + a.getVersion() + " (elapsed: " + elapsed + ")\n");
 			//release threadlocals!
-			apk.remove();
-			myCounter.remove();
-			startTime.remove();
-			stopTime.remove();			
+//			apk.remove();
+//			myCounter.remove();
+//			startTime.remove();
+//			stopTime.remove();			
 			return elapsed;
 		}
 
@@ -176,7 +187,8 @@ public class Main {
 		}
 
 		public IReport call()  {
-			ApkInstance a = apk.get();
+//			ApkInstance a = apk.get();
+			ApkInstance a = apk;
 			IReport res;
 			startTimer();
 			try {
@@ -219,9 +231,17 @@ public class Main {
 			SystemUtil.writeToFile();
 			
 			//Hint to garbage collector
-			System.gc();
-
-			return res;
+			
+			
+			double totalMem = (double) Runtime.getRuntime().totalMemory() / (1024 * 1024) ;	//in MB
+			double freeMem 	= (double) Runtime.getRuntime().freeMemory() / (1024 * 1024) ;	//in MB
+			
+			System.out.println("Total Mem: " + totalMem);
+			System.out.println("Free  Mem: " + freeMem);
+			System.out.println();
+			
+//			return res;
+			return null;
 		}
 
 	}
@@ -783,7 +803,7 @@ public class Main {
 		if (integer != null) {
 			numberOfThreads = integer.intValue();
 			if (numberOfThreads > 1) {
-				Opts.RUN_IN_PARALLEL = true;
+				Options.RUN_IN_PARALLEL = true;
 			}
 		}
 		else{
@@ -816,7 +836,7 @@ public class Main {
 
 	public static void main(String[] args) {
 
-		Options options = new Options();
+		org.apache.commons.cli.Options options = new org.apache.commons.cli.Options();
 		CommandLineParser parser = new PosixParser();
 
 		options.addOption(new Option("ph", "phantoms", false, "list phantom refs histogram"));
@@ -885,6 +905,19 @@ public class Main {
 			if (line.hasOption("small-set")) {
 				/* The applications you specify here need to be in apk_collection !!! */
 				theSet.add("NetCounter");
+				theSet.add("Azan_Alarm");
+				theSet.add("NetCounter");
+				theSet.add("Azan_Alarm");
+				theSet.add("NetCounter");
+//				theSet.add("Azan_Alarm");
+//				theSet.add("NetCounter");
+//				theSet.add("Azan_Alarm");
+//				theSet.add("NetCounter");
+//				theSet.add("Azan_Alarm");
+//				theSet.add("NetCounter");
+//				theSet.add("Azan_Alarm");
+//				theSet.add("NetCounter");
+//				theSet.add("Azan_Alarm");
 			}
 			else if (line.hasOption("unit")) {
 				theSet.add("Unit_01");

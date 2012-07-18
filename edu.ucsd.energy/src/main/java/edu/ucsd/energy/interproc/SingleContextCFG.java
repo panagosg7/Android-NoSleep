@@ -30,13 +30,11 @@ public class SingleContextCFG extends AbstractContextCFG {
 	  //This should be like this for single-context CFGs
 	  @Override
 		public Component getCalleeContext(BasicBlockInContext<IExplodedBasicBlock> bb) {
-	  	Assertions.UNREACHABLE();
 			return null;
 		}
 
 	  @Override
 		public Set<BasicBlockInContext<IExplodedBasicBlock>> getContextExit(Component c) {
-	  	Assertions.UNREACHABLE();
 			return null;
 		}
 
@@ -44,7 +42,6 @@ public class SingleContextCFG extends AbstractContextCFG {
 		public boolean isReturnFromContextEdge(
 				BasicBlockInContext<IExplodedBasicBlock> bb1,
 				BasicBlockInContext<IExplodedBasicBlock> bb2) {
-	  	Assertions.UNREACHABLE();
 			return false;
 		}
 
@@ -52,26 +49,22 @@ public class SingleContextCFG extends AbstractContextCFG {
 		public boolean isCallToContextEdge(
 				BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest) {
-			Assertions.UNREACHABLE();
 			return false;
 		}
 
 		@Override
 		public boolean isCallToContext(BasicBlockInContext<IExplodedBasicBlock> src) {
-			Assertions.UNREACHABLE();
 			return false;
 		}
 
 		@Override
 		public Component returnFromContext(BasicBlockInContext<IExplodedBasicBlock> src) {
-			Assertions.UNREACHABLE();
 			return null;
 		}
 
 
 		@Override
 		public boolean isContextExit(BasicBlockInContext<IExplodedBasicBlock> a) {
-			Assertions.UNREACHABLE();
 			return false;
 		}
 

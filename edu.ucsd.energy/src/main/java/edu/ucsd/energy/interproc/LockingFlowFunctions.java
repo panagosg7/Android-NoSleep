@@ -13,7 +13,7 @@ import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.MutableSparseIntSet;
 
-import edu.ucsd.energy.analysis.Opts;
+import edu.ucsd.energy.analysis.Options;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.conditions.SpecialConditions.IsHeldCondition;
 import edu.ucsd.energy.conditions.SpecialConditions.NullCondition;
@@ -43,7 +43,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 		 * acquire/release is involved. BE CAREFUL : exceptional edges that
 		 * span across multiple procedures (if possible) cannot be determined.
 		 */
-		if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && this.ctxSensLocking.getICFG().isExceptionalEdge(src, dest)) {
+		if (Options.DATAFLOW_IGNORE_EXCEPTIONAL && this.ctxSensLocking.getICFG().isExceptionalEdge(src, dest)) {
 			Log.log(PRINT_EXCEPTIONAL, "KILL EXC: " + src.toShortString() + " -> " + dest.toShortString());				
 			return KillEverything.singleton(); 
 		}
@@ -52,7 +52,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 			System.out.println("NORMAL: " + src.toShortString() + " -> " + dest.toShortString());				
 		}
 		
-		if(Opts.ENFORCE_SPECIAL_CONDITIONS) {
+		if(Options.ENFORCE_SPECIAL_CONDITIONS) {
 			//Check for special conditions
 			final SpecialCondition specialCondition = this.ctxSensLocking.getSpecialCondition(src);
 			if (specialCondition != null) {
@@ -113,7 +113,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 			BasicBlockInContext<IExplodedBasicBlock> src,
 			BasicBlockInContext<IExplodedBasicBlock> dest) {
 		
-		if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && this.ctxSensLocking.getICFG().isExceptionalEdge(src, dest)) {			
+		if (Options.DATAFLOW_IGNORE_EXCEPTIONAL && this.ctxSensLocking.getICFG().isExceptionalEdge(src, dest)) {			
 			Log.log(PRINT_EXCEPTIONAL, "KILL(call-to-return):" + src.toShortString() + " -> " + dest.toShortString());
 			return KillEverything.singleton();				
 		}
@@ -139,7 +139,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 			final BasicBlockInContext<IExplodedBasicBlock> src,
 			final BasicBlockInContext<IExplodedBasicBlock> dest) {
 		
-		if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && this.ctxSensLocking.getICFG().isExceptionalEdge(src, dest)) {
+		if (Options.DATAFLOW_IGNORE_EXCEPTIONAL && this.ctxSensLocking.getICFG().isExceptionalEdge(src, dest)) {
 			Log.log(PRINT_EXCEPTIONAL, "KILL(call-none-to-return): " +
 					src.toShortString() + " -> " + dest.toShortString());
 			return KillEverything.singleton();
@@ -242,7 +242,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 			};
 		}
 		
-		if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {
+		if (Options.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {
 			Log.log(PRINT_EXCEPTIONAL,  "KILL(unbal): " + src.toShortString() + " -> " + dest.toShortString());
 			return KillEverything.singleton();
 		}
@@ -260,7 +260,7 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 		 * BE CAREFUL : exceptional edges that span across multiple procedures 
 		 * are not determined.
 		 */
-		if (Opts.DATAFLOW_IGNORE_EXCEPTIONAL && this.ctxSensLocking.getICFG().isExceptionalEdge(call, dest)) {
+		if (Options.DATAFLOW_IGNORE_EXCEPTIONAL && this.ctxSensLocking.getICFG().isExceptionalEdge(call, dest)) {
 			Log.log(PRINT_EXCEPTIONAL, "KILL(return): " + src.toShortString() + " -> " + dest.toShortString());
 			return KillEverything.singleton();							
 		}

@@ -31,7 +31,7 @@ import com.ibm.wala.util.graph.GraphReachability;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.graph.traverse.DFSPathFinder;
 
-import edu.ucsd.energy.analysis.Opts;
+import edu.ucsd.energy.analysis.Options;
 import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.apk.ClassHierarchyUtils;
 import edu.ucsd.energy.component.AbstractContext;
@@ -75,6 +75,10 @@ public class ComponentManager {
 	private static	final int 		SOLVE_DEBUG = 0;
 	static 					final int		RESOLVE_DEBUG = 0;
 
+	
+	/**
+	 * This mapping can be used as a set of all the components 
+	 */
 	private  HashMap<TypeName, Component> componentMap;
 
 	private List<SuperComponent> superComponents = new ArrayList<SuperComponent>(); 
@@ -344,34 +348,26 @@ public class ComponentManager {
 		if (SOLVE_DEBUG > 0) {
 			Log.println("\nSolving components...");
 		}
-		//Build the constraints' graph 
-		RunnableManager runnableManager = global.getRunnableManager();
-		SparseNumberedGraph<Component> rCG = runnableManager.getConstraintGraph();
-
-		IntentManager intentManager = global.getIntentManager();
-		SparseNumberedGraph<Component> iCG = intentManager.getConstraintGraph();
-
-		SparseNumberedGraph<Component> constraintGraph = GraphUtils.merge(rCG,iCG);
-		GraphUtils.dumpConstraintGraph(constraintGraph, "all_constraints");
 
 		Collection<? extends AbstractContext> componentSet;
+		
+		if (Options.ANALYZE_SUPERCOMPONENTS) {
+		//Run the analysis on super-components 
+			//Build the constraints' graph 
+			RunnableManager runnableManager = global.getRunnableManager();
+			SparseNumberedGraph<Component> rCG = runnableManager.getConstraintGraph();
 
-		if (!Opts.ANALYZE_SUPERCOMPONENTS) {
-			//Run the analysis just on the Components
-			Iterator<Component> bottomUpIterator = GraphUtils.topDownIterator(constraintGraph);
-			// Analyze the components based on this graph
-			while (bottomUpIterator.hasNext()) {
-				Component ctx = bottomUpIterator.next();
-				solveComponent(ctx);
-			}
-			componentSet = getComponents();
-		}
-		else {
+			IntentManager intentManager = global.getIntentManager();
+			SparseNumberedGraph<Component> iCG = intentManager.getConstraintGraph();
+
+			SparseNumberedGraph<Component> constraintGraph = GraphUtils.merge(rCG,iCG);
+			GraphUtils.dumpConstraintGraph(constraintGraph, "all_constraints");
+			
 			//Create SuperComponents based on component constraints
 			Iterator<Set<Component>> scItr = GraphUtils.connectedComponentIterator(constraintGraph);
 			//SuperComponents: the sequence does not matter
 			while(scItr.hasNext()) {
-				Set<Component> sCtx = scItr.next();	//The set of components that construct this supercomponent
+				Set<Component> sCtx = scItr.next();	//The set of components that construct this super-component
 				SuperComponent superComponent = new SuperComponent(sCtx);
 				if (SOLVE_DEBUG > 0) {
 					superComponent.dumpContainingComponents();
@@ -383,10 +379,21 @@ public class ComponentManager {
 			}
 			componentSet = getSuperComponents();
 		}
+		else {
+		//Run the analysis just on the Components in isolation - ignore constraint graphs.
+			Iterator<Component> iterator = getComponents().iterator();
+			while (iterator.hasNext()) {
+				solveComponent(iterator.next());
+			}
+			componentSet = getComponents();
+		}
 
-		//************************************************************************************
-		//Sanity check:
-		//Populate unresolved Intent and Runnable calls that are made while a resource is held
+		/*
+		 * Sanity check:
+		 * Populate unresolved Intent and Runnable calls that are made while a resource is held
+		 * This should only apply for super-component approach but to do a fair comparison we 
+		 * should do the check for intra-component analysis as well.  
+		 */
 		mUnresIntents = new HashSetMultiMap<MethodReference, SSAInstruction>();
 		Collection<Pair<MethodReference, SSAInvokeInstruction>> unresolvedInstructions = 
 				new HashSet<Pair<MethodReference,SSAInvokeInstruction>>(); 
@@ -402,17 +409,15 @@ public class ComponentManager {
 				mUnresIntents.put(p.fst, p.snd);
 			}
 		}
-		//************************************************************************************
-
 	}
 
 
 	private <T extends AbstractContext> void solveComponent(T c) {
 		ComponentPrinter<T> componentPrinter = new ComponentPrinter<T>(c);
-		if (Opts.OUTPUT_COMPONENT_CALLGRAPH) {			
+		if (Options.OUTPUT_COMPONENT_CALLGRAPH) {			
 			componentPrinter.outputNormalCallGraph();
 		}
-		if (Opts.ONLY_ANALYSE_LOCK_REACHING_CALLBACKS) {
+		if (Options.ONLY_ANALYSE_LOCK_REACHING_CALLBACKS) {
 			/* Use reachability results to see if we can actually get to a 
 			 * wifi/wake lock call from here */
 			Predicate predicate = new Predicate() {      
@@ -451,10 +456,10 @@ public class ComponentManager {
 		}
 		c.solve();
 
-		if(Opts.OUTPUT_COLOR_CFG_DOT) {
+		if(Options.OUTPUT_COLOR_CFG_DOT) {
 			componentPrinter.outputColoredCFGs();
 		}      
-		if(Opts.OUTPUT_COLORED_SUPERGRAPHS) {
+		if(Options.OUTPUT_COLORED_SUPERGRAPHS) {
 			componentPrinter.outputColoredSupergraph();
 		}
 	}

@@ -23,7 +23,7 @@ import com.ibm.wala.util.graph.Acyclic;
 import com.ibm.wala.util.graph.InferGraphRoots;
 import com.ibm.wala.util.graph.Path;
 
-import edu.ucsd.energy.analysis.Opts;
+import edu.ucsd.energy.analysis.Options;
 import edu.ucsd.energy.intraproc.IntraProcAnalysis.ConditionEdge;
 import edu.ucsd.energy.intraproc.VariableManager;
 import edu.ucsd.energy.intraproc.VariableManager.ConditionVariable;
@@ -283,14 +283,14 @@ public class ConditionManager {
           if (firstVariable instanceof FunctionCallResult) {
             String firstSignature = ((FunctionCallResult) firstVariable).
                 invInstr.getDeclaredTarget().getSignature();
-            if (!Opts.filterOutMethods.contains(firstSignature)) {
+            if (!Options.filterOutMethods.contains(firstSignature)) {
               cs.add(cond);
             }
           } 
           else if (secondVariable instanceof FunctionCallResult) {
             String secondSignature = ((FunctionCallResult) secondVariable).
                 invInstr.getDeclaredTarget().getSignature();
-            if (!Opts.filterOutMethods.contains(secondSignature)) {
+            if (!Options.filterOutMethods.contains(secondSignature)) {
               cs.add(cond);
             }
           }

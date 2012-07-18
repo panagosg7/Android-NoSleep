@@ -43,8 +43,8 @@ public class Wala {
 		gm.createWakeLockManager();
 		gm.createSpecialConditions();
 		//Component Manager stuff
-		gm.createIntentManager();
-		gm.createRunnableManager();
+//		gm.createIntentManager();		//get these on demand !!
+//		gm.createRunnableManager();	//get these on demand !!
 		//Perform the data flow
 		gm.solveComponents();
 		CompoundReport report = new CompoundReport();
