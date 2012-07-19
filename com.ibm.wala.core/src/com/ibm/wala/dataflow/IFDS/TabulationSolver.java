@@ -22,6 +22,8 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import com.ibm.wala.cfg.IBasicBlock;
+import com.ibm.wala.ipa.cfg.BasicBlockInContext;
+import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.CancelRuntimeException;
 import com.ibm.wala.util.MonitorUtil;
@@ -200,7 +202,6 @@ public class TabulationSolver<T, P, F> {
    * @return a representation of the result
    */
   public TabulationResult<T, P, F> solve() throws CancelException {
-
     try {
       initialize();
       forwardTabulateSLRPs();
@@ -246,6 +247,7 @@ public class TabulationSolver<T, P, F> {
     if (worklist == null) {
       worklist = makeWorklist();
     }
+
     while (worklist.size() > 0) {
       MonitorUtil.throwExceptionIfCanceled(progressMonitor);
       if (verbose) {
@@ -328,9 +330,11 @@ public class TabulationSolver<T, P, F> {
    * @param edge
    */
   private void processNormal(final PathEdge<T> edge) {
+    
     if (DEBUG_LEVEL > 0) {
       System.err.println("process normal: " + edge);
     }
+    
     for (Iterator<? extends T> it = supergraph.getSuccNodes(edge.target); it.hasNext();) {
       final T m = it.next();
       if (DEBUG_LEVEL > 0) {

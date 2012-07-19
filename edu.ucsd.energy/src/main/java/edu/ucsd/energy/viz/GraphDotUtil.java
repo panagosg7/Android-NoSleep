@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.collections.Iterator2Collection;
 import com.ibm.wala.util.debug.Assertions;
@@ -201,7 +202,13 @@ public class GraphDotUtil {
 		}
 	}
 
+	
+	static String temp = null;
+	
 	public static <T> File writeDotFile(Graph<T> g, NodeDecorator labels, String title, String dotfile) throws WalaException {
+		
+		temp = dotfile;
+		
 		if (g == null) {
 			throw new IllegalArgumentException("g is null");
 		}
@@ -259,7 +266,8 @@ public class GraphDotUtil {
 		result.append(fontcolorStr);
 		result.append(fontnameStr);
 		result.append("]; \n");
-
+		
+		
 		Collection<?> dotNodes = computeDotNodes(g);
 
 		labelToInt = new HashMap<String, Integer>();       
@@ -321,7 +329,6 @@ public class GraphDotUtil {
 
 	private static void outputNode(NodeDecorator labels, StringBuffer result, Object n) throws WalaException  {
 		String str = getLabel(n, labels);   
-
 		if (interestingNode(str)) {
 			if (numbersAsLabels) {
 				result.append(labelCounter + " [label=\""+ labelCounter + "\"]\n");
@@ -338,16 +345,9 @@ public class GraphDotUtil {
 				result.append(decorateNode(n, labels));
 			}
 		}
-
 	}
 
 	private static boolean interestingNode(String str) {    
-		if (printOnlyApp){
-			return ((!str.contains("Primordial") || 
-					str.contains("Landroid/os/PowerManager$WakeLock") ||
-					str.contains("Landroid/net/wifi/WifiManager$WifiLock")));
-		}
-		else
 			return !isFakeRootNode(str);
 	}
 

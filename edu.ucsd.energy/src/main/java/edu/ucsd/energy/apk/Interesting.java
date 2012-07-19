@@ -244,6 +244,7 @@ public class Interesting {
 		//boundServiceEntryMethods.add(ServiceOnCreate);
 		boundServiceEntryMethods.add(ServiceOnBind);
 		boundServiceEntryMethods.add(ServiceOnRebind);
+		
 		boundServiceExitMethods.add(ServiceOnUnbind);
 		boundServiceExitMethods.add(ServiceOnDestroy);
 		

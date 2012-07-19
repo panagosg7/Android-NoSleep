@@ -44,13 +44,13 @@ CGNode, Pair<WakeLockInstance, SingleLockState>> {
 	
 	private static final int DEBUG = 1;
 
-	private AbstractContextCFG icfg;
+	private AbstractComponentCFG icfg;
 
 	protected final LockingFlowFunctions flowFunctionMap;
 	
 	final protected Map<Component, ContextSummaryEdges> ctxSummaryEdges = HashMapFactory.make();
 
-	protected LockingTabulationSolver(LockingProblem problem, IProgressMonitor monitor, AbstractContextCFG icfg) {
+	protected LockingTabulationSolver(LockingProblem problem, IProgressMonitor monitor, AbstractComponentCFG icfg) {
 		super(problem, monitor);
 		this.icfg = icfg;
 		this.flowFunctionMap = problem.getFunctionMap();
@@ -58,8 +58,7 @@ CGNode, Pair<WakeLockInstance, SingleLockState>> {
 
 
 	public LockingResult solve() throws CancelException {
-		TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, 
-		CGNode, Pair<WakeLockInstance, SingleLockState>> result = super.solve();		
+		TabulationResult<BasicBlockInContext<IExplodedBasicBlock>, CGNode, Pair<WakeLockInstance, SingleLockState>> result = super.solve();		
 		return new LockingResult(result);
 	}
 
@@ -142,7 +141,7 @@ CGNode, Pair<WakeLockInstance, SingleLockState>> {
 	protected void processCall(final PathEdge<BasicBlockInContext<IExplodedBasicBlock>> edge) {
 		// This is an asynchronous call 
 		BasicBlockInContext<IExplodedBasicBlock> callSite = edge.getTarget();
-		if (ENABLE_CTX_SENS && icfg.isCallToContext(callSite)) {
+		if (ENABLE_CTX_SENS && icfg.isCallToComponent(callSite)) {
 
 			// c:= number of the call node
 			final int c = supergraph.getNumber(callSite);
@@ -275,7 +274,7 @@ CGNode, Pair<WakeLockInstance, SingleLockState>> {
 		//If there is _some_ state to propagate
 		if (reached != null) {
 
-			final Component calledContext = icfg.getCalleeContext(caller);
+			final Component calledContext = icfg.getCalleeComponent(caller);
 			if(calledContext == null) {
 				Assertions.UNREACHABLE();
 				return;		//This might suffice
@@ -361,7 +360,7 @@ CGNode, Pair<WakeLockInstance, SingleLockState>> {
 	
 	protected void processExit(final PathEdge<BasicBlockInContext<IExplodedBasicBlock>> edge) {
 		BasicBlockInContext<IExplodedBasicBlock> target = edge.getTarget();
-		Component ctx = icfg.returnFromContext(target);
+		Component ctx = icfg.returnFromComponent(target);
 		//Check if this is a context return block
 		if (ENABLE_CTX_SENS && (ctx != null)) {
 			if (DEBUG > 0) {

@@ -1,5 +1,6 @@
 package edu.ucsd.energy.interproc;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -15,12 +16,16 @@ import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.collections.HashSetMultiMap;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
+import com.ibm.wala.util.graph.Acyclic;
+import com.ibm.wala.util.graph.Path;
+import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 
-import edu.ucsd.energy.component.AbstractContext;
+import edu.ucsd.energy.component.AbstractComponent;
 import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.component.Component;
+import edu.ucsd.energy.managers.GlobalManager;
 
-public class SuperContextCFG extends AbstractContextCFG {
+public class SuperContextCFG extends AbstractComponentCFG {
 
 	private static final int DEBUG = 0;
 
@@ -28,67 +33,70 @@ public class SuperContextCFG extends AbstractContextCFG {
 	//Helps distinguish from function calls
 	protected HashSetMultiMap<BasicBlockInContext<IExplodedBasicBlock>, BasicBlockInContext<IExplodedBasicBlock>> mContextCall = 
 			new HashSetMultiMap<BasicBlockInContext<IExplodedBasicBlock>,BasicBlockInContext<IExplodedBasicBlock>>();
-	
+
 	protected HashSetMultiMap<BasicBlockInContext<IExplodedBasicBlock>, BasicBlockInContext<IExplodedBasicBlock>> mContextReturnEdge = 
 			new HashSetMultiMap<BasicBlockInContext<IExplodedBasicBlock>, BasicBlockInContext<IExplodedBasicBlock>>();
 
 	private Map<BasicBlockInContext<IExplodedBasicBlock>, Component> mCallerToContext = 
 			new HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component>();
-	
+
 	private Map<BasicBlockInContext<IExplodedBasicBlock>, Component> mContextReturn = 
 			new HashMap<BasicBlockInContext<IExplodedBasicBlock>, Component>();
-	
+
 	private HashSetMultiMap<Component, BasicBlockInContext<IExplodedBasicBlock>> mContextToExit = 
 			new HashSetMultiMap<Component, BasicBlockInContext<IExplodedBasicBlock>>();
-	
-	public boolean isCallToContextEdge(BasicBlockInContext<IExplodedBasicBlock> a, BasicBlockInContext<IExplodedBasicBlock> b) {
+
+	public boolean isCallToComponentEdge(BasicBlockInContext<IExplodedBasicBlock> a, BasicBlockInContext<IExplodedBasicBlock> b) {
 		Set<BasicBlockInContext<IExplodedBasicBlock>> b1 = mContextCall.get(a);
 		return ((b1!=null)?b1.contains(b):false);
 	}
-	
-	public boolean isCallToContext(BasicBlockInContext<IExplodedBasicBlock> a) {
+
+	public boolean isCallToComponent(BasicBlockInContext<IExplodedBasicBlock> a) {
 		return mContextCall.containsKey(a);
 	}
-	
-	public boolean isReturnFromContextEdge(BasicBlockInContext<IExplodedBasicBlock> a, BasicBlockInContext<IExplodedBasicBlock> b) {
+
+	public boolean isReturnFromComponentEdge(BasicBlockInContext<IExplodedBasicBlock> a, BasicBlockInContext<IExplodedBasicBlock> b) {
 		Set<BasicBlockInContext<IExplodedBasicBlock>> b1 = mContextReturnEdge.get(a);
 		return ((b1!=null)?b1.contains(b):false);
 	}
-	
-	public Component returnFromContext(BasicBlockInContext<IExplodedBasicBlock> a) {
+
+	public Component returnFromComponent(BasicBlockInContext<IExplodedBasicBlock> a) {
 		return mContextReturn.get(a);
 	}
-	
-	public Component getCalleeContext(BasicBlockInContext<IExplodedBasicBlock> bb) {
+
+	public Component getCalleeComponent(BasicBlockInContext<IExplodedBasicBlock> bb) {
 		return mCallerToContext.get(bb);
 	}
+	
 	
 	public Set<BasicBlockInContext<IExplodedBasicBlock>> getContextExit(Component c) {
 		return mContextToExit.get(c);
 	}
-	
-	public SuperContextCFG(
-		//the abstract component
-		AbstractContext component,
-		//Pairs of edges within the same context
-		Set<Pair<CGNode, CGNode>> packedEdges,
-		//Edges between different contexts
-		Map<SSAInstruction, Component> seeds) {
-		
-		  super(component.getContextCallGraph());
-		  this.absCtx = component;
-		  this.callgraph = component.getContextCallGraph();
-		  /* Will only work like this - loses laziness. */
-		  constructFullGraph();
-		  
-		  //For the implicit edges within components
-		  cacheCallbacks(packedEdges);
-		  addReturnToEntryEdge(packedEdges);
-		  //Add edges from Intent calls etc
-		  //Using as packed edges the total of the edges for every component
-		  addCallToEntryAndReturnEdges(seeds);
-	  }
 
+	public SuperContextCFG(
+			//the abstract component
+			AbstractComponent component,
+			//Pairs of edges within the same context
+			Set<Pair<CGNode, CGNode>> packedEdges,
+			//Edges between different contexts
+			Map<SSAInstruction, Component> seeds) {
+
+		super(component.getContextCallGraph());
+		this.absCtx = component;
+		this.callgraph = component.getContextCallGraph();
+		/* Will only work like this - loses laziness. */
+		constructFullGraph();
+
+		//For the implicit edges within components
+		cacheCallbacks(packedEdges);
+		addReturnToEntryEdge(packedEdges);
+		//Add edges from Intent calls etc
+		//Using as packed edges the total of the edges for every component
+		addCallToEntryAndReturnEdges(seeds);
+
+	}
+
+	
 	/**
 	 * This method adds edges that refer to Intent, Thread and Handler posts etc.
 	 * @param map
@@ -105,23 +113,23 @@ public class SuperContextCFG extends AbstractContextCFG {
 					System.out.println("Adding ASYNC: " + caller.toString() + " to " + 
 							targetComp.toString());	
 				}
-				
+
 				if (!(instr instanceof SSAInvokeInstruction)) continue;
 				SSAInvokeInstruction inv = (SSAInvokeInstruction) instr;					
 				Selector callSelector = inv.getDeclaredTarget().getSelector();
-				
+
 				//Adding a sanity check: if we enter a component there must at least 
 				//one edge exiting it.
 				boolean enter = false;
 				boolean exit  = false;
-				
+
 				//Exit points might depend on the call method to the specific component
 				//Return edges must be added first to avoid having the entry method as
 				//a successor of the invoke instruction
 				Set<Selector> exitPoints = targetComp.getExitPoints(callSelector);
 				for (Selector exitSel : exitPoints) {
 					Set<CallBack> callBacks = targetComp.getNextCallBack(exitSel, false); 
-//					CallBack callBack = targetComp.getCallBack(exitSel);	//this missed some cases...
+					//					CallBack callBack = targetComp.getCallBack(exitSel);	//this missed some cases...
 					//Continue only if this callback is indeed overridden
 					for (CallBack callBack : callBacks) {
 						if (callBack != null) {
@@ -144,7 +152,7 @@ public class SuperContextCFG extends AbstractContextCFG {
 									if (DEBUG > 1) {
 										System.err.println("Adding to: " + targetComp.toString());
 										System.out.println("Adding ASYNC CTX RETURN: " + src.toShortString() +
-											" -> " + returnBB.toShortString());
+												" -> " + returnBB.toShortString());
 									}
 								}
 							}
@@ -154,7 +162,7 @@ public class SuperContextCFG extends AbstractContextCFG {
 				Set<Selector> entryPoints = targetComp.getEntryPoints(callSelector);
 				for (Selector sel : entryPoints) {
 					Set<CallBack> callBacks = targetComp.getNextCallBack(sel, false);
-//					CallBack callBack = targetComp.getCallBack(sel);	//this missed some cases...
+					//					CallBack callBack = targetComp.getCallBack(sel);	//this missed some cases...
 					for (CallBack callBack : callBacks) {
 						if (callBack != null) {
 							CGNode node = callBack.getNode();
@@ -166,14 +174,14 @@ public class SuperContextCFG extends AbstractContextCFG {
 							enter = true;
 							if (DEBUG > 1) {
 								System.out.println("Adding ASYNC CTX CALL: " + caller.toShortString() + 
-									" -> " + dest.toShortString());
+										" -> " + dest.toShortString());
 							}
 							mContextCall.put(caller,dest);
 							mCallerToContext .put(caller,targetComp);
 						}
 					}
 				}
-				
+
 				//Sanity check: enter and exit should take the same values
 				if (enter ^ exit) {
 					Assertions.productionAssertion(enter, caller.toString() + " calls " + 
@@ -185,7 +193,7 @@ public class SuperContextCFG extends AbstractContextCFG {
 		}
 	}
 
-	
+
 	@Override
 	public boolean isContextExit(BasicBlockInContext<IExplodedBasicBlock> a) {
 		return mContextReturn.containsKey(a);

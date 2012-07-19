@@ -27,6 +27,7 @@ import com.ibm.wala.util.collections.Filter;
 import com.ibm.wala.util.collections.HashSetMultiMap;
 import com.ibm.wala.util.collections.Iterator2Collection;
 import com.ibm.wala.util.collections.Pair;
+import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphReachability;
 import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 import com.ibm.wala.util.graph.traverse.DFSPathFinder;
@@ -34,7 +35,7 @@ import com.ibm.wala.util.graph.traverse.DFSPathFinder;
 import edu.ucsd.energy.analysis.Options;
 import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.apk.ClassHierarchyUtils;
-import edu.ucsd.energy.component.AbstractContext;
+import edu.ucsd.energy.component.AbstractComponent;
 import edu.ucsd.energy.component.CallBack;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.component.ComponentPrinter;
@@ -349,22 +350,14 @@ public class ComponentManager {
 			Log.println("\nSolving components...");
 		}
 
-		Collection<? extends AbstractContext> componentSet;
+		Collection<? extends AbstractComponent> componentSet;
 		
 		if (Options.ANALYZE_SUPERCOMPONENTS) {
 		//Run the analysis on super-components 
-			//Build the constraints' graph 
-			RunnableManager runnableManager = global.getRunnableManager();
-			SparseNumberedGraph<Component> rCG = runnableManager.getConstraintGraph();
-
-			IntentManager intentManager = global.getIntentManager();
-			SparseNumberedGraph<Component> iCG = intentManager.getConstraintGraph();
-
-			SparseNumberedGraph<Component> constraintGraph = GraphUtils.merge(rCG,iCG);
-			GraphUtils.dumpConstraintGraph(constraintGraph, "all_constraints");
 			
 			//Create SuperComponents based on component constraints
-			Iterator<Set<Component>> scItr = GraphUtils.connectedComponentIterator(constraintGraph);
+			Iterator<Set<Component>> scItr = GraphUtils.connectedComponentIterator(global.getConstraintGraph());
+			
 			//SuperComponents: the sequence does not matter
 			while(scItr.hasNext()) {
 				Set<Component> sCtx = scItr.next();	//The set of components that construct this super-component
@@ -373,7 +366,10 @@ public class ComponentManager {
 					superComponent.dumpContainingComponents();
 				}
 				ComponentPrinter<SuperComponent> printer = new ComponentPrinter<SuperComponent>(superComponent);
+
+				
 				printer.outputSupergraph();
+				
 				superComponents.add(superComponent);			
 				solveComponent(superComponent);
 			}
@@ -402,7 +398,7 @@ public class ComponentManager {
 		unresolvedInstructions.addAll(global.getRunnableManager().getUnresolvedCallSites());
 
 		//Warning: Be careful to use the correct set of contexts (super or regular)	
-		for (AbstractContext c : componentSet) {
+		for (AbstractComponent c : componentSet) {
 			if (!c.solved()) continue;
 			for (Pair<MethodReference, SSAInvokeInstruction> p :
 				c.getHightStateUnresolvedIntents(unresolvedInstructions)) {
@@ -412,7 +408,7 @@ public class ComponentManager {
 	}
 
 
-	private <T extends AbstractContext> void solveComponent(T c) {
+	private <T extends AbstractComponent> void solveComponent(T c) {
 		ComponentPrinter<T> componentPrinter = new ComponentPrinter<T>(c);
 		if (Options.OUTPUT_COMPONENT_CALLGRAPH) {			
 			componentPrinter.outputNormalCallGraph();

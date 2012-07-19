@@ -177,6 +177,7 @@ public abstract class AbstractInterproceduralCFG<T extends ISSABasicBlock> imple
    */
   protected void addEdgesToNonEntryBlock(CGNode n, ControlFlowGraph<?, T> cfg, SSAInstruction[] instrs, T bb) {
     if (DEBUG_LEVEL > 1) {
+//    if (n.getMethod().getSignature().contains("onCreate") && n.getMethod().getSignature().contains("IMService")) {
       System.err.println("addEdgesToNonEntryBlock: " + bb);
       System.err.println("nPred: " + cfg.getPredNodeCount(bb));
     }
@@ -184,6 +185,7 @@ public abstract class AbstractInterproceduralCFG<T extends ISSABasicBlock> imple
     for (Iterator<? extends T> ps = cfg.getPredNodes(bb); ps.hasNext();) {
       T pb = ps.next();
       if (DEBUG_LEVEL > 1) {
+//      if (n.getMethod().getSignature().contains("onCreate") && n.getMethod().getSignature().contains("IMService")) {
         System.err.println("Consider previous block: " + pb);
       }
 
@@ -198,6 +200,7 @@ public abstract class AbstractInterproceduralCFG<T extends ISSABasicBlock> imple
       SSAInstruction inst = getLastInstructionForBlock(pb, instrs);
 
       if (DEBUG_LEVEL > 1) {
+//      if (n.getMethod().getSignature().contains("onCreate") && n.getMethod().getSignature().contains("IMService")) {
         System.err.println("Last instruction is : " + inst);
       }
       if (inst instanceof SSAAbstractInvokeInstruction) {
@@ -215,6 +218,9 @@ public abstract class AbstractInterproceduralCFG<T extends ISSABasicBlock> imple
           assert g.containsNode(p) : "IPCFG does not contain " + p;
           assert g.containsNode(b) : "IPCFG does not contain " + b;
         }
+//        if (n.getMethod().getSignature().contains("onCreate") && n.getMethod().getSignature().contains("IMService")) {
+//          System.err.println("Adding edge: " + p + " -> " + b);
+//        }
         g.addEdge(p, b);
       }
     }

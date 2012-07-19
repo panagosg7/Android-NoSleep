@@ -154,8 +154,8 @@ public class Options {
 	
   
   /**
-   * Do not propagate flow from exceptional edges (kind of imprecise but
-   * would be a hassle to account for inter-procedural exceptional edges). 
+   * Do not propagate flow from exceptional edges
+   * -- Causes soundness issues when true !!!  
    */
   public static final boolean DATAFLOW_IGNORE_EXCEPTIONAL = true;
 	
@@ -164,7 +164,7 @@ public class Options {
    * Do you want the analysis to be run on the supercomponents 
    * (true) or just the components (false)? 
    */
-	public static final boolean ANALYZE_SUPERCOMPONENTS = false;
+	public static boolean ANALYZE_SUPERCOMPONENTS = true;
 
 
 	/**

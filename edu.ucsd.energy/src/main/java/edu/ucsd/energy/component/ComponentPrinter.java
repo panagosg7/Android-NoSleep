@@ -19,7 +19,7 @@ import com.ibm.wala.types.TypeName;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.viz.NodeDecorator;
 
-import edu.ucsd.energy.interproc.AbstractContextCFG;
+import edu.ucsd.energy.interproc.AbstractComponentCFG;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SingleLockState;
 import edu.ucsd.energy.interproc.SingleLockState.LockStateDescription;
@@ -28,7 +28,7 @@ import edu.ucsd.energy.util.SystemUtil;
 import edu.ucsd.energy.viz.GraphDotUtil;
 import edu.ucsd.energy.viz.IColorNodeDecorator;
 
-public class ComponentPrinter<T extends AbstractContext> {
+public class ComponentPrinter<T extends AbstractComponent> {
 
 	Properties p = WalaExamplesProperties.properties;
 
@@ -36,7 +36,7 @@ public class ComponentPrinter<T extends AbstractContext> {
 
 	T component;
 
-	AbstractContextCFG icfg;
+	AbstractComponentCFG icfg;
 
 	ColorNodeDecorator colorNodeDecorator = new ColorNodeDecorator();
 
@@ -83,12 +83,14 @@ public class ComponentPrinter<T extends AbstractContext> {
 	 * @param icfg 
 	 */	
 	public void outputColoredCFGs() {
+
 		//Need to do this here - WALA was giving me a hard time to crop a small
 		//part of the graph
 		String cfgs = SystemUtil.getResultDirectory() + File.separatorChar + "color_cfg" +
 				File.separatorChar +  component.toFileName() ;	//every supercomponent should have its own folder 
 		new File(cfgs).mkdirs();
 		Iterator<CGNode> it = componentCallgraph.iterator();
+
 		while (it.hasNext()) {
 			CGNode n = it.next();      
 			ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> cfg = icfg.getCFG(n);
@@ -136,7 +138,7 @@ public class ComponentPrinter<T extends AbstractContext> {
 	 * Output the whole component CFG without colors
 	 */
 	public void outputSupergraph() {
-		
+
 		String cfgs = SystemUtil.getResultDirectory() + File.separatorChar + "super_cfg";
 		new File(cfgs).mkdirs();
 
@@ -145,7 +147,7 @@ public class ComponentPrinter<T extends AbstractContext> {
 		String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
 		String pdfFile = null;
 		try {
-			/* Do the colored graph */
+
 			GraphDotUtil.dotify(icfg, nodeDecorator, dotFile, pdfFile, dotExe);
 		} catch (WalaException e) {
 			e.printStackTrace();
@@ -217,7 +219,7 @@ public class ComponentPrinter<T extends AbstractContext> {
 				if (icfg.isExceptionalEdge(bb1, bb2)) {
 					return " [style = dashed]";
 				}
-				if (icfg.isReturnFromContextEdge(bb1, bb2) || icfg.isCallToContextEdge(bb1, bb2)) {
+				if (icfg.isReturnFromComponentEdge(bb1, bb2) || icfg.isCallToComponentEdge(bb1, bb2)) {
 					return " [style = bold arrowhead = diamond color = blue]";
 				}
 				if (icfg.isLifecycleExit(bb1)) {
@@ -241,6 +243,8 @@ public class ComponentPrinter<T extends AbstractContext> {
 			if (o instanceof BasicBlockInContext) {
 				@SuppressWarnings("unchecked")
 				BasicBlockInContext<IExplodedBasicBlock> ebb = (BasicBlockInContext<IExplodedBasicBlock>) o;
+				
+				
 				String prefix = "(" + Integer.toString(ebb.getNode().getGraphNodeId()) + "," + Integer.toString(ebb.getNumber()) + ")";
 				String name = ebb.getMethod().getName().toString() + " : ";
 
@@ -249,7 +253,9 @@ public class ComponentPrinter<T extends AbstractContext> {
 					SSAInstruction instr = iterator.next();
 					name += instr.toString();
 				}
-				return (prefix + "[" + name + "]");
+				String string = prefix + "[" + name + "]";
+
+				return string;
 			}
 			/* This is the case of the CFG for a single method. */
 			if (o instanceof IExplodedBasicBlock) {

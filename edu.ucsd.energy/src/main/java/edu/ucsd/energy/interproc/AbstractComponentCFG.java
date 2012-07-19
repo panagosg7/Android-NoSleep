@@ -18,7 +18,7 @@ import com.ibm.wala.ssa.analysis.ExplodedControlFlowGraph;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.util.collections.Pair;
 
-import edu.ucsd.energy.component.AbstractContext;
+import edu.ucsd.energy.component.AbstractComponent;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.util.Log;
 
@@ -26,27 +26,24 @@ import edu.ucsd.energy.util.Log;
  * This is an exploded inter-procedural CFG with extra edges connecting 
  * methods specified at the creation. 
  */
-abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
+abstract public class AbstractComponentCFG extends ExplodedInterproceduralCFG {
 
-	private static final int DEBUG = 0;
+	private static final int DEBUG_KILL = 0;
 
-	protected AbstractContext absCtx;
+	protected AbstractComponent absCtx;
 
 	protected CallGraph callgraph;
 
 	protected Map<String,CGNode> callbacks;
-
 
 	//We need to keep these nodes so that the tabulation solver know that he has to 
 	//propagate the state (these are going to be unbalanced seeds)
 	protected Set<BasicBlockInContext<IExplodedBasicBlock>> sLifecycleEdge = 
 			new HashSet<BasicBlockInContext<IExplodedBasicBlock>>();
 
-
-	public AbstractContextCFG(CallGraph cg) {
+	public AbstractComponentCFG(CallGraph cg) {
 		super(cg);
 	}
-
 	
 	/**
 	 * True if this node leads to the next method in the lifecycle
@@ -106,13 +103,11 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 	 * @param dest
 	 * @return
 	 */
-	public boolean isExceptionalEdge(
-			BasicBlockInContext<IExplodedBasicBlock> src,
-			BasicBlockInContext<IExplodedBasicBlock> dest) {
+	public boolean isExceptionalEdge(BasicBlockInContext<IExplodedBasicBlock> src, BasicBlockInContext<IExplodedBasicBlock> dest) {
 
 		//The edges we added for calling and returning from other contexts 
 		//should not be treated as exceptional edges
-		if (isCallToContextEdge(src, dest) || isReturnFromContextEdge(src, dest)) {
+		if (isCallToComponentEdge(src, dest) || isReturnFromComponentEdge(src, dest)) {
 			return false;
 		}
 
@@ -120,15 +115,18 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 		//probably an exceptional one.
 		if((!src.getMethod().equals(dest.getMethod())) && src.getDelegate().isExitBlock()
 				&& dest.getDelegate().isExitBlock()) {
-			Log.log(2, "EXCE: " + src.toShortString() + " -> " + dest.toShortString());
+			if (DEBUG_KILL > 0) {
+				Log.println("EXCE: " + src.toShortString() + " -> " + dest.toShortString());
+			}
 			return true;
 		}
 		//Exceptional successors from method's CFG
 		try {
-			Collection<IExplodedBasicBlock> exceptionalSuccessors = 
-					getCFG(src).getExceptionalSuccessors(src.getDelegate());
+			Collection<IExplodedBasicBlock> exceptionalSuccessors =	getCFG(src).getExceptionalSuccessors(src.getDelegate());
 			if (exceptionalSuccessors.contains(dest.getDelegate())) {
-				Log.log(2, "EXCE1: " + src.toShortString() + " -> " + dest.toShortString());
+				if (DEBUG_KILL > 0) {
+					Log.println("EXCE1: " + src.toShortString() + " -> " + dest.toShortString());
+				}
 				return true;
 			}
 		}
@@ -158,7 +156,7 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 		return explodedBasicBlock;
 	}
 
-	public AbstractContext getComponent() {
+	public AbstractComponent getComponent() {
 		return absCtx;
 	}
 
@@ -172,19 +170,24 @@ abstract public class AbstractContextCFG extends ExplodedInterproceduralCFG {
 
 	//Super CFG will have to override these
 	
-	public abstract boolean isReturnFromContextEdge(BasicBlockInContext<IExplodedBasicBlock> bb1,
+	public abstract boolean isReturnFromComponentEdge(BasicBlockInContext<IExplodedBasicBlock> bb1,
 			BasicBlockInContext<IExplodedBasicBlock> bb2);
 
-	public abstract boolean isCallToContextEdge(BasicBlockInContext<IExplodedBasicBlock> src,
+	public abstract boolean isCallToComponentEdge(BasicBlockInContext<IExplodedBasicBlock> src,
 			BasicBlockInContext<IExplodedBasicBlock> dest);
 
-	public abstract boolean isCallToContext(BasicBlockInContext<IExplodedBasicBlock> src);
+	public abstract boolean isCallToComponent(BasicBlockInContext<IExplodedBasicBlock> src);
 	
-	abstract public Component returnFromContext(BasicBlockInContext<IExplodedBasicBlock> src);
+	abstract public Component returnFromComponent(BasicBlockInContext<IExplodedBasicBlock> src);
 	
-	abstract public Component getCalleeContext(BasicBlockInContext<IExplodedBasicBlock> bb);
+	abstract public Component getCalleeComponent(BasicBlockInContext<IExplodedBasicBlock> bb);
 	
 	abstract public Set<BasicBlockInContext<IExplodedBasicBlock>> getContextExit(Component c);
+
+	public boolean isRecursiveCallToComponent(BasicBlockInContext<IExplodedBasicBlock> src) {
+		// TODO Auto-generated method stub
+		return false;
+	}
 	
 	
 }

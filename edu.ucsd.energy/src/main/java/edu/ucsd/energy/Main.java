@@ -418,8 +418,6 @@ public class Main {
 		//we can get this result...
 		
 		tPoolExec.invokeAll(tasks);
-		System.out.println(tPoolExec.getTaskCount());
-
 
 		tPoolExec.shutdown();
 		tPoolExec.awaitTermination(20, TimeUnit.HOURS);
@@ -857,6 +855,7 @@ public class Main {
 		options.addOption(new Option("t", "threads", true, "run the analysis on t threads (works for pattern analysis only)"));
 		options.addOption(new Option("skipN", true, "skip the first N application that are in line for analysis"));
 		options.addOption(new Option("sp", "skip-prev", false, "skip application that are already analyzed"));
+		options.addOption(new Option("na", "no-async", false, "disable asynchronous call edges"));
 		
 		options.addOption(new Option("ao", "avoid-apk-check", false, "avoid checking and if the apk is there (use with care as it will not be able to be retargeted)"));
 		
@@ -891,6 +890,10 @@ public class Main {
 				AVOID_APK_CHECK = true;
 			}
 			
+			if (line.hasOption("no-async")) {
+				Options.ANALYZE_SUPERCOMPONENTS = false;
+			}
+			
 			if (line.hasOption("input")) {
 				setInputJSONFile(line.getOptionValue("input"));
 			}
@@ -904,20 +907,11 @@ public class Main {
 			//Define the set of apps to run the analysis on
 			if (line.hasOption("small-set")) {
 				/* The applications you specify here need to be in apk_collection !!! */
-				theSet.add("NetCounter");
-				theSet.add("Azan_Alarm");
-				theSet.add("NetCounter");
-				theSet.add("Azan_Alarm");
-				theSet.add("NetCounter");
-//				theSet.add("Azan_Alarm");
+//				theSet.add("Translate");
+//				theSet.add("Agent_Mail.Ru");
+				theSet.add("Cyworld");
 //				theSet.add("NetCounter");
-//				theSet.add("Azan_Alarm");
-//				theSet.add("NetCounter");
-//				theSet.add("Azan_Alarm");
-//				theSet.add("NetCounter");
-//				theSet.add("Azan_Alarm");
-//				theSet.add("NetCounter");
-//				theSet.add("Azan_Alarm");
+
 			}
 			else if (line.hasOption("unit")) {
 				theSet.add("Unit_01");

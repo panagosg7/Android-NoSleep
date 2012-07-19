@@ -3,12 +3,15 @@ package edu.ucsd.energy.managers;
 import java.io.File;
 
 import com.ibm.wala.ipa.cha.ClassHierarchy;
+import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 
 import edu.ucsd.energy.analysis.Wala;
 import edu.ucsd.energy.apk.AppCallGraph;
 import edu.ucsd.energy.apk.ClassHierarchyUtils;
+import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.conditions.SpecialConditions;
 import edu.ucsd.energy.results.IReport;
+import edu.ucsd.energy.util.GraphUtils;
 import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.SystemUtil;
 
@@ -21,7 +24,8 @@ public class GlobalManager {
 	private WakeLockManager wakeLockManager;
 	private IntentManager intentManager;
 	private RunnableManager runnableManager;
-	private SpecialConditions specialConditions; 
+	private SpecialConditions specialConditions;
+	private SparseNumberedGraph<Component> constraintGraph; 
 	
 	
 	private static ThreadLocal<GlobalManager> threadGM = new ThreadLocal<GlobalManager>();
@@ -173,6 +177,16 @@ public class GlobalManager {
 	public void reset() {
 		threadGM.set(null);		
 	}
+
+
+	public SparseNumberedGraph<Component> getConstraintGraph() {
+		if (constraintGraph == null) {
+			constraintGraph = GraphUtils.merge(getRunnableManager().getConstraintGraph(),getIntentManager().getConstraintGraph());
+			GraphUtils.dumpConstraintGraph(constraintGraph , "all_constraints");
+		}
+		return constraintGraph;
+	}
+	
 	
 }
 

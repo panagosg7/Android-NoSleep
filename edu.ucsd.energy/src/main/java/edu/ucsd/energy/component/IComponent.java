@@ -5,12 +5,12 @@ import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 
-import edu.ucsd.energy.interproc.AbstractContextCFG;
+import edu.ucsd.energy.interproc.AbstractComponentCFG;
 import edu.ucsd.energy.interproc.CompoundLockState;
 
-public interface IContext {
+public interface IComponent {
 
-	public AbstractContextCFG makeCFG();
+	public AbstractComponentCFG makeCFG();
 	
 	public CallGraph getContextCallGraph();
 	

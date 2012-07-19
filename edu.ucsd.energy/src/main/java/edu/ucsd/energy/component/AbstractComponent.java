@@ -23,7 +23,7 @@ import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 
 import edu.ucsd.energy.apk.AppCallGraph;
-import edu.ucsd.energy.interproc.AbstractContextCFG;
+import edu.ucsd.energy.interproc.AbstractComponentCFG;
 import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.CtxSensLocking;
 import edu.ucsd.energy.interproc.CtxSensLocking.SensibleICFGSupergraph;
@@ -33,7 +33,7 @@ import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.util.Log;
 
-public abstract class AbstractContext extends NodeWithNumber implements IContext {
+public abstract class AbstractComponent extends NodeWithNumber implements IComponent {
 
 	protected static GlobalManager global;   
 
@@ -42,12 +42,12 @@ public abstract class AbstractContext extends NodeWithNumber implements IContext
 	//The whole application call graph
 	protected AppCallGraph originalCallgraph;
 
-	protected AbstractContextCFG icfg = null;
+	protected AbstractComponentCFG icfg = null;
 
 	protected ISupergraph<BasicBlockInContext<IExplodedBasicBlock>, CGNode> supergraph = null;
 
 
-	public AbstractContext() {
+	public AbstractComponent() {
 		global = GlobalManager.get();
 		originalCallgraph = global.getAppCallGraph();
 	}
@@ -74,7 +74,7 @@ public abstract class AbstractContext extends NodeWithNumber implements IContext
 	}
 		
 
-	public AbstractContextCFG getICFG() {
+	public AbstractComponentCFG getICFG() {
 		if (icfg == null) {
 			icfg = makeCFG();
 		}

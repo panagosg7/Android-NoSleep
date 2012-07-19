@@ -1,6 +1,7 @@
 package edu.ucsd.energy.interproc;
 
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.Set;
 
 import com.ibm.wala.dataflow.IFDS.ICFGSupergraph;
@@ -28,7 +29,7 @@ import com.ibm.wala.util.intset.IntSet;
 
 import edu.ucsd.energy.analysis.Options;
 import edu.ucsd.energy.apk.Interesting;
-import edu.ucsd.energy.component.AbstractContext;
+import edu.ucsd.energy.component.AbstractComponent;
 import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.conditions.SpecialConditions;
 import edu.ucsd.energy.conditions.SpecialConditions.SpecialCondition;
@@ -45,9 +46,9 @@ public class CtxSensLocking {
 	/**
 	 * The underlying Inter-procedural Control Flow Graph
 	 */
-	private AbstractContext component;
+	private AbstractComponent component;
 	
-	private AbstractContextCFG icfg;	
+	private AbstractComponentCFG icfg;	
 	
 	/**
 	 * the supergraph over which tabulation is performed
@@ -76,7 +77,7 @@ public class CtxSensLocking {
 		}
 	}
 
-	public CtxSensLocking(AbstractContext comp) {
+	public CtxSensLocking(AbstractComponent comp) {
 		 //We already have created our SensibleExplodedInterproceduralCFG which
 		 //contains extra edges compared to the exploded i-cfg WALA usually creates
 		this.component = comp;
@@ -290,6 +291,7 @@ public class CtxSensLocking {
 		LockingTabulationSolver solver = new LockingTabulationSolver(problem, null, getICFG());
 		LockingResult result = null;
 		try {
+			
 			result = solver.solve();
 
 		} catch (CancelException e) {
@@ -307,11 +309,11 @@ public class CtxSensLocking {
 		return domain;
 	}
 
-	public AbstractContextCFG getICFG() {
+	public AbstractComponentCFG getICFG() {
 		return icfg;
 	}
 
-	public void setICFG(AbstractContextCFG icfg) {
+	public void setICFG(AbstractComponentCFG icfg) {
 		this.icfg = icfg;
 	}
 

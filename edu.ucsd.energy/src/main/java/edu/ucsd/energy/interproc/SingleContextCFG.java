@@ -6,18 +6,17 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.util.collections.Pair;
-import com.ibm.wala.util.debug.Assertions;
 
-import edu.ucsd.energy.component.AbstractContext;
+import edu.ucsd.energy.component.AbstractComponent;
 import edu.ucsd.energy.component.Component;
 
-public class SingleContextCFG extends AbstractContextCFG {
+public class SingleContextCFG extends AbstractComponentCFG {
 
 	  /**
 	   * Constructor that the component and the pairs of methods (Signatures) that need to 
 	   * be connected.
 	   */
-	  public SingleContextCFG(AbstractContext component, Set<Pair<CGNode, CGNode>> packedEdges) {
+	  public SingleContextCFG(AbstractComponent component, Set<Pair<CGNode, CGNode>> packedEdges) {
 		  super(component.getContextCallGraph());
 		  this.absCtx = component;
 		  this.callgraph = component.getContextCallGraph();
@@ -29,7 +28,7 @@ public class SingleContextCFG extends AbstractContextCFG {
 
 	  //This should be like this for single-context CFGs
 	  @Override
-		public Component getCalleeContext(BasicBlockInContext<IExplodedBasicBlock> bb) {
+		public Component getCalleeComponent(BasicBlockInContext<IExplodedBasicBlock> bb) {
 			return null;
 		}
 
@@ -39,26 +38,26 @@ public class SingleContextCFG extends AbstractContextCFG {
 		}
 
 	  @Override
-		public boolean isReturnFromContextEdge(
+		public boolean isReturnFromComponentEdge(
 				BasicBlockInContext<IExplodedBasicBlock> bb1,
 				BasicBlockInContext<IExplodedBasicBlock> bb2) {
 			return false;
 		}
 
 		@Override
-		public boolean isCallToContextEdge(
+		public boolean isCallToComponentEdge(
 				BasicBlockInContext<IExplodedBasicBlock> src,
 				BasicBlockInContext<IExplodedBasicBlock> dest) {
 			return false;
 		}
 
 		@Override
-		public boolean isCallToContext(BasicBlockInContext<IExplodedBasicBlock> src) {
+		public boolean isCallToComponent(BasicBlockInContext<IExplodedBasicBlock> src) {
 			return false;
 		}
 
 		@Override
-		public Component returnFromContext(BasicBlockInContext<IExplodedBasicBlock> src) {
+		public Component returnFromComponent(BasicBlockInContext<IExplodedBasicBlock> src) {
 			return null;
 		}
 

@@ -43,7 +43,7 @@ import edu.ucsd.energy.results.Violation.ViolationType;
 import edu.ucsd.energy.util.Log;
 import edu.ucsd.energy.util.Util;
 
-public abstract class Component extends AbstractContext implements IReportKey {
+public abstract class Component extends AbstractComponent implements IReportKey {
 
 	private static final int DEBUG = 0;
 
@@ -436,15 +436,17 @@ public abstract class Component extends AbstractContext implements IReportKey {
 	public Set<Violation> gatherViolations(ComponentSummary summary, Selector sel, ViolationType res) {
 		Set<LockUsage> stateForSelector = summary.getCallBackState(sel);
 		if (DEBUG > 0) {
+			System.out.println("------------------------------");
 			System.out.println("States for :" + sel.toString());
 			System.out.println("  " + stateForSelector);
 		}
 		Set<Violation> violations = new HashSet<Violation>();
+		//For all wakelock instances
 		for (WakeLockInstance wli : summary.lockInstances()) {
 			if (DEBUG > 0) {
 				System.out.println("Checking policies for lock: " + wli.toShortString());
 			}
-
+			
 			if (stateForSelector != null) {
 				for (LockUsage st : stateForSelector) {
 

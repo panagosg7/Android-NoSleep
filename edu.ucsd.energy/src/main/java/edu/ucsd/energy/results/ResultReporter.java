@@ -41,9 +41,9 @@ public class ResultReporter {
 	//Look for this kind of files in the result directory
 	private static Pattern filePattern = Pattern.compile("0.*results.*");
 
-	File result_directoy;
+	File directory;
 
-	private Map<String, JSONObject> apps = new HashMap<String, JSONObject>();
+	
 
 	Map<String, Integer> violation_histogram = new HashMap<String, Integer>();
 	Map<String, Integer> warning_histogram = new HashMap<String, Integer>();
@@ -61,13 +61,16 @@ public class ResultReporter {
 
 
 	public ResultReporter(String dir) {
-		result_directoy = new File(dir);
+		directory= new File(dir);
 	}
 
 
-	private void readJSONFiles() {
-		if (result_directoy.isDirectory()) {
-			File[] listFiles = result_directoy.listFiles();
+	private Map<String, JSONObject> readJSONFiles(File dir) {
+		
+		Map<String, JSONObject> apps = new HashMap<String, JSONObject>();
+		
+		if (dir.isDirectory()) {
+			File[] listFiles = dir.listFiles();
 			for (int i = 0; i < listFiles.length; i++) {
 				File file = listFiles[i];
 				String name = file.getName();
@@ -81,11 +84,9 @@ public class ResultReporter {
 						JSONObject json = (JSONObject) JSONSerializer.toJSON( jsonTxt );
 						for (String key : (Set<String>) json.keySet()) {
 							JSONObject appObj = (JSONObject) json.get(key);
-							
 							if (appObj.containsKey("Violation Report")) {		//this means that the analysis did not fail
 								apps.put(key, appObj);	
-							}
-							
+							}							
 						}
 					} catch (FileNotFoundException e) {
 						e.printStackTrace();
@@ -96,9 +97,10 @@ public class ResultReporter {
 			}//for files
 		}
 		else {
-			Assertions.UNREACHABLE(result_directoy + " is not a directoy.");
+			Assertions.UNREACHABLE(dir + " is not a directoy.");
 		}
 		System.out.println();
+		return apps;
 	}
 
 
@@ -121,8 +123,8 @@ public class ResultReporter {
 	}
 
 
-	public void listApps() {
-		readJSONFiles();
+	public void listApps(File dir) {
+		Map<String, JSONObject> apps = readJSONFiles(dir);
 		Set<String> tags = new HashSet<String>();
 		for (Entry<String, JSONObject> e : apps.entrySet()) {
 			tags.add(e.getKey());
@@ -133,9 +135,47 @@ public class ResultReporter {
 		System.out.println("Total: " + tags.size());
 	}
 
+	
+	
+	
 	public void fullResults() {
+		System.out.println("***SIMPLE***");
+		Set<String> simple_verified = processFile(new File(directory.toString() + "/simple"));
+		System.out.println("***ASYNC_CALLS***");
+		Set<String> asynch_verified = processFile(new File(directory.toString() + "/super-components"));
+
+		System.out.println("Verified with asynch but not with simple: "); 
+		HashSet<String> diff = new HashSet<String>();
+		for (String a : asynch_verified) {
+			if (!simple_verified.contains(a)) {
+				diff.add(a);
+			}
+			
+		}
+		System.out.println(diff);
+	}
+	
+	
+	
+	
 		
-		readJSONFiles();
+	public Set<String> processFile(File dir) {
+	
+		violation_histogram = new HashMap<String, Integer>();
+		warning_histogram = new HashMap<String, Integer>();
+		ANALYSIS_FAILURES	= 0;
+		VERIFIED 					= 0;
+		FAILED		 					= 0;
+
+		RESOLVED_INTENTS			= 0;
+		TOTAL_INTENTS				= 0;
+		RESOLVED_RUNNABLES		= 0;
+		TOTAL_RUNNABLES			= 0;
+		
+		Map<String, JSONObject> apps = readJSONFiles(dir);
+		
+		
+		Set<String> res = new HashSet<String>(); 
 		
 		float[] elapsedTimes  = new float[apps.size()];
 		int ind = 0;
@@ -161,6 +201,7 @@ public class ResultReporter {
 				if (violation.size() == 0) {					
 					VERIFIED++;
 					Log.green();
+					res.add(name);
 				}
 				else {
 					Log.yellow();
@@ -174,12 +215,20 @@ public class ResultReporter {
 							JSONObject obj = (JSONObject) it.next();
 							for (String k : (Set<String>) obj.keySet()) {
 								violation_tags.add(k);
+								if (k.startsWith("SERVICE_ONUNBIND")) {
+									sb.append("  " + comp + "\n");
+									sb.append("  " + k + " :: " + obj.get(k) + "\n");
+								}
+								
 							}
 						}
 					}//forall components
-					for (String t : violation_tags) {
-						sb.append(new Formatter().format("  %s", t).toString() +  "\n");
-					}
+					
+//					for (String t : violation_tags) {
+//						sb.append(new Formatter().format("  %s", t).toString() +  "\n");
+//					}
+					
+					
 					FAILED++;
 					updateViolationTags(violation_tags);
 				}
@@ -196,34 +245,21 @@ public class ResultReporter {
 					updateWarningTags(s);
 				}
 			}
-			else {
-
-			}
 			
 		//Intents
 			if (intent != null) {
 				RESOLVED_INTENTS += Integer.parseInt((String) intent.get("successfully_resolved_calls"));
 				TOTAL_INTENTS += Integer.parseInt((String) intent.get("total_calls"));
-				
 			}
-			else {
-
-			}
-			
 			
 		//Runnables
 			if (runnable != null) {
 				RESOLVED_RUNNABLES += Integer.parseInt((String) runnable.get("successfully_resolved_calls"));
 				TOTAL_RUNNABLES += Integer.parseInt((String) runnable.get("total_calls"));
-				
-			}
-			else {
-
 			}
 			
 		//Elapsed
 			if (elapsed != null) {
-				
 	      Matcher m = elapsedPattern.matcher(elapsed);
 	      if (m.find( )) {
 	         float secs = Integer.parseInt(m.group(1)) * 60 + Float.parseFloat(m.group(2));
@@ -231,18 +267,13 @@ public class ResultReporter {
 	      } else {
 	         System.out.println("NO MATCH");
 	      }
-
 			}
-
-
-			System.out.println(new Formatter().format("%-50s (%s)", name, 
-					(version.length()>10)?version.subSequence(0, 10):version).toString());
-
-			System.out.println(sb.toString());
-			
+//			System.out.println(new Formatter().format("%-50s (%s)", name, 
+//					(version.length()>10)?version.subSequence(0, 10):version).toString());
+//
+//			System.out.println(sb.toString());
 			ind ++;
 			Log.resetColor();
-
 		}
 
 		int total = VERIFIED + FAILED + ANALYSIS_FAILURES;
@@ -283,6 +314,7 @@ public class ResultReporter {
 		
 		System.out.println(String.format("=============================================================="));
 		System.out.println();
+		return res;
 	}
 
 

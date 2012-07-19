@@ -22,7 +22,7 @@ import edu.ucsd.energy.interproc.CompoundLockState;
 import edu.ucsd.energy.interproc.SuperContextCFG;
 import edu.ucsd.energy.util.Log;
 
-public class SuperComponent extends AbstractContext implements INodeWithNumber {
+public class SuperComponent extends AbstractComponent implements INodeWithNumber {
 
 	private static final int DEBUG = 0;
 

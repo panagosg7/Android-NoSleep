@@ -18,6 +18,7 @@ import edu.ucsd.energy.component.Component;
 import edu.ucsd.energy.conditions.SpecialConditions.IsHeldCondition;
 import edu.ucsd.energy.conditions.SpecialConditions.NullCondition;
 import edu.ucsd.energy.conditions.SpecialConditions.SpecialCondition;
+import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.managers.WakeLockInstance;
 import edu.ucsd.energy.util.Log;
 
@@ -32,19 +33,22 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 		this.ctxSensLocking = ctxSensLocking;
 	}
 
-	private static final int PRINT_EXCEPTIONAL = 2;
+	private static final int DEBUG_KILL = 0;
 	private static final int DEBUG = 0;
 
 	public IUnaryFlowFunction getNormalFlowFunction(
 			final BasicBlockInContext<IExplodedBasicBlock> src,
 			final BasicBlockInContext<IExplodedBasicBlock> dest) {
+	
 		/**
 		 * Exceptional edges should be treated as normal in cases where no
 		 * acquire/release is involved. BE CAREFUL : exceptional edges that
 		 * span across multiple procedures (if possible) cannot be determined.
 		 */
 		if (Options.DATAFLOW_IGNORE_EXCEPTIONAL && this.ctxSensLocking.getICFG().isExceptionalEdge(src, dest)) {
-			Log.log(PRINT_EXCEPTIONAL, "KILL EXC: " + src.toShortString() + " -> " + dest.toShortString());				
+			if (DEBUG_KILL > 0) {
+				Log.println("KILL EXC: " + src.toShortString() + " -> " + dest.toShortString());				
+			}
 			return KillEverything.singleton(); 
 		}
 
@@ -100,7 +104,9 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 			BasicBlockInContext<IExplodedBasicBlock> src,
 			BasicBlockInContext<IExplodedBasicBlock> dest,
 			BasicBlockInContext<IExplodedBasicBlock> ret) {
-		Log.log(PRINT_EXCEPTIONAL, "CALL FLOW: " + src.toShortString() + "->" + dest.toShortString());
+		if (DEBUG > 0) {
+			Log.println("CALL FLOW: " + src.toShortString() + "->" + dest.toShortString());
+		}
 		return IdentityFlowFunction.identity();
 	}
 
@@ -113,18 +119,31 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 			BasicBlockInContext<IExplodedBasicBlock> src,
 			BasicBlockInContext<IExplodedBasicBlock> dest) {
 		
+		//GlobalManager.get().getConstraintGraph()
+		
+		
+		
 		if (Options.DATAFLOW_IGNORE_EXCEPTIONAL && this.ctxSensLocking.getICFG().isExceptionalEdge(src, dest)) {			
-			Log.log(PRINT_EXCEPTIONAL, "KILL(call-to-return):" + src.toShortString() + " -> " + dest.toShortString());
+			if (DEBUG_KILL > 0) {
+				Log.println("KILL(call-to-return):" + src.toShortString() + " -> " + dest.toShortString());
+			}
 			return KillEverything.singleton();				
 		}
 
-		//XXX: This info should probably not be passed, because we'll miss any info of timing!
 		//Two merged states will have lost any info regarding their sequencing...
 		//We have marked cases where a different context is called (e.g. startActivity)
 		//We need to propagate the state and not treat this as a common method call!
-		if (this.ctxSensLocking.getICFG().isCallToContextEdge(src, dest)) {
+		//XXX: remove this - this is never the case
+		if (this.ctxSensLocking.getICFG().isCallToComponentEdge(src, dest)) {
 			return IdentityFlowFunction.identity();
 		}
+		
+		
+		//TODO: Treat recursive cases: allow state to flow through recursive calls		
+		if (this.ctxSensLocking.getICFG().isRecursiveCallToComponent(src)) {
+			return IdentityFlowFunction.identity();
+		}
+		
 		
 		//Kill the info for all the rest functions - info will 
 		return KillEverything.singleton();
@@ -140,8 +159,9 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 			final BasicBlockInContext<IExplodedBasicBlock> dest) {
 		
 		if (Options.DATAFLOW_IGNORE_EXCEPTIONAL && this.ctxSensLocking.getICFG().isExceptionalEdge(src, dest)) {
-			Log.log(PRINT_EXCEPTIONAL, "KILL(call-none-to-return): " +
-					src.toShortString() + " -> " + dest.toShortString());
+			if (DEBUG_KILL > 0) {
+				Log.println("KILL(call-none-to-return): " + src.toShortString() + " -> " + dest.toShortString());
+			}
 			return KillEverything.singleton();
 		}
 
@@ -212,13 +232,13 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 			BasicBlockInContext<IExplodedBasicBlock> dest) {
 		//System.out.println("Check unbal: " + src.toShortString() + " -> " + dest.toShortString());
 		
-		AbstractContextCFG icfg = this.ctxSensLocking.getICFG();
+		AbstractComponentCFG icfg = this.ctxSensLocking.getICFG();
 		if((DEBUG > 0) && (icfg.isLifecycleExit(src))) {
 			System.out.println("LIFECYCLE HOP: " + src.toString() + " -> " + dest.toString());
 		}
 		
 		//Returning from a context ASYNCHRONOUSLY
-		if (icfg.isReturnFromContextEdge(src, dest)) {
+		if (icfg.isReturnFromComponentEdge(src, dest)) {
 			if(DEBUG > 0) {
 				System.out.println("UNBALANCED RETURN FROM CTX: " + src.toString() + " -> " + dest.toString());
 			}
@@ -243,7 +263,9 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 		}
 		
 		if (Options.DATAFLOW_IGNORE_EXCEPTIONAL && icfg.isExceptionalEdge(src, dest)) {
-			Log.log(PRINT_EXCEPTIONAL,  "KILL(unbal): " + src.toShortString() + " -> " + dest.toShortString());
+			if (DEBUG_KILL > 0) {
+				Log.println("KILL(unbal): " + src.toShortString() + " -> " + dest.toShortString());
+			}
 			return KillEverything.singleton();
 		}
 		return IdentityFlowFunction.identity();
@@ -261,11 +283,13 @@ class LockingFlowFunctions implements ILockingFlowFunctionMap<BasicBlockInContex
 		 * are not determined.
 		 */
 		if (Options.DATAFLOW_IGNORE_EXCEPTIONAL && this.ctxSensLocking.getICFG().isExceptionalEdge(call, dest)) {
-			Log.log(PRINT_EXCEPTIONAL, "KILL(return): " + src.toShortString() + " -> " + dest.toShortString());
+			if (DEBUG_KILL > 0) {
+				Log.println("KILL(return): " + src.toShortString() + " -> " + dest.toShortString());
+			}
 			return KillEverything.singleton();							
 		}
 		
-		if (ctxSensLocking.getICFG().isReturnFromContextEdge(src, dest)) {
+		if (ctxSensLocking.getICFG().isReturnFromComponentEdge(src, dest)) {
 			
 		if(DEBUG > 0) {
 			System.out.println("RETURN FROM CTX: " + src.toString() + " -> " + dest.toString());
