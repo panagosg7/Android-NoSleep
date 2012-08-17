@@ -432,9 +432,7 @@ public class Main {
 	 * @throws ConfigurationException
 	 */
 	public static void findInteresting() throws ConfigurationException {
-		if (collection == null) {
-			collection = new ApkCollection();
-		}
+
 		List<ApkApplication> apps = collection.listApplications();
 		int counter = 0;
 		JSONObject obj = new JSONObject();		//The output object
@@ -875,6 +873,7 @@ public class Main {
 				.withDescription("integrate into collection w/args path, collectionname").create());
 		options.addOption(OptionBuilder.withLongOpt("read-consumer").hasArgs(0)
 				.withDescription("process stats output by WorkConsumer").create());
+		
 		try {
 
 			collection = new ApkCollection();
@@ -907,10 +906,7 @@ public class Main {
 			//Define the set of apps to run the analysis on
 			if (line.hasOption("small-set")) {
 				/* The applications you specify here need to be in apk_collection !!! */
-//				theSet.add("Translate");
-//				theSet.add("Agent_Mail.Ru");
-				theSet.add("Cyworld");
-//				theSet.add("NetCounter");
+				theSet.add("NetCounter");
 
 			}
 			else if (line.hasOption("unit")) {

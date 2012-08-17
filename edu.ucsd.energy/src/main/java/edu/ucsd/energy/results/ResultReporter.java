@@ -48,14 +48,14 @@ public class ResultReporter {
 	Map<String, Integer> violation_histogram = new HashMap<String, Integer>();
 	Map<String, Integer> warning_histogram = new HashMap<String, Integer>();
 
-	private static int ANALYSIS_FAILURES	= 0;
-	private static int VERIFIED 					= 0;
-	private static int FAILED		 					= 0;
+	private int ANALYSIS_FAILURES	= 0;
+	private int VERIFIED 					= 0;
+	private int FAILED		 					= 0;
 
-	private static int RESOLVED_INTENTS			= 0;
-	private static int TOTAL_INTENTS				= 0;
-	private static int RESOLVED_RUNNABLES		= 0;
-	private static int TOTAL_RUNNABLES			= 0;
+	private int RESOLVED_INTENTS			= 0;
+	private int TOTAL_INTENTS				= 0;
+	private int RESOLVED_RUNNABLES		= 0;
+	private int TOTAL_RUNNABLES			= 0;
 
   Pattern elapsedPattern = Pattern.compile("(\\d+)m([^s]*)s");
 
