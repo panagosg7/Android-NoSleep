@@ -854,6 +854,8 @@ public class Main {
 		options.addOption(new Option("skipN", true, "skip the first N application that are in line for analysis"));
 		options.addOption(new Option("sp", "skip-prev", false, "skip application that are already analyzed"));
 		options.addOption(new Option("na", "no-async", false, "disable asynchronous call edges"));
+		options.addOption(new Option("apk", true, "run the analysis on the specified apk only"));
+		
 		
 		options.addOption(new Option("ao", "avoid-apk-check", false, "avoid checking and if the apk is there (use with care as it will not be able to be retargeted)"));
 		
@@ -904,10 +906,14 @@ public class Main {
 			}
 
 			//Define the set of apps to run the analysis on
-			if (line.hasOption("small-set")) {
+			if (line.hasOption("apk")) {
+				//This app must be in the set
+				theSet.add(line.getOptionValue("apk"));
+				
+			}
+			else if (line.hasOption("small-set")) {
 				/* The applications you specify here need to be in apk_collection !!! */
 				theSet.add("NetCounter");
-
 			}
 			else if (line.hasOption("unit")) {
 				theSet.add("Unit_01");
