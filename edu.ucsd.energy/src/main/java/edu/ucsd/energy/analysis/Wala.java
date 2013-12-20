@@ -8,7 +8,6 @@ import org.json.JSONException;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 
-import edu.ucsd.energy.ApkException;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.results.CompoundReport;
 import edu.ucsd.energy.results.IReport;
@@ -17,19 +16,22 @@ import edu.ucsd.energy.util.SystemUtil;
 public class Wala {
 	private File mPath;
 	
-	
-	public Wala(File path, File androidJarPath, File cachePath) {
+	/**
+	 * Create an instance 
+	 * @param path: the path of the jar file of the app 
+	 */
+	public Wala(File path) {
 		mPath = path;
 	}
 
-	public IReport wakelockAnalyze() throws IOException, WalaException, CancelException, ApkException, JSONException {
+	public IReport wakelockAnalyze() throws IOException, WalaException, CancelException, JSONException {
 		String appJar = mPath.getAbsolutePath();
-		String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/" +
-				"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";						
+		//TODO: fix this
+		String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";						
 		SystemUtil.setResultDirectory(mPath.getAbsolutePath());
-		if(!Opts.RUN_IN_PARALLEL) {
-			edu.ucsd.energy.util.Util.printLabel(mPath.getAbsolutePath());	
-		}
+		
+		edu.ucsd.energy.util.Util.printLabel(mPath.getAbsolutePath());	
+		
 		GlobalManager gm = new GlobalManager(appJar, exclusionFile);
 		gm.createComponentManager();
 		
@@ -45,11 +47,10 @@ public class Wala {
 	}
 
 	
-	public IReport analyzeFull() throws IOException, WalaException, CancelException, ApkException {
+	public IReport analyzeFull() throws IOException, WalaException, CancelException {
 		String appJar = mPath.getAbsolutePath();
-		//TODO: Put this somewhere else
-		String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/" +
-				"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";						
+		//TODO: fix this
+		String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";						
 		SystemUtil.setResultDirectory(mPath.getAbsolutePath());
 		if(!Opts.RUN_IN_PARALLEL) {
 			edu.ucsd.energy.util.Util.printLabel(mPath.getAbsolutePath());	
@@ -60,8 +61,7 @@ public class Wala {
 		gm.createWakeLockManager();
 		gm.createSpecialConditions();
 		
-		//Component Manager stuff
-		
+		//Component Manager stuff		
 		gm.createIntentManager();
 		gm.createRunnableManager();
 
@@ -77,11 +77,10 @@ public class Wala {
 		return report;
 	}
 	
-	public IReport analyzeUsage() throws IOException, WalaException, CancelException, ApkException {
+	public IReport analyzeUsage() throws IOException, WalaException, CancelException {
 		String appJar = mPath.getAbsolutePath();
-		//TODO: Put this somewhere else
-		String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/" +
-				"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";						
+		//TODO: fix this
+		String exclusionFile = "/home/pvekris/dev/workspace/WALA_shared/com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";						
 		SystemUtil.setResultDirectory(mPath.getAbsolutePath());
 		if(!Opts.RUN_IN_PARALLEL) {
 			edu.ucsd.energy.util.Util.printLabel(mPath.getAbsolutePath());	

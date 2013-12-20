@@ -25,7 +25,6 @@ import org.apache.commons.lang.StringUtils;
 
 import edu.ucsd.energy.RetargetException;
 import edu.ucsd.energy.analysis.Opts;
-import edu.ucsd.energy.apk.ApkInstance;
 import edu.ucsd.energy.apk.ConfigurationException;
 import edu.ucsd.energy.apk.Util;
 
@@ -191,7 +190,7 @@ public class SystemUtil {
 	            bw.write(jsonObject.toString()); 
 	            bw.close();
 			} catch (Exception e) {
-				ApkInstance.LOGGER.warning("Could not create filewriter: " + outputFile.toString());
+				System.out.println("Could not create filewriter: " + outputFile.toString());
 	        }
 		}
 	}
@@ -204,7 +203,7 @@ public class SystemUtil {
 	            bw.write(text); 
 	            bw.close();
 			} catch (Exception e) {
-				ApkInstance.LOGGER.warning("Could not create filewriter: " + outputFile.toString());
+				System.out.println("Could not create filewriter: " + outputFile.toString());
 	        }
 		}
 	}

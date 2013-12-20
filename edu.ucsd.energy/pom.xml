@@ -34,51 +34,7 @@
       	<version>1.1</version>
       </dependency>
 
-      <dependency>
-          <groupId>com.googlecode.dex2jar</groupId>
-          <artifactId>dex-translator</artifactId>
-          <version>0.0.9.8</version>
-      </dependency>
-      <dependency>
-          <groupId>com.googlecode.dex2jar</groupId>
-          <artifactId>dex-ir</artifactId>
-          <version>1.6</version>
-      </dependency>
-      <dependency>
-          <groupId>com.googlecode.dex2jar</groupId>
-          <artifactId>dex-tools</artifactId>
-          <version>0.0.0.4</version>
-          <!-- otherwise we collide with commons-io -->
-          <exclusions>
-              <exclusion>
-                  <groupId>com.googlecode.dex2jar</groupId>
-                  <artifactId>commons-lite</artifactId>
-              </exclusion>
-          </exclusions>
-      </dependency>
-      <dependency>
-          <groupId>com.googlecode.dex2jar</groupId>
-          <artifactId>dex-reader</artifactId>
-          <version>1.9</version>
-          <!-- otherwise we collide with commons-io -->
-          <exclusions>
-              <exclusion>
-                  <groupId>com.googlecode.dex2jar</groupId>
-                  <artifactId>commons-lite</artifactId>
-              </exclusion>
-          </exclusions>
-      </dependency>
 
-      <dependency>
-          <groupId>brut.apktool</groupId>
-          <artifactId>apktool-lib</artifactId>
-          <version>1.4.1</version>
-      </dependency>
-      <dependency>
-          <groupId>brut.apktool.smali</groupId>
-          <artifactId>smali</artifactId>
-          <version>1.2.6-brut6-SNAPSHOT</version>
-      </dependency>
 
       <!--<dependency>
           <groupId>org.jf</groupId>
@@ -138,25 +94,6 @@
           </exclusions>
       </dependency>
 
-      <dependency>
-          <groupId>org.apache.zookeeper</groupId>
-          <artifactId>zookeeper</artifactId>
-          <version>3.4.0</version>
-          <exclusions>
-              <exclusion>
-                  <groupId>com.sun.jmx</groupId>
-                  <artifactId>jmxri</artifactId>
-              </exclusion>
-              <exclusion>
-                  <groupId>com.sun.jdmk</groupId>
-                  <artifactId>jmxtools</artifactId>
-              </exclusion>
-              <exclusion>
-                  <groupId>javax.jms</groupId>
-                  <artifactId>jms</artifactId>
-              </exclusion>
-          </exclusions>
-      </dependency>
     </dependencies>
 
     <build>

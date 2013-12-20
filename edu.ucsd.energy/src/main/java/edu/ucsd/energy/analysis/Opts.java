@@ -161,7 +161,7 @@ public class Opts {
 
 
 
-	public static final boolean ANALYZE_SUPERCOMPONENTS = true;
+  public static final boolean ANALYZE_SUPERCOMPONENTS = true;
 	
   public static boolean RUN_IN_PARALLEL = false;
 
