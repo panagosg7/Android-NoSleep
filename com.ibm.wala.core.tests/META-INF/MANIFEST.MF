@@ -6,8 +6,7 @@ Bundle-Version: 1.1.3.qualifier
 Bundle-Vendor: %providerName
 Require-Bundle: com.ibm.wala.shrike,
  com.ibm.wala.core,
- org.eclipse.core.runtime,
- org.junit4;bundle-version="4.3.1"
+ org.eclipse.core.runtime
 Bundle-Localization: plugin
 Export-Package: com.ibm.wala.core.tests.basic,
  com.ibm.wala.core.tests.callGraph,
@@ -24,5 +23,3 @@ Export-Package: com.ibm.wala.core.tests.basic,
 Bundle-RequiredExecutionEnvironment: J2SE-1.5
 Bundle-ActivationPolicy: lazy
 Bundle-Activator: com.ibm.wala.core.tests.plugin.CoreTestsPlugin
-Import-Package: org.apache.commons.collections;version="3.2.0",
- org.apache.commons.lang.builder
