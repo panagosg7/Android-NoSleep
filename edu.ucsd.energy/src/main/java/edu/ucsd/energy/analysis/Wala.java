@@ -8,7 +8,6 @@ import org.json.JSONException;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 
-import edu.ucsd.energy.ApkException;
 import edu.ucsd.energy.managers.GlobalManager;
 import edu.ucsd.energy.results.CompoundReport;
 import edu.ucsd.energy.results.IReport;
@@ -17,11 +16,11 @@ public class Wala {
 
 	public static ThreadLocal<File> mPath = new ThreadLocal<File>();
 	
-	public Wala(File path, File androidJarPath, File cachePath) {
+	public Wala(File path) {
 		mPath.set(path);
 	}
 
-	public IReport wakelockAnalyze() throws IOException, WalaException, CancelException, ApkException, JSONException {
+	public IReport wakelockAnalyze() throws IOException, WalaException, CancelException, JSONException {
 		GlobalManager gm = GlobalManager.get();
 		gm.createComponentManager();
 		gm.createWakeLockManager();
@@ -37,7 +36,7 @@ public class Wala {
 	}
 
 	
-	public IReport analyzeFull() throws IOException, WalaException, CancelException, ApkException {
+	public IReport analyzeFull() throws IOException, WalaException, CancelException {
 		GlobalManager gm = GlobalManager.get();						
 		gm.createComponentManager();
 		gm.createWakeLockManager();
@@ -55,7 +54,7 @@ public class Wala {
 		return report;
 	}
 	
-	public IReport analyzeUsage() throws IOException, WalaException, CancelException, ApkException {
+	public IReport analyzeUsage() throws IOException, WalaException, CancelException {
 		GlobalManager gm = GlobalManager.get();
 		gm.createComponentManager();
 		gm.createWakeLockManager();

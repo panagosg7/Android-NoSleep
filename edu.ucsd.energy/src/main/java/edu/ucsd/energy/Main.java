@@ -13,10 +13,12 @@ import org.apache.commons.io.FilenameUtils;
 import edu.ucsd.energy.analysis.Wala;
 import edu.ucsd.energy.results.FailReport;
 import edu.ucsd.energy.results.IReport;
-import edu.ucsd.energy.results.ProcessResults.ResultType;
+import edu.ucsd.energy.results.Warning.WarningType;
 import edu.ucsd.energy.util.SystemUtil;
 
 public class Main {
+	public static final Object logLock = new Object();
+
 
 	public static IReport verify(File apk) throws Exception {
 		IReport res;
@@ -24,10 +26,10 @@ public class Main {
 			res = (new Wala(apk)).analyzeFull();
 		} catch (IOException e) {
 			e.printStackTrace();
-			res = new FailReport(ResultType.IOEXCEPTION_FAILURE);		
+			res = new FailReport(WarningType.IOEXCEPTION_FAILURE);		
 		} catch(Exception e) {
 			e.printStackTrace();
-			res = new FailReport(ResultType.ANALYSIS_FAILURE);
+			res = new FailReport(WarningType.ANALYSIS_FAILURE);
 		}		
 		//Dump the output file in each intermediate step
 		SystemUtil.writeToFile();
@@ -40,10 +42,10 @@ public class Main {
 			res = (new Wala(apk)).analyzeUsage();
 		} catch (IOException e) {
 			e.printStackTrace();
-			res = new FailReport(ResultType.IOEXCEPTION_FAILURE);		
+			res = new FailReport(WarningType.IOEXCEPTION_FAILURE);		
 		} catch(Exception e) {
 			e.printStackTrace();
-			res = new FailReport(ResultType.ANALYSIS_FAILURE);
+			res = new FailReport(WarningType.ANALYSIS_FAILURE);
 		}		
 		return res;
 		
@@ -55,10 +57,10 @@ public class Main {
 			res = (new Wala(apk)).wakelockAnalyze();
 		} catch (IOException e) {
 			e.printStackTrace();
-			res = new FailReport(ResultType.IOEXCEPTION_FAILURE);		
+			res = new FailReport(WarningType.IOEXCEPTION_FAILURE);		
 		} catch(Exception e) {
 			e.printStackTrace();
-			res = new FailReport(ResultType.ANALYSIS_FAILURE);
+			res = new FailReport(WarningType.ANALYSIS_FAILURE);
 		}		
 		return res;
 	}

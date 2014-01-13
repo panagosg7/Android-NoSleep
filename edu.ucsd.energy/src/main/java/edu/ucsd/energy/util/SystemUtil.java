@@ -24,7 +24,7 @@ import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 
 import edu.ucsd.energy.RetargetException;
-import edu.ucsd.energy.analysis.Opts;
+import edu.ucsd.energy.analysis.Options;
 import edu.ucsd.energy.apk.ConfigurationException;
 import edu.ucsd.energy.apk.Util;
 
@@ -229,7 +229,7 @@ public class SystemUtil {
 	      throw new IllegalArgumentException("Input file must be a jar file.");
 	    };
 	    String string = 
-	    		Opts.OUTPUT_FOLDER + 
+	    		Options.OUTPUT_FOLDER + 
 	    		File.separatorChar + 
 	    		file.toString().split(File.separatorChar+"")[5];
 	    
