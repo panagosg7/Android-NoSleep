@@ -3,11 +3,15 @@
 This is the accompanying implementation for the tool described
 [here](http://goto.ucsd.edu/~pvekris/docs/hotpower12.pdf)
 
+This tool is based on [WALA](http://wala.sourceforge.net/wiki/index.php/Main_Page), now also maintained in [GitHub](https://github.com/wala/WALA).
+
 # How to use
 
-## 0. Retarget Dalvik into Java Bytecode
+## Retarget Dalvik into Java Bytecode
 
-To retarget a target APK into a Java JAR, use
+The input to our tool needs to be in Java Bytecode (JAR form). 
+
+To retarget a target APK into a Java JAR I suggest using
 [Dare: Dalvik Retargetting](http://siis.cse.psu.edu/dare/)
 
 I have only tried the version for Linux.
@@ -37,31 +41,32 @@ cd <app-name>
 jar cf target-name.jar *
 ```
 
-This JAR will be used as input to our tool
-
-Configure:
-
-- Set WALA properties in file: edu.ucsd.energy/wala.properties
-
-  In particular, 'java_runtime_dir' needs to point to a valid Java runtime
-  installation.
+This JAR will be used as input to our tool.
 
 
-## 1. Build:
+## Configure
+
+Make sure the WALA properties in file `edu.ucsd.energy/wala.properties` are valid. 
+
+In particular, `java_runtime_dir` needs to point to a valid Java runtime installation.
+
+
+## Build
 
 ```
 cd edu.ucsd.energy
 bin/build.sh
 ```
 
-## 2. Run
+## Run
 
-To run:
+To run (while still at `edu.ucsd.energy` directory):
 ```
 $ nosleep -i app.jar -r
 ```
 
 More options:
+
 ```
 $ ./nosleep -h                           
 usage: ./nosleep [-h] [-i <arg>] [-r] [-u] [-w]                           
