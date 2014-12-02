@@ -5,7 +5,7 @@ This is the accompanying implementation for the tool described
 
 This tool is based on [WALA](http://wala.sourceforge.net/wiki/index.php/Main_Page), now also maintained in [GitHub](https://github.com/wala/WALA).
 
-### Acknowledgements
+#### Acknowledgements
 
 Thanks to John C. McCullough for sharing some of the code that managed the benchmarking reported in the paper.
 
