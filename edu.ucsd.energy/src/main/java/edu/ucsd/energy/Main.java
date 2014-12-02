@@ -81,10 +81,10 @@ public class Main {
 		Options options = new Options();
 		CommandLineParser parser = new PosixParser();
 
-		options.addOption(new Option("v", "verify", false, "verify"));
+		options.addOption(new Option("r", "verify", false, "verify"));
 		options.addOption(new Option("u", "usage", false, "print components that leave a callback (un)locked"));
 		options.addOption(new Option("w", "wakelock-info", false, "gather info about wakelock creation"));
-		options.addOption(new Option("i", "input", true, "input name of application .jar file"));
+		options.addOption(new Option("i", "input", true, "input JAR file"));
 		options.addOption(new Option("h", "help", false, "prints help message"));
 		
 		try {
@@ -132,7 +132,7 @@ public class Main {
 		String header = "No-sleep energy bug finder for android applications\n\n";
 		String footer = "\nPlease report issues to Panagiotis Vekris (pvekris@cs.ucsd.edu)";				 
 		HelpFormatter formatter = new HelpFormatter();
-		formatter.printHelp("NoSleep Bug Finder", header, options, footer, true);
+		formatter.printHelp("./nosleep", header, options, footer, true);
 		System.exit(0);		
 	}
 

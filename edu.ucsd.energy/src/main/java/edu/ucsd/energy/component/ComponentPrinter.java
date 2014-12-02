@@ -61,11 +61,11 @@ public class ComponentPrinter<T extends AbstractComponent> {
 
 	private void outputCallGraph(CallGraph cg, String prefix) {
 		try {
-			String folder = SystemUtil.getResultDirectory() + File.separatorChar + prefix;
-			new File(folder).mkdirs();
-			String fileName = folder + File.separatorChar + component.toFileName() + ".dot";
-			String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
-			String pdfFile = null;
+			File folder = new File(SystemUtil.getResultDirectory(), prefix);
+			folder.mkdirs();
+			File fileName = new File(folder, component.toFileName() + ".dot");
+			File dotExe = new File(p.getProperty(WalaExamplesProperties.DOT_EXE));
+			File pdfFile = null;
 			Log.log(2, "Dumping: " + fileName);
 			GraphDotUtil.dotify(cg, null, fileName, pdfFile, dotExe);
 			return;
@@ -86,9 +86,9 @@ public class ComponentPrinter<T extends AbstractComponent> {
 
 		//Need to do this here - WALA was giving me a hard time to crop a small
 		//part of the graph
-		String cfgs = SystemUtil.getResultDirectory() + File.separatorChar + "color_cfg" +
-				File.separatorChar +  component.toFileName() ;	//every supercomponent should have its own folder 
-		new File(cfgs).mkdirs();
+		//every supercomponent should have its own folder 
+		File cfgs = new File(new File(SystemUtil.getResultDirectory(), "color_cfg"), component.toFileName());
+		cfgs.mkdirs();
 		Iterator<CGNode> it = componentCallgraph.iterator();
 
 		while (it.hasNext()) {
@@ -101,9 +101,9 @@ public class ComponentPrinter<T extends AbstractComponent> {
 			TypeName className = n.getMethod().getDeclaringClass().getName();
 			String bareFileName = className.toString().replace('/', '.') + "_"
 					+ n.getMethod().getName().toString();
-			String cfgFileName = cfgs + File.separatorChar + bareFileName + ".dot";
-			String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
-			String pdfFile = null;
+			File cfgFileName = new File(cfgs, bareFileName + ".dot");
+			File dotExe = new File(p.getProperty(WalaExamplesProperties.DOT_EXE));
+			File pdfFile = null;
 			try {
 				/* Do the colored graph - this will get the colors from the color hash */
 
@@ -117,13 +117,13 @@ public class ComponentPrinter<T extends AbstractComponent> {
 
 	public void outputColoredSupergraph() {
 
-		String cfgs = SystemUtil.getResultDirectory() + File.separatorChar + "color_super_cfg";
-		new File(cfgs).mkdirs();
+		File cfgs = new File(SystemUtil.getResultDirectory(), "color_super_cfg");
+		cfgs.mkdirs();
 
 		String bareFileName = component.toFileName();
-		String dotFile = cfgs + File.separatorChar + bareFileName + ".dot";
-		String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
-		String pdfFile = null;
+		File dotFile = new File(cfgs, bareFileName + ".dot");
+		File dotExe = new File(p.getProperty(WalaExamplesProperties.DOT_EXE));
+		File pdfFile = null;
 		try {
 			/* Do the colored graph */
 			ColorNodeDecorator colorNodeDecorator = new ColorNodeDecorator();
@@ -139,13 +139,13 @@ public class ComponentPrinter<T extends AbstractComponent> {
 	 */
 	public void outputSupergraph() {
 
-		String cfgs = SystemUtil.getResultDirectory() + File.separatorChar + "super_cfg";
-		new File(cfgs).mkdirs();
+		File cfgs = new File(SystemUtil.getResultDirectory(), "super_cfg");
+		cfgs.mkdirs();
 
 		String bareFileName = component.toFileName();
-		String dotFile = cfgs + File.separatorChar + bareFileName + ".dot";
-		String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
-		String pdfFile = null;
+		File dotFile = new File(cfgs, bareFileName + ".dot");
+		File dotExe = new File(p.getProperty(WalaExamplesProperties.DOT_EXE));
+		File pdfFile = null;
 		try {
 
 			GraphDotUtil.dotify(icfg, nodeDecorator, dotFile, pdfFile, dotExe);

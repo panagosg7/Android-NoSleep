@@ -330,8 +330,8 @@ public class SCCManager {
     }
 
     public void outputCallgraphToDot() throws WalaException {
-      String dotFile = /*AndroidAnalysisOptions.OUTPUT_FOLDER*/
-          SystemUtil.getResultDirectory() + File.separatorChar + "scc_cg.dot";
+      File dotFile = /*AndroidAnalysisOptions.OUTPUT_FOLDER*/
+          new File(SystemUtil.getResultDirectory(), "scc_cg.dot");
       DotUtil.writeDotFile(this, null, "SCC", dotFile);      
       
     }

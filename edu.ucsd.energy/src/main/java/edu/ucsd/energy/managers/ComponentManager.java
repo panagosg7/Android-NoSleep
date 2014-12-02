@@ -73,9 +73,9 @@ import edu.ucsd.energy.util.Log;
  */
 public class ComponentManager {
 
-	private static	final int 		SOLVE_DEBUG = 0;
-	static 					final int		RESOLVE_DEBUG = 0;
-
+	private static final int SOLVE_DEBUG = 0;
+	
+	static final int RESOLVE_DEBUG = 0;
 	
 	/**
 	 * This mapping can be used as a set of all the components 

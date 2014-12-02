@@ -144,13 +144,13 @@ public class AppCallGraph implements CallGraph {
 				e.printStackTrace();
 				Assertions.UNREACHABLE();
 			}
-			String pdfFile = null;
+			File  pdfFile = null;
 			if (Options.OUTPUT_CALLGRAPH_PDF) {
 				pdfFile = /* p.getProperty(WalaProperties.OUTPUT_DIR) */
-				SystemUtil.getResultDirectory() + File.separatorChar + PDF_FILE;
+						new File(SystemUtil.getResultDirectory(), PDF_FILE);
 			}
-			String dotFile = SystemUtil.getResultDirectory() + File.separatorChar + name;
-			String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
+			File dotFile = new File(SystemUtil.getResultDirectory(), name);
+			File dotExe = new File(p.getProperty(WalaExamplesProperties.DOT_EXE));
 			GraphDotUtil.dotify(g, null, dotFile, pdfFile, dotExe);
 			// String gvExe = p.getProperty(WalaExamplesProperties.PDFVIEW_EXE);
 			// return PDFViewUtil.launchPDFView(pdfFile, gvExe);
@@ -417,10 +417,10 @@ public class AppCallGraph implements CallGraph {
 	private  void insertTargetMethodsToCG(CallGraph cg)
 			throws IOException, CancelException {
 
-		File targetsFile = FileProvider.getFile(Options.TARGET_FUNCTIONS,
-				FileProvider.class.getClassLoader());
-		BufferedReader targetBuffer = new BufferedReader(new FileReader(
-				targetsFile));
+		// File targetsFile = FileProvider.getFile(Options.TARGET_FUNCTIONS, FileProvider.class.getClassLoader());
+		File targetsFile = Options.TARGET_FUNCTIONS;
+		
+		BufferedReader targetBuffer = new BufferedReader(new FileReader(targetsFile));
 		String str;
 		targetMethods = new ArrayList<String>();
 		targetClassHash = new Hashtable<String, IClass>();
@@ -550,8 +550,8 @@ public class AppCallGraph implements CallGraph {
 		} catch (WalaException e) {
 			e.printStackTrace();
 		}
-		String cfgs = SystemUtil.getResultDirectory() + File.separatorChar + "cfg";
-		new File(cfgs).mkdirs();
+		File cfgs = new File(SystemUtil.getResultDirectory(), "cfg");
+		cfgs.mkdirs();
 
 		Iterator<CGNode> it = this.iterator();
 
@@ -569,10 +569,11 @@ public class AppCallGraph implements CallGraph {
 			String bareFileName = n.getMethod().getDeclaringClass().getName()
 					.toString().replace('/', '.')
 					+ "_" + n.getMethod().getName().toString();
-			String cfgFileName = cfgs + File.separatorChar + bareFileName
-					+ ".dot";
-			String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
-			String pdfFile = null;
+			
+			File cfgFileName = new File(cfgs, bareFileName + ".dot");
+			
+			File dotExe = new File(p.getProperty(WalaExamplesProperties.DOT_EXE));
+			File pdfFile = null;
 			try {
 				NodeDecorator nd = new NodeDecorator() {
 					public String getLabel(Object o) throws WalaException {

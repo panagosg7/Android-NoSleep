@@ -26,14 +26,13 @@ import edu.ucsd.energy.util.SystemUtil;
 
 public class ClassHierarchyUtils {
 
-	private static final String exclusionFileName = "/home/pvekris/dev/workspace/WALA_shared/" +
-			"com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt";
+	private static final File exclusionFileName = new File(SystemUtil.walaROOT, "com.ibm.wala.core.tests/bin/Java60RegressionExclusions.txt");
 
 	private static File exclusionFile;
 
 	static {
 		try {
-			exclusionFile = FileProvider.getFile(exclusionFileName);
+			exclusionFile = FileProvider.getFile(exclusionFileName.toString());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -50,15 +49,14 @@ public class ClassHierarchyUtils {
 		}
 		return cha;
 	}
-
 	
 	private static void outputClassHierarchy(ClassHierarchy ch) throws WalaException {
 		Graph<IClass> g = typeHierarchy2Graph(ch);
 		g = pruneForAppLoader(g);
-		String dotFile = SystemUtil.getResultDirectory() + File.separatorChar + "ch.dot";    
-		DotUtil.writeDotFile(g, null, "Class Hierarchy", dotFile);	    
+		File dotFile = new File(SystemUtil.getResultDirectory(), "ch.dot");
+		// FIXME 
+		// DotUtil.writeDotFile(g, null, "Class Hierarchy", dotFile);
 	}
-
 
 	/**
 	 * Return a view of an {@link IClassHierarchy} as a {@link Graph}, with edges from classes to immediate subtypes

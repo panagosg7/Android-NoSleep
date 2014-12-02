@@ -207,10 +207,10 @@ public class LifecycleGraph extends SparseNumberedGraph<SensibleCGNode> {
 		try {
 			String className = component.getKlass().getName().toString();        
 			String bareFileName = className.replace('/', '.');
-			String folder = SystemUtil.getResultDirectory() + File.separatorChar + "aux";
-			new File(folder).mkdirs();
-			String fileName = folder + File.separatorChar + bareFileName + ".dot";
-			String fullFileName = folder + File.separatorChar + "FULL_" + bareFileName + ".dot";
+			File folder = new File(SystemUtil.getResultDirectory(), "aux");
+			folder.mkdirs();
+			File fileName = new File(folder, bareFileName + ".dot");
+			File fullFileName = new File(folder, "FULL_" + bareFileName + ".dot");
 			NodeDecorator nd = new NodeDecorator() {
 				public String getLabel(Object o) throws WalaException {
 					return ((SensibleCGNode) o).getSelector().toString();

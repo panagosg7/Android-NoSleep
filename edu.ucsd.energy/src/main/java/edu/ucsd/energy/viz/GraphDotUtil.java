@@ -88,7 +88,7 @@ public class GraphDotUtil {
 
 	/**
 	 */
-	public static <T> void dotify(Graph<T> g, NodeDecorator labels, String dotFile, String outputFile, String dotExe)
+	public static <T> void dotify(Graph<T> g, NodeDecorator labels, File dotFile, File outputFile, File  dotExe)
 			throws WalaException {   
 
 		int orig_node_count = g.getNumberOfNodes();
@@ -130,7 +130,7 @@ public class GraphDotUtil {
 		dotify(g, labels, null, dotFile, outputFile, dotExe);
 	}
 
-	public static <T> void dotify(Graph<T> g, NodeDecorator labels, String title, String dotFile, String outputFile, String dotExe)
+	public static <T> void dotify(Graph<T> g, NodeDecorator labels, String title, File  dotFile, File  outputFile, File dotExe)
 			throws WalaException {
 		if (g == null) {
 			throw new IllegalArgumentException("g is null");
@@ -141,11 +141,11 @@ public class GraphDotUtil {
 		}
 	}
 
-	public static void spawnDot(String dotExe, String outputFile, File dotFile) throws WalaException {
+	public static void spawnDot(File  dotExe, File outputFile, File dotFile) throws WalaException {
 		if (dotFile == null) {
 			throw new IllegalArgumentException("dotFile is null");
 		}
-		String[] cmdarray = { dotExe, outputTypeCmdLineParam(), "-o", outputFile, "-v", dotFile.getAbsolutePath() };
+		String[] cmdarray = { dotExe.toString(), outputTypeCmdLineParam(), "-o", outputFile.toString(), "-v", dotFile.getAbsolutePath() };
 		System.out.println("spawning process " + Arrays.toString(cmdarray));
 		BufferedInputStream output = null;
 		BufferedInputStream error = null;
@@ -203,9 +203,9 @@ public class GraphDotUtil {
 	}
 
 	
-	static String temp = null;
+	static File temp = null;
 	
-	public static <T> File writeDotFile(Graph<T> g, NodeDecorator labels, String title, String dotfile) throws WalaException {
+	public static <T> File writeDotFile(Graph<T> g, NodeDecorator labels, String title, File dotfile) throws WalaException {
 		
 		temp = dotfile;
 		
@@ -218,7 +218,7 @@ public class GraphDotUtil {
 			throw new WalaException("internal error: null filename parameter");
 		}
 		try {
-			File f = new File(dotfile);
+			File f = dotfile;
 			FileWriter fw = new FileWriter(f);
 			fw.write(dotStringBuffer.toString());
 			fw.close();

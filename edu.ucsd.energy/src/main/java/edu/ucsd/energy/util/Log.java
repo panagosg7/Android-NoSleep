@@ -51,7 +51,7 @@ public class Log {
 	 * @param s
 	 */
 	public static void flog(String s) {
-		File file = new File(SystemUtil.getResultDirectory() + File.separatorChar + LOG_FILE);
+		File file = new File(SystemUtil.getResultDirectory(), LOG_FILE);
 		try {
 			if(!file.exists()) {
 				file.createNewFile();

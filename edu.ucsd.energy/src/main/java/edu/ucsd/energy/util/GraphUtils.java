@@ -71,9 +71,8 @@ public class GraphUtils {
 			Properties p = null;
 			p = WalaExamplesProperties.loadProperties();
 			p.putAll(WalaProperties.loadProperties());
-			String dotFile = SystemUtil.getResultDirectory() + 
-					File.separatorChar + tag + "_dependencies.dot";
-			String dotExe = p.getProperty(WalaExamplesProperties.DOT_EXE);
+			File dotFile = new File(SystemUtil.getResultDirectory(), tag + "_dependencies.dot");
+			File dotExe = new File(p.getProperty(WalaExamplesProperties.DOT_EXE));
 			GraphDotUtil.dotify(constraintGraph, null, dotFile, null, dotExe);
 			return;
 		} catch (WalaException e) {
