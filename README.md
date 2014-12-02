@@ -60,6 +60,10 @@ In particular, `java_runtime_dir` needs to point to a valid Java runtime install
 
 ## Build
 
+First import the whole project into Eclipse using the Maven plugin (preinstalled in latest version), by clicking on: 
+`File -> Import...`, then select `Existing Maven Projects` and navigate to the top-level of the current project.
+Once the workspace is built, in a terminal, navigate to the same project folder and issue the following:
+
 ```
 $ cd edu.ucsd.energy
 $ bin/build.sh
