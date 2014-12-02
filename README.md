@@ -62,7 +62,7 @@ bin/build.sh
 
 To run (while still at `edu.ucsd.energy` directory):
 ```
-$ nosleep -i app.jar -r
+$ ./nosleep -i app.jar -r
 ```
 
 More options:
@@ -80,4 +80,6 @@ No-sleep energy bug finder for android applications
                                                                                
 Please report issues to Panagiotis Vekris (pvekris@cs.ucsd.edu)           
 ```
+
+Folder `results/android` will be populated with a number of DOT graphs of call-graphs and control-flow graphs.
 
