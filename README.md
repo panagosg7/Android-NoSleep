@@ -7,7 +7,7 @@ This tool is based on [WALA](http://wala.sourceforge.net/wiki/index.php/Main_Pag
 
 # How to use
 
-## Dependencie
+## Dependencies
 
 This projects depends on:
 
