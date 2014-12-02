@@ -7,6 +7,13 @@ This tool is based on [WALA](http://wala.sourceforge.net/wiki/index.php/Main_Pag
 
 # How to use
 
+## Dependencie
+
+This projects depends on:
+
+ * Java 
+ * [Maven](http://maven.apache.org/) (recommended)
+
 ## Retarget Dalvik into Java Bytecode
 
 The input to our tool needs to be in Java Bytecode (JAR form). 
