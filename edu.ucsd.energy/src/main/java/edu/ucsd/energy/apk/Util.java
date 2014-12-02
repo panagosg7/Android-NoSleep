@@ -50,10 +50,17 @@ public class Util {
 		if (!prop.containsKey(propertyName)) {
 			throw new ConfigurationException(propertyName + " not defined in property file");
 		}
-		File path = new File(prop.getProperty(propertyName));
+		File path = new File(getPropFromConfig(prop, propertyName));		
 		if (!path.exists()) {
 			throw new ConfigurationException(propertyName + " " + path.getAbsolutePath() + " does not exist");
 		}
 		return path;
+	}
+	
+	public static String getPropFromConfig(Properties prop, String propertyName) throws ConfigurationException {
+		if (!prop.containsKey(propertyName)) {
+			throw new ConfigurationException(propertyName + " not defined in property file");
+		}
+		return prop.getProperty(propertyName);		
 	}
 }

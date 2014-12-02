@@ -1,7 +1,3 @@
-# Zoo keeper
-zoo_host=sysnet122.sysnet.ucsd.edu
-zoo_port=2181
-
 # Apk Processing
 collection_path = /home/pvekris/dev/apk_collection
 scratch_path = /home/pvekris/dev/apk_scratch

@@ -2,9 +2,13 @@ package edu.ucsd.energy;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Collection;
+import java.util.Date;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.PosixParser;
@@ -65,17 +69,12 @@ public class Main {
 		return res;
 	}
 
-	private static void setOutputFile(String optionValue) {
-		String extension = FilenameUtils.getExtension(optionValue);
-		String pureName = FilenameUtils.removeExtension(optionValue);
-		SystemUtil.setOutputFileName(pureName + "_" + SystemUtil.getDateTime() + "." + extension);
+	private static void setOutputFile() {
+		String timeStamp = new SimpleDateFormat("yyyyMMddhhmm").format(new Date());
+		String outputFileName = "output_" + timeStamp + ".txt" ;
+		SystemUtil.setOutputFileName(outputFileName);
+		//System.out.println("Output file: " + outputFileName);
 	}
-
-	private static void setInputJSONFile(String optionValue) {
-		System.out.println("Using input: " + optionValue);
-		new File(optionValue);
-	}
-
 
 	public static void main(String[] args) {
 
@@ -83,43 +82,58 @@ public class Main {
 		CommandLineParser parser = new PosixParser();
 
 		options.addOption(new Option("v", "verify", false, "verify"));
-		options.addOption(new Option("u", "usage", false, "print the components that leave a callback locked or unlocked"));
+		options.addOption(new Option("u", "usage", false, "print components that leave a callback (un)locked"));
 		options.addOption(new Option("w", "wakelock-info", false, "gather info about wakelock creation"));
-		options.addOption(new Option("o", "output", true, "specify an output filename (date will be included)"));
+		options.addOption(new Option("i", "input", true, "input name of application .jar file"));
+		options.addOption(new Option("h", "help", false, "prints help message"));
 		
 		try {
 			
 			CommandLine line = parser.parse(options,  args);
 			
-			//TODO: ask for file !!!
-			File apk = null;
-			
-			if (line.hasOption("output")) {
-				setOutputFile(line.getOptionValue("output"));
+			if (line.hasOption("help")) {
+				printHelpMessageAndExit(options);
 			}
+			
+			File jarFile  = null;
+			
+			// Read input file
 			if (line.hasOption("input")) {
-				setInputJSONFile(line.getOptionValue("input"));
-			}			
-			
-			if (line.hasOption("wakelock-info")) {				
-				wakeLockCreation(apk);
-			}
-			else if (line.hasOption("verify")) {
-				verify(apk);
-			}
-			else if (line.hasOption("usage")) {
-				analyzeUsage(apk);				
+				String jarPath = line.getOptionValue("input");
+				jarFile = new File(jarPath);
 			}
 			else {
-				for (Object opt: options.getOptions()) {
-					System.err.println(opt);
-				}
+				throw new Exception("No input file given");				
+			}			
+			
+			setOutputFile();
+					
+			if (line.hasOption("wakelock-info")) {				
+				wakeLockCreation(jarFile );
+			}
+			else if (line.hasOption("verify")) {
+				verify(jarFile );
+			}
+			else if (line.hasOption("usage")) {
+				analyzeUsage(jarFile );				
+			}
+			else {
+				printHelpMessageAndExit(options);
 			}
 
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+
+	private static void printHelpMessageAndExit(Options options) {
+		// TODO Auto-generated method stub
+		String header = "No-sleep energy bug finder for android applications\n\n";
+		String footer = "\nPlease report issues to Panagiotis Vekris (pvekris@cs.ucsd.edu)";				 
+		HelpFormatter formatter = new HelpFormatter();
+		formatter.printHelp("NoSleep Bug Finder", header, options, footer, true);
+		System.exit(0);		
 	}
 
 }

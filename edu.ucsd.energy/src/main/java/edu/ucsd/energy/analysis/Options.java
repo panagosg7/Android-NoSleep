@@ -1,7 +1,10 @@
 package edu.ucsd.energy.analysis;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.HashSet;
+
+import edu.ucsd.energy.util.SystemUtil;
 
 public class Options {
 
@@ -187,15 +190,14 @@ public class Options {
   /**
    * Define the leaves of the call graph (e.g. WakeLock.acquire)
    */
-  public static String TARGET_FUNCTIONS = "/home/pvekris/dev/workspace/WALA_shared/" +
-  		"com.ibm.wala.core.tests/bin/AndroidAnalysisTargetFunctions.txt";
+  public static File TARGET_FUNCTIONS = new File(SystemUtil.walaROOT, "com.ibm.wala.core.tests/bin/AndroidAnalysisTargetFunctions.txt");
   
 
   /**
    * Need to change this depending on where it is run
    * Folders of each application will be created here, overwriting old ones.
    */
-  public static String OUTPUT_FOLDER = "/home/pvekris/dev/WALA/results"; 
+  public static File OUTPUT_FOLDER = new File(SystemUtil.walaROOT, "results"); 
     
   /**
    * Log analysis output in file log.out

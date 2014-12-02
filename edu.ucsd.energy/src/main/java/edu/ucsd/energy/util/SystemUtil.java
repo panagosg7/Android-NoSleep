@@ -32,27 +32,30 @@ public class SystemUtil {
 
 	public static File output;
 	public static File outputFile;
+	
+	public static File walaROOT;
+	
 	private static JSONObject jsonObject;
 	//private static String resultDirectory;
-	private static ThreadLocal<String> resultDirectory = new ThreadLocal<String>();
+	private static ThreadLocal<File> resultDirectory = new ThreadLocal<File>();
 
-		 
+	
 	static {
 		Properties prop = new Properties();
 		try {
-			prop.load(new FileInputStream("mcmutton.properties.default"));
-			File mScratchRoot = Util.getAndCheckConfigPath(prop, "scratch_path");
-			output = new File (mScratchRoot + File.separator + "output");
-			outputFile = new File (output.getPath() + File.separator + "output.out");	//default name
-			jsonObject = new JSONObject();
-		} catch (ConfigurationException e) {
-			e.printStackTrace();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
+			File workingDir = new File(System.getProperty("user.dir"));
+			walaROOT = workingDir.getParentFile();
+			
+			//prop.load(new FileInputStream("properties.default"));			
+			//File mScratchRoot = Util.getAndCheckConfigPath(prop, "scratch_path");			
+			// output = new File (mScratchRoot + File.separator + "output");
+			// outputFile = new File (output.getPath() + File.separator + "output.out");	//default name
+			// jsonObject = new JSONObject();
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
+	
 		
 	
 	public static class LogDumper implements Runnable {
@@ -208,8 +211,15 @@ public class SystemUtil {
 		}
 	}
 	
-	public static void setOutputFileName(String string) {
-		outputFile = new File(output.getPath() + File.separator + string);
+	public static void setOutputFileName(String outputFileName) {
+		// outputFile = new File(output.getPath() + File.separator + string);
+		outputFile = new File(outputFileName);
+		try {
+			outputFile.createNewFile();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	public static void commitReport(String id, JSONObject json) throws JSONException {
@@ -219,7 +229,7 @@ public class SystemUtil {
 			
 	}
 
-	public static String getResultDirectory() {
+	public static File getResultDirectory() {
 		return resultDirectory.get();
 	}
 
@@ -228,18 +238,15 @@ public class SystemUtil {
 	    if (!Pattern.matches(".+\\.jar", appJar)) {
 	      throw new IllegalArgumentException("Input file must be a jar file.");
 	    };
-	    String string = 
-	    		Options.OUTPUT_FOLDER + 
-	    		File.separatorChar + 
-	    		file.toString().split(File.separatorChar+"")[5];
 	    
-		resultDirectory.set(new String(string));
+	    File resultDir = new File(Options.OUTPUT_FOLDER, file.toString().split(File.separatorChar+"")[5]);
 	    
-	    File newDir = new File(resultDirectory.get());
-	    if (!removeDirectory(newDir)) {
+		resultDirectory.set(resultDir);
+	    
+	    if (!removeDirectory(resultDir)) {
 	      System.err.println("Wrong result directory.");
 	    };
-	    newDir.mkdir();
+	    resultDir.mkdir();
 	}
 
 	public static boolean removeDirectory(File directory) {
