@@ -27,7 +27,7 @@ After installing Dare, using the instructions
 [here](http://siis.cse.psu.edu/dare/installation.html), do the following:
 
 ```
-dare -o -d <dare-output> <apk-file>
+$ dare -o -d <dare-output> <apk-file>
 ```
 
 This will create a directory structure withing `<dare-output>` that looks like
@@ -43,9 +43,9 @@ the following:
 To create the JAR for the application: 
 
 ```
-cd <dare-output>/optimized
-cd <app-name>
-jar cf target-name.jar *
+$ cd <dare-output>/optimized
+$ cd <app-name>
+$ jar cf target-name.jar *
 ```
 
 This JAR will be used as input to our tool.
@@ -61,8 +61,8 @@ In particular, `java_runtime_dir` needs to point to a valid Java runtime install
 ## Build
 
 ```
-cd edu.ucsd.energy
-bin/build.sh
+$ cd edu.ucsd.energy
+$ bin/build.sh
 ```
 
 ## Run
